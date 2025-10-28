@@ -1,3 +1,10 @@
-tree-sitter==0.20.4
-sentence-transformers==2.2.2
-chromadb==0.4.22
+tree-sitter
+chromadb
+tree-sitter-python
+tree-sitter-javascript
+tree-sitter-typescript
+tree-sitter-java
+tree-sitter-go
+tree-sitter-rust
+tree-sitter-cpp
+tree-sitter-c

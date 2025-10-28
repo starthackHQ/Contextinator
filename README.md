@@ -85,3 +85,9 @@ python -m src.cli query "user authentication login" --n-results 5
 # Save search results to a file
 python -m src.cli query "database connection" --save db_results.txt
 ```
+
+
+# Installation
+```
+pip install tree-sitter tree-sitter-python tree-sitter-javascript tree-sitter-typescript tree-sitter-java tree-sitter-go tree-sitter-rust tree-sitter-cpp tree-sitter-c chromadb
+```

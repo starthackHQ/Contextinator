@@ -182,20 +182,20 @@ def get_parser(language: str) -> Optional["Parser"]:
     # Setup tree-sitter on first use only
     if not _setup_attempted:
         _setup_attempted = True
-        if not setup_tree_sitter_languages():
-            return None
+        setup_tree_sitter_languages()  # Just call it, don't check return value here
     
     try:
         lang_obj = get_language(language)
         if not lang_obj:
             return None
         
-        parser = Parser()
-        parser.set_language(lang_obj)
+        # Use the new API: Parser(language_object)
+        parser = Parser(lang_obj)
         _parser_cache[language] = parser
         return parser
         
-    except Exception:
+    except Exception as e:
+        print(f"⚠️  Error creating parser for {language}: {e}")
         return None
 
 
