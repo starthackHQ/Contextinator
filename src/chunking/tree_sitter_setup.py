@@ -46,7 +46,13 @@ def setup_tree_sitter_languages():
                 subprocess.run(['git', 'clone', '--depth', '1', repo_url, str(lang_dir)], 
                              check=True, capture_output=True)
             
-            lang_paths.append(str(lang_dir))
+            # Handle special case for typescript which has different directory structure
+            if lang == 'typescript':
+                # TypeScript repo has typescript/ and tsx/ subdirectories
+                lang_paths.append(str(lang_dir / 'typescript'))
+                lang_paths.append(str(lang_dir / 'tsx'))
+            else:
+                lang_paths.append(str(lang_dir))
         
         # Build languages
         print("Building language parsers...")
@@ -69,6 +75,10 @@ def get_language(lang_name: str):
         
         if not languages_so.exists():
             setup_tree_sitter_languages()
+        
+        # Handle special case for tsx - it's part of the typescript repo
+        if lang_name == 'tsx':
+            return Language(str(languages_so), 'tsx')
         
         return Language(str(languages_so), lang_name)
     except Exception:

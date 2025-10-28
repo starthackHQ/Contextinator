@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from ..config import SUPPORTED_EXTENSIONS
 
 try:
@@ -8,6 +8,8 @@ try:
     TREE_SITTER_AVAILABLE = True
 except ImportError:
     TREE_SITTER_AVAILABLE = False
+    if TYPE_CHECKING:
+        from tree_sitter import Parser
 
 
 # Node types to extract per language
@@ -93,7 +95,7 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
     }
 
 
-def get_parser(language: str) -> Optional[Parser]:
+def get_parser(language: str) -> Optional["Parser"]:
     """Get tree-sitter parser for language."""
     global _setup_attempted, _parser_cache
     
