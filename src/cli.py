@@ -15,8 +15,20 @@ def chunk_func(args):
     # Use output dir if specified, otherwise current directory
     output_dir = getattr(args, 'output', None) or os.getcwd()
     
-    chunks = chunk_repository(repo_path, save=args.save, output_dir=output_dir)
+    # Check if AST saving is requested
+    save_ast = getattr(args, 'save_ast', False)
+    
+    chunks = chunk_repository(
+        repo_path, 
+        save=args.save, 
+        output_dir=output_dir, 
+        save_ast=save_ast
+    )
     print(f"\n✅ Chunking complete: {len(chunks)} chunks created")
+    
+    if save_ast:
+        print(f"🌳 AST trees saved for analysis")
+        print(f"📁 Check: {output_dir}/.chunks/ast_trees/ for AST files")
 
 
 def embed_func(args):
@@ -48,6 +60,7 @@ def main():
     # chunk
     p_chunk = sub.add_parser('chunk', help='Chunks the local Git codebase into semantic units and (optionally) save them')
     p_chunk.add_argument('--save', action='store_true', help='Save chunks to a .chunks folder')
+    p_chunk.add_argument('--save-ast', action='store_true', help='Save AST trees for analysis and debugging')
     p_chunk.add_argument('--repo-url', help='GitHub/Git repository URL to clone and chunk')
     p_chunk.add_argument('--path', help='Local path to repository (default: current directory)')
     p_chunk.add_argument('--output', '-o', help='Output directory for chunks (default: current directory)')

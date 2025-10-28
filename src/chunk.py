@@ -1,13 +1,14 @@
 import json
 from pathlib import Path
 from typing import List, Dict, Any
-from .chunking import discover_files, parse_file, collect_nodes, split_chunk
+from .chunking import discover_files, parse_file, collect_nodes, split_chunk, save_ast_overview
 from .chunking.node_collector import NodeCollector
 from .utils import ProgressTracker
 from .config import CHUNKS_DIR, MAX_TOKENS
 
 
-def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_TOKENS, output_dir: str = None) -> List[Dict[str, Any]]:
+def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_TOKENS, 
+                     output_dir: str = None, save_ast: bool = False) -> List[Dict[str, Any]]:
     """
     Chunk a repository into semantic units.
     
@@ -16,6 +17,7 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
         save: Whether to save chunks to disk
         max_tokens: Maximum tokens per chunk
         output_dir: Optional output directory (defaults to repo_path/.chunks)
+        save_ast: Whether to save AST visualization data
     
     Returns:
         List of chunks
@@ -28,6 +30,9 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
         print("No supported files found")
         return []
     
+    # Determine output directory
+    actual_output_dir = output_dir or repo_path
+    
     # Initialize collector for deduplication
     collector = NodeCollector()
     all_chunks = []
@@ -35,9 +40,25 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
     # Progress tracking
     progress = ProgressTracker(len(files), "Chunking files")
     
+    if save_ast:
+        print("🌳 AST visualization enabled - saving tree structures...")
+        
+        # Check tree-sitter availability
+        try:
+            from .chunking.tree_sitter_setup import setup_tree_sitter_languages
+            setup_attempted = setup_tree_sitter_languages()
+            if not setup_attempted:
+                print("⚠️  Note: Tree-sitter language parsers could not be built.")
+                print("   This is often due to missing C++ build tools on Windows.")
+                print("   Install Microsoft Visual C++ Build Tools for full AST parsing.")
+                print("   Falling back to file-level chunking with basic structure analysis.")
+        except Exception as e:
+            print(f"⚠️  Tree-sitter setup failed: {e}")
+            print("   Using fallback parsing mode.")
+    
     for file_path in files:
-        # Parse file
-        parsed = parse_file(file_path)
+        # Parse file with optional AST saving
+        parsed = parse_file(file_path, save_ast=save_ast, output_dir=actual_output_dir)
         if not parsed:
             progress.update()
             continue
@@ -64,7 +85,12 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
     print(f"  Duplicates found: {stats['duplicates_found']}")
     
     if save:
-        save_chunks(all_chunks, output_dir or repo_path, stats)
+        save_chunks(all_chunks, actual_output_dir, stats)
+    
+    if save_ast:
+        print("🌳 Creating AST overview...")
+        save_ast_overview(actual_output_dir)
+        print(f"📊 AST files saved in: {Path(actual_output_dir) / CHUNKS_DIR / 'ast_trees'}")
     
     return all_chunks
 

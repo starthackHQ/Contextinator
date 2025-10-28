@@ -5,9 +5,12 @@ from ..config import SUPPORTED_EXTENSIONS
 try:
     from tree_sitter import Parser
     from .tree_sitter_setup import get_language, setup_tree_sitter_languages
+    from .ast_visualizer import save_ast_visualization
     TREE_SITTER_AVAILABLE = True
-except ImportError:
+    print("🌳 Tree-sitter imports successful")
+except ImportError as e:
     TREE_SITTER_AVAILABLE = False
+    print(f"⚠️  Tree-sitter import failed: {e}")
     if TYPE_CHECKING:
         from tree_sitter import Parser
 
@@ -30,12 +33,14 @@ _parser_cache = {}
 _setup_attempted = False
 
 
-def parse_file(file_path: Path) -> Optional[Dict[str, Any]]:
+def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) -> Optional[Dict[str, Any]]:
     """
     Parse a file and return its AST representation with extracted nodes.
     
     Args:
         file_path: Path to the file to parse
+        save_ast: Whether to save AST visualization data
+        output_dir: Output directory for AST data (required if save_ast=True)
     
     Returns:
         Dictionary containing AST nodes and metadata, or None if parsing fails
@@ -50,27 +55,90 @@ def parse_file(file_path: Path) -> Optional[Dict[str, Any]]:
         
         if not TREE_SITTER_AVAILABLE:
             # Fallback: return entire file as one chunk
-            return _fallback_parse(file_path, language, content)
+            print(f"⚠️  Tree-sitter not available, using fallback for {file_path}")
+            result = _fallback_parse(file_path, language, content)
+            
+            # Save AST visualization if requested (even for fallback)
+            if save_ast and output_dir:
+                print(f"💾 Saving fallback AST data for {file_path}")
+                try:
+                    saved_file = save_ast_visualization(
+                        str(file_path), 
+                        language, 
+                        None,  # No root node for fallback
+                        content, 
+                        result['nodes'], 
+                        output_dir,
+                        result.get('tree_info')
+                    )
+                    print(f"✅ Saved fallback AST: {saved_file}")
+                except Exception as e:
+                    print(f"❌ Error saving fallback AST for {file_path}: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            return result
         
         # Parse with tree-sitter
         parser = get_parser(language)
         if not parser:
             # Fallback if language not supported
+            print(f"⚠️  No parser available for {language}, using fallback for {file_path}")
             return _fallback_parse(file_path, language, content)
         
         tree = parser.parse(bytes(content, 'utf-8'))
         nodes = extract_nodes(tree.root_node, content, language)
         
+        print(f"🌳 Parsed {file_path} - Found {len(nodes)} semantic nodes")
+        
         # If no nodes extracted, fallback to file-level
         if not nodes:
-            return _fallback_parse(file_path, language, content)
+            print(f"⚠️  No semantic nodes found in {file_path}, using file-level chunking")
+            result = _fallback_parse(file_path, language, content)
+        else:
+            result = {
+                'file_path': str(file_path),
+                'language': language,
+                'content': content,
+                'nodes': nodes,
+                'tree_info': {
+                    'has_ast': True,
+                    'root_node_type': tree.root_node.type,
+                    'total_nodes': _count_nodes(tree.root_node),
+                    'tree_depth': _get_tree_depth(tree.root_node)
+                }
+            }
         
-        return {
-            'file_path': str(file_path),
-            'language': language,
-            'content': content,
-            'nodes': nodes
-        }
+        # Save AST visualization if requested
+        if save_ast and output_dir:
+            print(f"💾 Saving AST for {file_path}")
+            try:
+                if 'tree_info' in result and result['tree_info'].get('has_ast', False):
+                    # Real AST case
+                    save_ast_visualization(
+                        str(file_path), 
+                        language, 
+                        tree.root_node, 
+                        content, 
+                        nodes, 
+                        output_dir,
+                        result['tree_info']
+                    )
+                else:
+                    # Fallback case
+                    save_ast_visualization(
+                        str(file_path), 
+                        language, 
+                        None, 
+                        content, 
+                        result['nodes'], 
+                        output_dir,
+                        result.get('tree_info')
+                    )
+            except Exception as e:
+                print(f"Warning: Could not save AST for {file_path}: {e}")
+        
+        return result
     
     except Exception as e:
         print(f"Error parsing {file_path}: {e}")
@@ -91,7 +159,12 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
             'end_line': len(content.splitlines()),
             'start_byte': 0,
             'end_byte': len(content.encode('utf-8'))
-        }]
+        }],
+        'tree_info': {
+            'has_ast': False,
+            'fallback_reason': 'tree-sitter not available or parsers not built',
+            'parser_available': TREE_SITTER_AVAILABLE
+        }
     }
 
 
@@ -106,10 +179,11 @@ def get_parser(language: str) -> Optional["Parser"]:
     if language in _parser_cache:
         return _parser_cache[language]
     
-    # Setup tree-sitter on first use
+    # Setup tree-sitter on first use only
     if not _setup_attempted:
         _setup_attempted = True
-        setup_tree_sitter_languages()
+        if not setup_tree_sitter_languages():
+            return None
     
     try:
         lang_obj = get_language(language)
@@ -181,3 +255,15 @@ def get_node_name(node, content_bytes: bytes) -> Optional[str]:
         return None
     except Exception:
         return None
+
+
+def _count_nodes(node) -> int:
+    """Count total number of nodes in the AST."""
+    return 1 + sum(_count_nodes(child) for child in node.children)
+
+
+def _get_tree_depth(node, current_depth: int = 0) -> int:
+    """Get the maximum depth of the AST."""
+    if not node.children:
+        return current_depth
+    return max(_get_tree_depth(child, current_depth + 1) for child in node.children)
