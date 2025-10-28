@@ -22,8 +22,11 @@ def git_root(path=None):
 
 
 def chunk_func(args):
-    print("chunk this functionality")
-    pass
+    from .chunk import chunk_repository
+    
+    repo_path = git_root()
+    chunks = chunk_repository(repo_path, save=args.save)
+    print(f"Chunking complete: {len(chunks)} chunks created")
 
 
 def embed_func(args):
