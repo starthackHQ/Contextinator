@@ -7,7 +7,7 @@ from .utils import ProgressTracker
 from .config import CHUNKS_DIR, MAX_TOKENS
 
 
-def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_TOKENS) -> List[Dict[str, Any]]:
+def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_TOKENS, output_dir: str = None) -> List[Dict[str, Any]]:
     """
     Chunk a repository into semantic units.
     
@@ -15,6 +15,7 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
         repo_path: Path to the repository
         save: Whether to save chunks to disk
         max_tokens: Maximum tokens per chunk
+        output_dir: Optional output directory (defaults to repo_path/.chunks)
     
     Returns:
         List of chunks
@@ -63,7 +64,7 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
     print(f"  Duplicates found: {stats['duplicates_found']}")
     
     if save:
-        save_chunks(all_chunks, repo_path, stats)
+        save_chunks(all_chunks, output_dir or repo_path, stats)
     
     return all_chunks
 

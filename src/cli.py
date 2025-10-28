@@ -1,32 +1,22 @@
 import argparse
-import os
 import sys
-from subprocess import run
-
-
-def git_root(path=None):
-    """Return the git top-level directory for path (or cwd) or exit with message.
-
-    Kept minimal and safe: delegates to `git rev-parse --show-toplevel`.
-    """
-    path_params = []
-    if path:
-        path_params = ['-C', path]
-    p = run(['git'] + path_params + ['rev-parse', '--show-toplevel'], capture_output=True)
-    if p.returncode != 0:
-        if not path:
-            path = os.getcwd()
-        print(f"{path} is not a git repo. Run this in a git repository or specify a path using the -p flag")
-        sys.exit(1)
-    return p.stdout.decode('utf-8').strip()
+from .utils import resolve_repo_path
 
 
 def chunk_func(args):
     from .chunk import chunk_repository
+    import os
     
-    repo_path = git_root()
-    chunks = chunk_repository(repo_path, save=args.save)
-    print(f"Chunking complete: {len(chunks)} chunks created")
+    repo_path = resolve_repo_path(
+        repo_url=getattr(args, 'repo_url', None),
+        path=getattr(args, 'path', None)
+    )
+    
+    # Use output dir if specified, otherwise current directory
+    output_dir = getattr(args, 'output', None) or os.getcwd()
+    
+    chunks = chunk_repository(repo_path, save=args.save, output_dir=output_dir)
+    print(f"\n✅ Chunking complete: {len(chunks)} chunks created")
 
 
 def embed_func(args):
@@ -58,6 +48,9 @@ def main():
     # chunk
     p_chunk = sub.add_parser('chunk', help='Chunks the local Git codebase into semantic units and (optionally) save them')
     p_chunk.add_argument('--save', action='store_true', help='Save chunks to a .chunks folder')
+    p_chunk.add_argument('--repo-url', help='GitHub/Git repository URL to clone and chunk')
+    p_chunk.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_chunk.add_argument('--output', '-o', help='Output directory for chunks (default: current directory)')
     p_chunk.set_defaults(func=chunk_func)
 
     # embed

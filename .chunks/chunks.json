@@ -1,0 +1,232 @@
+{
+  "chunks": [
+    {
+      "content": "package main\n\nimport (\n\t\"fmt\"\n\t\"time\"\n\n\t\"github.com/yourusername/wtop/ui\"\n)\n\nfunc main() {\n\tui.HideCursor()\n\tdefer ui.ShowCursor()\n\t\n\tfmt.Printf(\"%sStarting wtop... Press Ctrl+C to exit%s\\n\", ui.Green, ui.Reset)\n\ttime.Sleep(1 * time.Second)\n\t\n\tui.ClearScreen()\n\t\n\tfor {\n\t\trow := 1\n\t\t\n\t\tui.RenderHeader(&row)\n\t\tui.RenderCPU(&row)\n\t\tui.RenderMemory(&row)\n\t\tui.RenderGPU(&row)\n\t\tui.RenderSystemInfo(&row)\n\t\tui.RenderProcessTable(&row)\n\t\tui.RenderFooter(&row)\n\t\t\n\t\ttime.Sleep(2 * time.Second)\n\t}\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/main.go",
+      "language": "go",
+      "hash": "87b6979cb74f3e96c9f45d0233fe949d254212ca609c3d5bde1df7350aa49ecc",
+      "node_type": "file",
+      "node_name": "main.go",
+      "start_line": 1,
+      "end_line": 32,
+      "start_byte": 0,
+      "end_byte": 494,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/main.go:1-32"
+      ]
+    },
+    {
+      "content": "package metrics\n\nimport (\n\t\"os/exec\"\n\t\"runtime\"\n\t\"strconv\"\n\t\"strings\"\n)\n\ntype GPUInfo struct {\n\tIndex              int\n\tName               string\n\tDriver             string\n\tUtilization        float64\n\tMemoryUsed         float64\n\tMemoryTotal        float64\n\tTemperature        float64\n\tPowerUsage         float64\n\tPowerLimit         float64\n\tFanSpeed           float64\n\tFanRPM             int\n\tClockCore          int\n\tClockMemory        int\n\tClockSM            int\n\tPerformanceState   string\n\tThrottleReasons    []string\n\tMemoryUtilization  float64\n\tPCIeGen            int\n\tPCIeWidth          int\n\tComputeMode        string\n\tMemoryBusWidth     int\n\tPowerState         string\n\tTempSlowdown       float64\n}\n\ntype GPUProcess struct {\n\tPID         int\n\tProcessName string\n\tMemoryUsed  float64\n\tType        string\n}\n\nfunc getNvidiaSmiCmd() string {\n\tif runtime.GOOS == \"windows\" {\n\t\treturn \"nvidia-smi.exe\"\n\t}\n\treturn \"nvidia-smi\"\n}\n\nfunc estimateFanRPM(temp float64, power float64) int {\n\tif temp < 40 {\n\t\treturn 0\n\t} else if temp < 50 {\n\t\treturn 1500 + int(power*20)\n\t} else if temp < 60 {\n\t\treturn 2000 + int(power*30)\n\t} else if temp < 70 {\n\t\treturn 2500 + int(power*40)\n\t} else if temp < 80 {\n\t\treturn 3500 + int(power*50)\n\t} else {\n\t\treturn 4500 + int(power*60)\n\t}\n}\n\nfunc getFanSpeedFromWMI() float64 {\n\tif runtime.GOOS != \"windows\" {\n\t\treturn 0\n\t}\n\t\n\tcmd := exec.Command(\"wmic\", \"path\", \"Win32_Fan\", \"get\", \"DesiredSpeed\", \"/format:csv\")\n\toutput, err := cmd.Output()\n\tif err != nil {\n\t\treturn 0\n\t}\n\t\n\tlines := strings.Split(string(output), \"\\n\")\n\tfor _, line := range lines {\n\t\tif strings.Contains(line, \",\") {\n\t\t\tfields := strings.Split(line, \",\")\n\t\t\tif len(fields) >= 2 {\n\t\t\t\tspeed := parseFloat(fields[1])\n\t\t\t\tif speed > 0 {\n\t\t\t\t\treturn speed\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n\t\n\treturn 0\n}\n\nfunc parseThrottleReasons(value string) []string {\n\treasons := []string{}\n\tval := parseInt(value)\n\t\n\tif val == 0 {\n\t\treturn []string{\"None\"}\n\t}\n\t\n\tif val&0x01 != 0 {\n\t\treasons = append(reasons, \"GPU Idle\")\n\t}\n\tif val&0x02 != 0 {\n\t\treasons = append(reasons, \"App Clocks\")\n\t}\n\tif val&0x04 != 0 {\n\t\treasons = append(reasons, \"SW Power Cap\")\n\t}\n\tif val&0x08 != 0 {\n\t\treasons = append(reasons, \"HW Slowdown\")\n\t}\n\tif val&0x10 != 0 {\n\t\treasons = append(reasons, \"Sync Boost\")\n\t}\n\tif val&0x20 != 0 {\n\t\treasons = append(reasons, \"SW Thermal\")\n\t}\n\tif val&0x40 != 0 {\n\t\treasons = append(reasons, \"HW Thermal\")\n\t}\n\tif val&0x80 != 0 {\n\t\treasons = append(reasons, \"HW Power Brake\")\n\t}\n\tif val&0x100 != 0 {\n\t\treasons = append(reasons, \"Display Clock\")\n\t}\n\t\n\tif len(reasons) == 0 {\n\t\treasons = append(reasons, \"Unknown\")\n\t}\n\t\n\treturn reasons\n}\n\nfunc GetGPUInfo() ([]*GPUInfo, error) {\n\tcmd := exec.Command(getNvidiaSmiCmd(),\n\t\t\"--query-gpu=index,name,driver_version,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw,power.limit,fan.speed,clocks.gr,clocks.mem,clocks.sm,pstate,clocks_throttle_reasons.active,utilization.memory,pcie.link.gen.current,pcie.link.width.current,compute_mode,temperature.gpu.tlimit\",\n\t\t\"--format=csv,noheader,nounits\")\n\t\n\toutput, err := cmd.Output()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\t\n\tlines := strings.Split(strings.TrimSpace(string(output)), \"\\n\")\n\tvar gpus []*GPUInfo\n\t\n\twmiFanSpeed := getFanSpeedFromWMI()\n\t\n\tfor _, line := range lines {\n\t\tfields := strings.Split(line, \", \")\n\t\tif len(fields) < 20 {\n\t\t\tcontinue\n\t\t}\n\t\t\n\t\ttemp := parseFloat(fields[6])\n\t\tpower := parseFloat(fields[7])\n\t\tfanSpeed := parseFloat(fields[9])\n\t\t\n\t\tfanRPM := 0\n\t\tif fanSpeed == 0 {\n\t\t\tif wmiFanSpeed > 0 {\n\t\t\t\tfanRPM = int(wmiFanSpeed)\n\t\t\t\tfanSpeed = (wmiFanSpeed / 5000) * 100\n\t\t\t} else {\n\t\t\t\tfanRPM = estimateFanRPM(temp, power)\n\t\t\t\tfanSpeed = float64(fanRPM) / 50\n\t\t\t}\n\t\t} else {\n\t\t\tfanRPM = int(fanSpeed * 50)\n\t\t}\n\t\t\n\t\tpstate := strings.TrimSpace(fields[13])\n\t\tthrottleReasons := parseThrottleReasons(fields[14])\n\t\t\n\t\tpcieGen := parseInt(fields[16])\n\t\tpcieWidth := parseInt(fields[17])\n\t\tmemBusWidth := pcieWidth * 32\n\t\t\n\t\tgpu := &GPUInfo{\n\t\t\tIndex:             parseInt(fields[0]),\n\t\t\tName:              strings.TrimSpace(fields[1]),\n\t\t\tDriver:            strings.TrimSpace(fields[2]),\n\t\t\tUtilization:       parseFloat(fields[3]),\n\t\t\tMemoryUsed:        parseFloat(fields[4]),\n\t\t\tMemoryTotal:       parseFloat(fields[5]),\n\t\t\tTemperature:       temp,\n\t\t\tPowerUsage:        power,\n\t\t\tPowerLimit:        parseFloat(fields[8]),\n\t\t\tFanSpeed:          fanSpeed,\n\t\t\tFanRPM:            fanRPM,\n\t\t\tClockCore:         parseInt(fields[10]),",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/metrics/gpu.go",
+      "language": "go",
+      "hash": "fc6d3474dcda242ac5e1f4df7ce5be7489d1a34f98bf268456d2b1f5c917f926",
+      "node_type": "file",
+      "node_name": "gpu.go",
+      "start_line": 1,
+      "end_line": 288,
+      "start_byte": 0,
+      "end_byte": 6658,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/metrics/gpu.go:1-288"
+      ],
+      "is_split": true,
+      "split_index": 0,
+      "original_hash": "fc6d3474dcda242ac5e1f4df7ce5be7489d1a34f98bf268456d2b1f5c917f926"
+    },
+    {
+      "content": "\t\t\tfanRPM = int(fanSpeed * 50)\n\t\t}\n\t\t\n\t\tpstate := strings.TrimSpace(fields[13])\n\t\tthrottleReasons := parseThrottleReasons(fields[14])\n\t\t\n\t\tpcieGen := parseInt(fields[16])\n\t\tpcieWidth := parseInt(fields[17])\n\t\tmemBusWidth := pcieWidth * 32\n\t\t\n\t\tgpu := &GPUInfo{\n\t\t\tIndex:             parseInt(fields[0]),\n\t\t\tName:              strings.TrimSpace(fields[1]),\n\t\t\tDriver:            strings.TrimSpace(fields[2]),\n\t\t\tUtilization:       parseFloat(fields[3]),\n\t\t\tMemoryUsed:        parseFloat(fields[4]),\n\t\t\tMemoryTotal:       parseFloat(fields[5]),\n\t\t\tTemperature:       temp,\n\t\t\tPowerUsage:        power,\n\t\t\tPowerLimit:        parseFloat(fields[8]),\n\t\t\tFanSpeed:          fanSpeed,\n\t\t\tFanRPM:            fanRPM,\n\t\t\tClockCore:         parseInt(fields[10]),\n\t\t\tClockMemory:       parseInt(fields[11]),\n\t\t\tClockSM:           parseInt(fields[12]),\n\t\t\tPerformanceState:  pstate,\n\t\t\tThrottleReasons:   throttleReasons,\n\t\t\tMemoryUtilization: parseFloat(fields[15]),\n\t\t\tPCIeGen:           pcieGen,\n\t\t\tPCIeWidth:         pcieWidth,\n\t\t\tPowerState:        pstate,\n\t\t\tMemoryBusWidth:    memBusWidth,\n\t\t\tComputeMode:       strings.TrimSpace(fields[18]),\n\t\t\tTempSlowdown:      parseFloat(fields[19]),\n\t\t}\n\t\t\n\t\tgpus = append(gpus, gpu)\n\t}\n\t\n\treturn gpus, nil\n}\n\nfunc GetGPUProcesses(gpuIndex int) ([]*GPUProcess, error) {\n\tcmd := exec.Command(getNvidiaSmiCmd(),\n\t\t\"--query-compute-apps=pid,process_name,used_memory\",\n\t\t\"--format=csv,noheader,nounits\",\n\t\t\"-i\", strconv.Itoa(gpuIndex))\n\t\n\toutput, _ := cmd.Output()\n\t\n\tlines := strings.Split(strings.TrimSpace(string(output)), \"\\n\")\n\tvar processes []*GPUProcess\n\t\n\tfor _, line := range lines {\n\t\tif line == \"\" {\n\t\t\tcontinue\n\t\t}\n\t\tfields := strings.Split(line, \", \")\n\t\tif len(fields) < 3 {\n\t\t\tcontinue\n\t\t}\n\t\t\n\t\tproc := &GPUProcess{\n\t\t\tPID:         parseInt(fields[0]),\n\t\t\tProcessName: strings.TrimSpace(fields[1]),\n\t\t\tMemoryUsed:  parseFloat(fields[2]),\n\t\t\tType:        \"Compute\",\n\t\t}\n\t\tprocesses = append(processes, proc)\n\t}\n\t\n\treturn processes, nil\n}\n\nfunc GetIntelGPU() (*GPUInfo, error) {\n\tif runtime.GOOS != \"windows\" {\n\t\treturn nil, nil\n\t}\n\t\n\tcmd := exec.Command(\"wmic\", \"path\", \"win32_VideoController\", \"get\", \"name,AdapterRAM\", \"/format:csv\")\n\toutput, err := cmd.Output()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\t\n\tlines := strings.Split(string(output), \"\\n\")\n\tfor _, line := range lines {\n\t\tif strings.Contains(strings.ToLower(line), \"intel\") {\n\t\t\tfields := strings.Split(line, \",\")\n\t\t\tif len(fields) >= 2 {\n\t\t\t\treturn &GPUInfo{\n\t\t\t\t\tIndex: 99,\n\t\t\t\t\tName:  strings.TrimSpace(fields[len(fields)-1]),\n\t\t\t\t}, nil\n\t\t\t}\n\t\t}\n\t}\n\t\n\treturn nil, nil\n}\n\nfunc parseInt(s string) int {\n\ts = strings.TrimSpace(s)\n\tif s == \"[N/A]\" || s == \"\" || s == \"[Not Supported]\" || s == \"[Unknown Error]\" {\n\t\treturn 0\n\t}\n\tval, _ := strconv.Atoi(s)\n\treturn val\n}\n\nfunc parseFloat(s string) float64 {\n\ts = strings.TrimSpace(s)\n\tif s == \"[N/A]\" || s == \"\" || s == \"[Not Supported]\" || s == \"[Unknown Error]\" {\n\t\treturn 0\n\t}\n\tval, _ := strconv.ParseFloat(s, 64)\n\treturn val\n}",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/metrics/gpu.go",
+      "language": "go",
+      "hash": "fc6d3474dcda242ac5e1f4df7ce5be7489d1a34f98bf268456d2b1f5c917f926",
+      "node_type": "file",
+      "node_name": "gpu.go",
+      "start_line": 1,
+      "end_line": 288,
+      "start_byte": 0,
+      "end_byte": 6658,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/metrics/gpu.go:1-288"
+      ],
+      "is_split": true,
+      "split_index": 1,
+      "original_hash": "fc6d3474dcda242ac5e1f4df7ce5be7489d1a34f98bf268456d2b1f5c917f926"
+    },
+    {
+      "content": "package metrics\n\nimport (\n\t\"sort\"\n\t\"strings\"\n\n\t\"github.com/shirou/gopsutil/v3/process\"\n\t\"github.com/yourusername/wtop/types\"\n)\n\nfunc GetCleanProcessName(name, cmdline string) string {\n\tif cmdline == \"\" {\n\t\treturn name\n\t}\n\t\n\tif len(cmdline) > 30 {\n\t\tif strings.Contains(cmdline, \"chrome.exe\") {\n\t\t\treturn \"Google Chrome\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"Code.exe\") {\n\t\t\treturn \"Visual Studio Code\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"slack.exe\") {\n\t\t\treturn \"Slack\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"discord.exe\") || strings.Contains(cmdline, \"Discord.exe\") {\n\t\t\treturn \"Discord\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"NVIDIA\") || strings.Contains(cmdline, \"nvidia\") {\n\t\t\tif strings.Contains(cmdline, \"nvcontainer\") {\n\t\t\t\treturn \"NVIDIA Container\"\n\t\t\t}\n\t\t\treturn \"NVIDIA Service\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"sihost.exe\") {\n\t\t\treturn \"Shell Infrastructure Host\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"svchost.exe\") {\n\t\t\treturn \"Service Host Process\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"RuntimeBroker.exe\") {\n\t\t\treturn \"Runtime Broker\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"conhost.exe\") {\n\t\t\treturn \"Console Window Host\"\n\t\t}\n\t\tif strings.Contains(cmdline, \"SystemApps\") {\n\t\t\treturn \"Windows System App\"\n\t\t}\n\t\t\n\t\tparts := strings.Split(cmdline, \"\\\\\")\n\t\tif len(parts) > 0 {\n\t\t\tfilename := parts[len(parts)-1]\n\t\t\tfilename = strings.Trim(filename, \"\\\"\")\n\t\t\tfilename = strings.TrimSuffix(filename, \".exe\")\n\t\t\tif filename != \"\" {\n\t\t\t\treturn filename\n\t\t\t}\n\t\t}\n\t}\n\t\n\treturn name\n}\n\nfunc GetProcessInfo(p *process.Process) *types.ProcessInfo {\n\tname, _ := p.Name()\n\tif name == \"\" {\n\t\tname = \"Unknown\"\n\t}\n\t\n\tppid, _ := p.Ppid()\n\tusername, _ := p.Username()\n\tif username == \"\" {\n\t\tusername = \"N/A\"\n\t}\n\t\n\tcpuPercent, _ := p.CPUPercent()\n\t\n\tmemInfo, _ := p.MemoryInfo()\n\tvar memory, virtMem, resMem, shrMem uint64 = 0, 0, 0, 0\n\tif memInfo != nil {\n\t\tmemory = memInfo.RSS\n\t\tvirtMem = memInfo.VMS\n\t\tresMem = memInfo.RSS\n\t\tshrMem = memInfo.RSS / 4\n\t}\n\t\n\tmemPercent, _ := p.MemoryPercent()\n\t\n\tstatus, _ := p.Status()\n\tstatusStr := \"S\"\n\tif len(status) > 0 {\n\t\tstatusStr = status[0]\n\t}\n\t\n\tcmdline, _ := p.Cmdline()\n\tcleanName := GetCleanProcessName(name, cmdline)\n\t\n\tthreads, _ := p.NumThreads()\n\tcreateTime, _ := p.CreateTime()\n\t\n\treturn &types.ProcessInfo{\n\t\tPID:        p.Pid,\n\t\tPPID:       ppid,\n\t\tName:       cleanName,\n\t\tUser:       username,\n\t\tPriority:   20,\n\t\tNice:       0,\n\t\tCPUPercent: cpuPercent,\n\t\tMemory:     memory,\n\t\tMemPercent: memPercent,\n\t\tVirtMem:    virtMem,\n\t\tResMem:     resMem,\n\t\tShrMem:     shrMem,\n\t\tStatus:     statusStr,\n\t\tCommand:    cleanName,\n\t\tThreads:    threads,\n\t\tCreateTime: createTime,\n\t}\n}\n\nfunc GetTopProcesses(limit int) []*types.ProcessInfo {\n\tprocesses, err := process.Processes()\n\tif err != nil {\n\t\treturn nil\n\t}\n\t\n\tvar processInfos []*types.ProcessInfo\n\t\n\tfor _, p := range processes {\n\t\tif len(processInfos) >= 100 {\n\t\t\tbreak\n\t\t}\n\t\tinfo := GetProcessInfo(p)\n\t\tprocessInfos = append(processInfos, info)\n\t}\n\t\n\tsort.Slice(processInfos, func(i, j int) bool {\n\t\treturn processInfos[i].CPUPercent > processInfos[j].CPUPercent\n\t})\n\t\n\tif len(processInfos) > limit {\n\t\treturn processInfos[:limit]\n\t}\n\treturn processInfos\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/metrics/process.go",
+      "language": "go",
+      "hash": "c45d9a62b67a3f93a41be46baabe0388b1ebe9be7b6610dc43defef31fdd67d4",
+      "node_type": "file",
+      "node_name": "process.go",
+      "start_line": 1,
+      "end_line": 146,
+      "start_byte": 0,
+      "end_byte": 3144,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/metrics/process.go:1-146"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\n\t\"github.com/shirou/gopsutil/v3/mem\"\n)\n\nfunc RenderMemory(row *int) {\n\tv, err := mem.VirtualMemory()\n\tif err == nil {\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\tfmt.Printf(\"%s%sMEMORY & SWAP:%s\", Bold+Purple, \" \", Reset)\n\t\t*row++\n\t\t\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\tfmt.Printf(\"%s  Mem:%s %s  %.1fG/%.1fG\", \n\t\t\tBold+Purple, Reset,\n\t\t\tDrawMemoryBar(v.UsedPercent, 35),\n\t\t\tfloat64(v.Used)/1024/1024/1024, \n\t\t\tfloat64(v.Total)/1024/1024/1024)\n\t\t*row++\n\t\t\n\t\tswap, _ := mem.SwapMemory()\n\t\tif swap.Total > 0 {\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfmt.Printf(\"%s  Swp:%s %s  %.1fG/%.1fG\", \n\t\t\t\tBold+Purple, Reset,\n\t\t\t\tDrawMemoryBar(swap.UsedPercent, 35),\n\t\t\t\tfloat64(swap.Used)/1024/1024/1024, \n\t\t\t\tfloat64(swap.Total)/1024/1024/1024)\n\t\t\t*row++\n\t\t}\n\t\t\n\t\t*row++\n\t}\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/memory.go",
+      "language": "go",
+      "hash": "0d3d5f3c7981c3861f18de51ff4602137daf32fe60e81dec5aca6b386e74e640",
+      "node_type": "file",
+      "node_name": "memory.go",
+      "start_line": 1,
+      "end_line": 40,
+      "start_byte": 0,
+      "end_byte": 792,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/memory.go:1-40"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\t\"time\"\n\n\t\"github.com/shirou/gopsutil/v3/host\"\n)\n\nfunc RenderHeader(row *int) {\n\tMoveCursor(*row, 1)\n\tClearLine()\n\t\n\thostInfo, _ := host.Info()\n\tuptime := time.Duration(hostInfo.Uptime) * time.Second\n\t\n\tfmt.Printf(\"%swtop - %s%s                                    %sUptime: %v%s\", \n\t\tBold+Cyan, hostInfo.Hostname, Reset, \n\t\tGreen, uptime.Truncate(time.Second), Reset)\n\t*row++\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%s%s%s\", Yellow, Repeat(\"=\", 80), Reset)\n\t*row++\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/header.go",
+      "language": "go",
+      "hash": "2b53a247688244eed174bd6d63cb70ca70e9566fa6d57bd8b9952f2f2ea56351",
+      "node_type": "file",
+      "node_name": "header.go",
+      "start_line": 1,
+      "end_line": 26,
+      "start_byte": 0,
+      "end_byte": 504,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/header.go:1-26"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\t\"strings\"\n\n\t\"github.com/yourusername/wtop/metrics\"\n)\n\nfunc drawTempBar(temp float64, width int) string {\n\tpercent := temp / 100.0 * 100.0\n\tif percent > 100 {\n\t\tpercent = 100\n\t}\n\t\n\tfilled := int(percent * float64(width) / 100)\n\tif filled > width {\n\t\tfilled = width\n\t}\n\t\n\tcolor := Green\n\tif temp > 85 {\n\t\tcolor = Red + Bold\n\t} else if temp > 75 {\n\t\tcolor = Red\n\t} else if temp > 65 {\n\t\tcolor = Yellow\n\t}\n\t\n\tbar := \"[\"\n\tfor i := 0; i < width; i++ {\n\t\tif i < filled {\n\t\t\tbar += color + \"█\" + Reset\n\t\t} else {\n\t\t\tbar += \" \"\n\t\t}\n\t}\n\tbar += fmt.Sprintf(\"] %s%.0f°C%s\", color, temp, Reset)\n\treturn bar\n}\n\nfunc RenderGPU(row *int) {\n\tgpus, err := metrics.GetGPUInfo()\n\t\n\tif err == nil && len(gpus) > 0 {\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\tfmt.Printf(\"%s%sGPU (NVIDIA):%s\", Bold+Blue, \" \", Reset)\n\t\t*row++\n\t\t\n\t\tfor _, gpu := range gpus {\n\t\t\t// GPU Name and Driver\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfmt.Printf(\"  %s[%d]%s %s %s(Driver: %s)%s\", \n\t\t\t\tBold+Blue, gpu.Index, Reset, gpu.Name,\n\t\t\t\tCyan, gpu.Driver, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Performance State and Compute Mode\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tpstateColor := Green\n\t\t\tif gpu.PerformanceState == \"P0\" {\n\t\t\t\tpstateColor = Red\n\t\t\t} else if gpu.PerformanceState == \"P2\" || gpu.PerformanceState == \"P3\" {\n\t\t\t\tpstateColor = Yellow\n\t\t\t}\n\t\t\tfmt.Printf(\"  %sP-State:%s %s%s%s  %sCompute:%s %s%s%s  %sBus:%s %s%d-bit%s  %sPCIe:%s %sGen%dx%d%s\",\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tpstateColor, gpu.PerformanceState, Reset,\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, gpu.ComputeMode, Reset,\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, gpu.MemoryBusWidth, Reset,\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, gpu.PCIeGen, gpu.PCIeWidth, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// GPU and Memory Utilization\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tmemPercent := (gpu.MemoryUsed / gpu.MemoryTotal) * 100\n\t\t\tfmt.Printf(\"  %sGPU:%s %s  %sMem:%s %s %.1fG/%.1fG\", \n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tDrawColorBar(gpu.Utilization, 15),\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tDrawMemoryBar(memPercent, 15),\n\t\t\t\tgpu.MemoryUsed/1024, gpu.MemoryTotal/1024)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Memory Controller Utilization\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfmt.Printf(\"  %sMem Ctrl:%s %s  %sSM:%s %s%dMHz%s\",\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tDrawColorBar(gpu.MemoryUtilization, 15),\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, gpu.ClockSM, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Temperature, Power, Fan\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfanStr := \"\"\n\t\t\tif gpu.FanRPM > 0 {\n\t\t\t\tfanStr = fmt.Sprintf(\"%d RPM\", gpu.FanRPM)\n\t\t\t} else if gpu.FanSpeed > 0 {\n\t\t\t\tfanStr = fmt.Sprintf(\"%.0f%%\", gpu.FanSpeed)\n\t\t\t} else {\n\t\t\t\tfanStr = \"Off\"\n\t\t\t}\n\t\t\t\n\t\t\tpowerStr := \"\"\n\t\t\tif gpu.PowerUsage > 0 {\n\t\t\t\tif gpu.PowerLimit > 0 {\n\t\t\t\t\tpowerStr = fmt.Sprintf(\"%.1fW/%.0fW\", gpu.PowerUsage, gpu.PowerLimit)\n\t\t\t\t} else {\n\t\t\t\t\tpowerStr = fmt.Sprintf(\"%.1fW\", gpu.PowerUsage)\n\t\t\t\t}\n\t\t\t} else {\n\t\t\t\tpowerStr = \"N/A\"\n\t\t\t}\n\t\t\t\n\t\t\tfmt.Printf(\"  %sTemp:%s %s  %sPower:%s %s%s%s  %sFan:%s %s%s%s\",\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tdrawTempBar(gpu.Temperature, 15),\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, powerStr, Reset,\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, fanStr, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Clocks\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfmt.Printf(\"  %sClocks:%s Core: %s%dMHz%s  Memory: %s%dMHz%s\",\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tGreen, gpu.ClockCore, Reset,\n\t\t\t\tGreen, gpu.ClockMemory, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Throttle Reasons\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tthrottleStr := strings.Join(gpu.ThrottleReasons, \", \")\n\t\t\tthrottleColor := Green\n\t\t\tif len(gpu.ThrottleReasons) > 1 || (len(gpu.ThrottleReasons) == 1 && gpu.ThrottleReasons[0] != \"None\" && gpu.ThrottleReasons[0] != \"GPU Idle\") {\n\t\t\t\tthrottleColor = Yellow\n\t\t\t}\n\t\t\tif strings.Contains(throttleStr, \"Thermal\") || strings.Contains(throttleStr, \"Power\") {\n\t\t\t\tthrottleColor = Red\n\t\t\t}\n\t\t\tfmt.Printf(\"  %sThrottle:%s %s%s%s\",\n\t\t\t\tBold+Blue, Reset,\n\t\t\t\tthrottleColor, throttleStr, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Temperature Limits\n\t\t\tif gpu.TempSlowdown > 0 {\n\t\t\t\tMoveCursor(*row, 1)\n\t\t\t\tClearLine()\n\t\t\t\tfmt.Printf(\"  %sTemp Limits:%s Slowdown: %s%.0f°C%s\",\n\t\t\t\t\tBold+Blue, Reset,\n\t\t\t\t\tYellow, gpu.TempSlowdown, Reset)\n\t\t\t\t*row++\n\t\t\t}\n\t\t\t\n\t\t\t// GPU Processes\n\t\t\tprocesses, err := metrics.GetGPUProcesses(gpu.Index)\n\t\t\tif err == nil && len(processes) > 0 {\n\t\t\t\tMoveCursor(*row, 1)\n\t\t\t\tClearLine()",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/gpu.go",
+      "language": "go",
+      "hash": "110403acd2074e358271f6a39856235af3c77894b1b7e23fad65bdad2eb72509",
+      "node_type": "file",
+      "node_name": "gpu.go",
+      "start_line": 1,
+      "end_line": 225,
+      "start_byte": 0,
+      "end_byte": 5350,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/gpu.go:1-225"
+      ],
+      "is_split": true,
+      "split_index": 0,
+      "original_hash": "110403acd2074e358271f6a39856235af3c77894b1b7e23fad65bdad2eb72509"
+    },
+    {
+      "content": "\t\t\t\tBold+Blue, Reset,\n\t\t\t\tthrottleColor, throttleStr, Reset)\n\t\t\t*row++\n\t\t\t\n\t\t\t// Temperature Limits\n\t\t\tif gpu.TempSlowdown > 0 {\n\t\t\t\tMoveCursor(*row, 1)\n\t\t\t\tClearLine()\n\t\t\t\tfmt.Printf(\"  %sTemp Limits:%s Slowdown: %s%.0f°C%s\",\n\t\t\t\t\tBold+Blue, Reset,\n\t\t\t\t\tYellow, gpu.TempSlowdown, Reset)\n\t\t\t\t*row++\n\t\t\t}\n\t\t\t\n\t\t\t// GPU Processes\n\t\t\tprocesses, err := metrics.GetGPUProcesses(gpu.Index)\n\t\t\tif err == nil && len(processes) > 0 {\n\t\t\t\tMoveCursor(*row, 1)\n\t\t\t\tClearLine()\n\t\t\t\tfmt.Printf(\"  %sGPU Processes:%s\", Bold+Yellow, Reset)\n\t\t\t\t*row++\n\t\t\t\t\n\t\t\t\tcount := 0\n\t\t\t\tfor _, proc := range processes {\n\t\t\t\t\tif count >= 8 {\n\t\t\t\t\t\tbreak\n\t\t\t\t\t}\n\t\t\t\t\tMoveCursor(*row, 1)\n\t\t\t\t\tClearLine()\n\t\t\t\t\t\n\t\t\t\t\tprocName := proc.ProcessName\n\t\t\t\t\tif len(procName) > 25 {\n\t\t\t\t\t\tprocName = procName[:22] + \"...\"\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\ttypeColor := Cyan\n\t\t\t\t\tif proc.Type == \"Graphics\" {\n\t\t\t\t\t\ttypeColor = Purple\n\t\t\t\t\t}\n\t\t\t\t\t\n\t\t\t\t\tfmt.Printf(\"    %sPID:%s %s%-6d%s  %s%-25s%s  %s[%s]%s  %sMem:%s %s%.0fMB%s\",\n\t\t\t\t\t\tYellow, Reset,\n\t\t\t\t\t\tGreen, proc.PID, Reset,\n\t\t\t\t\t\tGreen, procName, Reset,\n\t\t\t\t\t\ttypeColor, proc.Type, Reset,\n\t\t\t\t\t\tYellow, Reset,\n\t\t\t\t\t\tGreen, proc.MemoryUsed, Reset)\n\t\t\t\t\t*row++\n\t\t\t\t\tcount++\n\t\t\t\t}\n\t\t\t}\n\t\t\t\n\t\t\t*row++\n\t\t}\n\t}\n\t\n\t// Show Intel integrated GPU\n\tintelGPU, err := metrics.GetIntelGPU()\n\tif err == nil && intelGPU != nil {\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\tfmt.Printf(\"%s%sGPU (Integrated):%s\", Bold+Blue, \" \", Reset)\n\t\t*row++\n\t\t\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\tfmt.Printf(\"  %s%s%s\", Green, intelGPU.Name, Reset)\n\t\t*row++\n\t\t*row++\n\t}\n}",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/gpu.go",
+      "language": "go",
+      "hash": "110403acd2074e358271f6a39856235af3c77894b1b7e23fad65bdad2eb72509",
+      "node_type": "file",
+      "node_name": "gpu.go",
+      "start_line": 1,
+      "end_line": 225,
+      "start_byte": 0,
+      "end_byte": 5350,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/gpu.go:1-225"
+      ],
+      "is_split": true,
+      "split_index": 1,
+      "original_hash": "110403acd2074e358271f6a39856235af3c77894b1b7e23fad65bdad2eb72509"
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\n\t\"github.com/shirou/gopsutil/v3/cpu\"\n)\n\nfunc RenderCPU(row *int) {\n\tcpuPercents, _ := cpu.Percent(0, true)\n\tcpuCount := len(cpuPercents)\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%s%sCPU USAGE:%s\", Bold+Cyan, \" \", Reset)\n\t*row++\n\t\n\tmaxCores := cpuCount\n\tif maxCores > 16 {\n\t\tmaxCores = 16\n\t}\n\t\n\tfor i := 0; i < maxCores; i += 4 {\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\t\n\t\tfor j := 0; j < 4 && (i+j) < maxCores; j++ {\n\t\t\tcoreIdx := i + j\n\t\t\tif coreIdx < len(cpuPercents) {\n\t\t\t\tfmt.Printf(\"  %s%2d%s%s\", Bold+Cyan, coreIdx+1, Reset, DrawColorBar(cpuPercents[coreIdx], 12))\n\t\t\t\tif j < 3 && (i+j+1) < maxCores {\n\t\t\t\t\tfmt.Print(\"  \")\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\t*row++\n\t}\n\t\n\t*row++\n\t*row++\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/cpu.go",
+      "language": "go",
+      "hash": "26eb220aefd254d11ad2f2a3888f799e05dd6596b40fa60a5f2ca55f14b14972",
+      "node_type": "file",
+      "node_name": "cpu.go",
+      "start_line": 1,
+      "end_line": 41,
+      "start_byte": 0,
+      "end_byte": 711,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/cpu.go:1-41"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\t\"runtime\"\n\n\t\"github.com/shirou/gopsutil/v3/load\"\n\t\"github.com/shirou/gopsutil/v3/process\"\n)\n\nfunc RenderSystemInfo(row *int) {\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%s%sSYSTEM INFO:%s\", Bold+Green, \" \", Reset)\n\t*row++\n\t\n\tprocesses, _ := process.Processes()\n\ttotalTasks := len(processes)\n\trunningTasks := 0\n\ttotalThreads := 0\n\t\n\tfor _, p := range processes {\n\t\tstatus, _ := p.Status()\n\t\tif len(status) > 0 && status[0] == \"R\" {\n\t\t\trunningTasks++\n\t\t}\n\t\tthreads, _ := p.NumThreads()\n\t\ttotalThreads += int(threads)\n\t}\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"  %sTasks:%s %s%d%s, %s%d%s thr; %s%d%s running\", \n\t\tBold+White, Reset,\n\t\tGreen, totalTasks, Reset,\n\t\tGreen, totalThreads, Reset,\n\t\tGreen, runningTasks, Reset)\n\t*row++\n\t\n\tif runtime.GOOS != \"windows\" {\n\t\tloadAvg, err := load.Avg()\n\t\tif err == nil {\n\t\t\tMoveCursor(*row, 1)\n\t\t\tClearLine()\n\t\t\tfmt.Printf(\"  %sLoad avg:%s %s%.2f %.2f %.2f%s\", \n\t\t\t\tBold+Green, Reset,\n\t\t\t\tGreen, loadAvg.Load1, loadAvg.Load5, loadAvg.Load15, Reset)\n\t\t\t*row++\n\t\t}\n\t}\n\t\n\t*row++\n\t*row++\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/system.go",
+      "language": "go",
+      "hash": "47b3caed188b0aa41901e60882666c2569ae6db9d3dabe28c5bda88d98055c6b",
+      "node_type": "file",
+      "node_name": "system.go",
+      "start_line": 1,
+      "end_line": 54,
+      "start_byte": 0,
+      "end_byte": 1065,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/system.go:1-54"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport \"fmt\"\n\nfunc RenderFooter(row *int) {\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%s%s%s\", Yellow, Repeat(\"=\", 80), Reset)\n\t*row++\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%sF1Help F2Setup F3Search F4Filter F5Tree F6SortBy F7Nice F8Nice+ F9Kill F10Quit%s\", Green, Reset)\n\t*row++\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%sPress Ctrl+C to quit • Refreshing every 2 seconds%s\", Cyan, Reset)\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/footer.go",
+      "language": "go",
+      "hash": "ae9064c2d2671d3a060f127c5ff97a0d9d146ad8c6e39d54f6377ea34f6fb7e3",
+      "node_type": "file",
+      "node_name": "footer.go",
+      "start_line": 1,
+      "end_line": 19,
+      "start_byte": 0,
+      "end_byte": 430,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/footer.go:1-19"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport (\n\t\"fmt\"\n\t\"time\"\n\n\t\"github.com/yourusername/wtop/metrics\"\n)\n\nfunc formatTime(seconds int64) string {\n\tif seconds < 60 {\n\t\treturn fmt.Sprintf(\"0:%02d.00\", seconds)\n\t}\n\tminutes := seconds / 60\n\tsecs := seconds % 60\n\tif minutes < 60 {\n\t\treturn fmt.Sprintf(\"%d:%02d.00\", minutes, secs)\n\t}\n\thours := minutes / 60\n\tmins := minutes % 60\n\treturn fmt.Sprintf(\"%d:%02d:%02d\", hours, mins, secs)\n}\n\nfunc RenderProcessTable(row *int) {\n\tprocessInfos := metrics.GetTopProcesses(20)\n\t\n\tMoveCursor(*row, 1)\n\tClearLine()\n\tfmt.Printf(\"%s  PID USER      PRI  NI    VIRT    RES    SHR S  %%CPU %%MEM     TIME+ SERVICE/PROCESS%s\", Bold+White, Reset)\n\t*row++\n\t\n\tfor _, info := range processInfos {\n\t\tMoveCursor(*row, 1)\n\t\tClearLine()\n\t\t\n\t\tuser := info.User\n\t\tif len(user) > 9 {\n\t\t\tuser = user[:9]\n\t\t}\n\t\t\n\t\tserviceName := info.Name\n\t\tif len(serviceName) > 20 {\n\t\t\tserviceName = serviceName[:17] + \"...\"\n\t\t}\n\t\t\n\t\truntime := time.Now().Unix() - info.CreateTime/1000\n\t\ttimeStr := formatTime(runtime)\n\t\t\n\t\tvirtStr := fmt.Sprintf(\"%.0fM\", float64(info.VirtMem)/1024/1024)\n\t\tresStr := fmt.Sprintf(\"%.0fM\", float64(info.ResMem)/1024/1024)\n\t\tshrStr := fmt.Sprintf(\"%.0fM\", float64(info.ShrMem)/1024/1024)\n\t\t\n\t\tfmt.Printf(\"%s%5d %-9s %3d %3d %7s %7s %7s %s %5.1f %4.1f %9s %-20s%s\",\n\t\t\tGreen,\n\t\t\tinfo.PID,\n\t\t\tuser,\n\t\t\tinfo.Priority,\n\t\t\tinfo.Nice,\n\t\t\tvirtStr,\n\t\t\tresStr,\n\t\t\tshrStr,\n\t\t\tinfo.Status,\n\t\t\tinfo.CPUPercent,\n\t\t\tinfo.MemPercent,\n\t\t\ttimeStr,\n\t\t\tserviceName,\n\t\t\tReset)\n\t\t\n\t\t*row++\n\t}\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/process.go",
+      "language": "go",
+      "hash": "975c5efec41afac2691c6bd44234439075b1f78d70e00cc115516a79efdef669",
+      "node_type": "file",
+      "node_name": "process.go",
+      "start_line": 1,
+      "end_line": 71,
+      "start_byte": 0,
+      "end_byte": 1480,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/process.go:1-71"
+      ]
+    },
+    {
+      "content": "package ui\n\nimport \"fmt\"\n\nconst (\n\tReset  = \"\\033[0m\"\n\tRed    = \"\\033[31m\"\n\tGreen  = \"\\033[32m\"\n\tYellow = \"\\033[33m\"\n\tBlue   = \"\\033[34m\"\n\tPurple = \"\\033[35m\"\n\tCyan   = \"\\033[36m\"\n\tWhite  = \"\\033[37m\"\n\tBold   = \"\\033[1m\"\n)\n\nfunc MoveCursor(row, col int) {\n\tfmt.Printf(\"\\033[%d;%dH\", row, col)\n}\n\nfunc ClearLine() {\n\tfmt.Print(\"\\033[2K\")\n}\n\nfunc HideCursor() {\n\tfmt.Print(\"\\033[?25l\")\n}\n\nfunc ShowCursor() {\n\tfmt.Print(\"\\033[?25h\")\n}\n\nfunc ClearScreen() {\n\tfmt.Print(\"\\033[2J\\033[H\")\n}\n\nfunc Repeat(s string, count int) string {\n\tresult := \"\"\n\tfor i := 0; i < count; i++ {\n\t\tresult += s\n\t}\n\treturn result\n}\n\nfunc DrawColorBar(percent float64, width int) string {\n\tfilled := int(percent * float64(width) / 100)\n\tif filled > width {\n\t\tfilled = width\n\t}\n\t\n\tcolor := Green\n\tif percent > 80 {\n\t\tcolor = Red\n\t} else if percent > 60 {\n\t\tcolor = Yellow\n\t}\n\t\n\tbar := \"[\"\n\tfor i := 0; i < width; i++ {\n\t\tif i < filled {\n\t\t\tbar += color + \"█\" + Reset\n\t\t} else {\n\t\t\tbar += \" \"\n\t\t}\n\t}\n\tbar += fmt.Sprintf(\"] %s%.1f%%%s\", color, percent, Reset)\n\treturn bar\n}\n\nfunc DrawMemoryBar(percent float64, width int) string {\n\tfilled := int(percent * float64(width) / 100)\n\tif filled > width {\n\t\tfilled = width\n\t}\n\t\n\tcolor := Green\n\tif percent > 90 {\n\t\tcolor = Red + Bold\n\t} else if percent > 75 {\n\t\tcolor = Red\n\t} else if percent > 50 {\n\t\tcolor = Yellow\n\t}\n\t\n\tbar := \"[\"\n\tfor i := 0; i < width; i++ {\n\t\tif i < filled {\n\t\t\tbar += color + \"█\" + Reset\n\t\t} else {\n\t\t\tbar += \" \"\n\t\t}\n\t}\n\tbar += fmt.Sprintf(\"] %s%.1f%%%s\", color, percent, Reset)\n\treturn bar\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/ui/display.go",
+      "language": "go",
+      "hash": "c54b208f7cc8d6337c6afd93c943ca58b5991e921adfcb12e23b1dd151c778c0",
+      "node_type": "file",
+      "node_name": "display.go",
+      "start_line": 1,
+      "end_line": 95,
+      "start_byte": 0,
+      "end_byte": 1534,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/ui/display.go:1-95"
+      ]
+    },
+    {
+      "content": "package types\n\ntype ProcessInfo struct {\n\tPID        int32\n\tPPID       int32\n\tName       string\n\tUser       string\n\tPriority   int32\n\tNice       int32\n\tCPUPercent float64\n\tMemory     uint64\n\tMemPercent float32\n\tVirtMem    uint64\n\tResMem     uint64\n\tShrMem     uint64\n\tStatus     string\n\tCommand    string\n\tThreads    int32\n\tCreateTime int64\n}\n",
+      "file_path": "/tmp/semanticsage_4ru0xl7v/types/types.go",
+      "language": "go",
+      "hash": "e57d2e54fcba9ff45b64f6cfd8b4ff40d1959425b3d80555c5f805e5c93b2435",
+      "node_type": "file",
+      "node_name": "types.go",
+      "start_line": 1,
+      "end_line": 20,
+      "start_byte": 0,
+      "end_byte": 343,
+      "locations": [
+        "/tmp/semanticsage_4ru0xl7v/types/types.go:1-20"
+      ]
+    }
+  ],
+  "statistics": {
+    "total_chunks": 12,
+    "unique_hashes": 12,
+    "duplicates_found": 0,
+    "duplicate_locations": {}
+  }
+}
