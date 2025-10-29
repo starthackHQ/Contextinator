@@ -9,30 +9,105 @@ This repository contains an experimental setup for performing semantic search on
 3. Activate the virtual environment:
    - On Windows: `.venv\Scripts\activate`
    - On macOS/Linux: `source .venv/bin/activate`
+4. Install dependencies: `pip install -r requirements.txt`
 
-# Usage
+# Quick Start: Generate Code Chunks
 
-The project provides a CLI tool called `semanticsage` for semantic code search operations. Run commands from the project root using:
+## 1. Chunk Your Local Repository
 
 ```bash
-python -m src.cli <command> [options]
+# Chunk current directory - saves to .chunks/chunks.json
+python -m src.cli chunk --save
+
+# Chunk with AST visualization (recommended for debugging)
+python -m src.cli chunk --save --save-ast
+
+# Chunk specific directory
+python -m src.cli chunk --save --path /path/to/your/repo
+
+# Custom output location
+python -m src.cli chunk --save --output /custom/output/dir
 ```
+
+## 2. Chunk Remote Repository
+
+```bash
+# Clone and chunk a GitHub repository
+python -m src.cli chunk --save --repo-url https://github.com/username/repo
+
+# With AST visualization
+python -m src.cli chunk --save --save-ast --repo-url https://github.com/username/repo
+```
+
+## 3. Understanding the Output
+
+After running `chunk --save`, you'll find:
+
+```
+.chunks/
+├── chunks.json          # All extracted code chunks with metadata
+└── ast_trees/          # AST visualizations (if --save-ast used)
+    ├── file1_python_ast.json
+    ├── file2_javascript_ast.json
+    └── ast_overview.json
+```
+
+**chunks.json structure:**
+```json
+{
+  "chunks": [
+    {
+      "type": "function_definition",
+      "name": "my_function",
+      "content": "def my_function():\n    return 'hello'",
+      "file_path": "/path/to/file.py",
+      "language": "python",
+      "start_line": 10,
+      "end_line": 12,
+      "hash": "abc123..."
+    }
+  ],
+  "statistics": {
+    "unique_hashes": 150,
+    "duplicates_found": 5
+  }
+}
+```
+
+## Supported Languages (23)
+
+Python, JavaScript, TypeScript, TSX, Java, Go, Rust, C, C++, C#, PHP, Bash, SQL, Kotlin, YAML, Markdown, Dockerfile, JSON, TOML, Swift, Solidity, Lua
+
+Each language extracts semantic units like:
+- **Functions/Methods**: Function definitions, arrow functions, method declarations
+- **Classes**: Class declarations, interfaces, structs
+- **Other**: Properties, objects, tables, commands (language-specific)
+
+# CLI Reference
 
 ## Available Commands
 
 ### `chunk --save`
 
-Chunks the local Git codebase into semantic units (e.g., functions or classes) and stores them in a `.chunks` folder for further processing. Optionally generates AST visualizations for code analysis.
+Chunks the codebase into semantic units using Tree-sitter AST parsing.
 
+**Options:**
+- `--save`: Save chunks to `.chunks/chunks.json`
+- `--save-ast`: Generate AST visualizations for debugging
+- `--path PATH`: Path to repository (default: current directory)
+- `--output DIR`: Output directory (default: current directory)
+- `--repo-url URL`: Clone and chunk remote repository
+
+**Examples:**
 ```bash
 python -m src.cli chunk --save
-python -m src.cli chunk --save --save-ast --ast-output-dir ./analysis
+python -m src.cli chunk --save --save-ast
 python -m src.cli chunk --save --repo-url https://github.com/user/repo
 ```
 
 ### `embed --save`
 
-Generates embeddings for the existing chunks using a specified model and saves them in a `.embeddings` folder.
+⚠️ **Not yet implemented** - Generates embeddings for chunks.
 
 ```bash
 python -m src.cli embed --save
@@ -41,7 +116,7 @@ python -m src.cli embed --save --model-name-or-path your-model --batch-size 16
 
 ### `store-embeddings --vectorstore chroma`
 
-Loads the embeddings into a vector store like Chroma for persistent querying, using a local database path.
+⚠️ **Not yet implemented** - Loads embeddings into vector store.
 
 ```bash
 python -m src.cli store-embeddings --vectorstore chroma
@@ -50,112 +125,104 @@ python -m src.cli store-embeddings --vectorstore chroma --db-path .chroma_db
 
 ### `chunk-embed-store-embeddings`
 
-Executes the full pipeline of chunking, embedding, and storing in one command, creating all necessary folders and the vector database. Supports AST analysis integration.
+⚠️ **Not yet implemented** - Full pipeline in one command.
 
 ```bash
 python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma
-python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma --save-ast
 ```
 
 ### `query`
 
-Performs a semantic search on the vector store, returning top relevant code chunks with similarity scores and file references.
+⚠️ **Not yet implemented** - Semantic search on vector store.
 
 ```bash
 python -m src.cli query "implement user authentication in Python"
 python -m src.cli query "myquery" --save results.txt --n-results 10
 ```
 
-## Command Options
+# Advanced Features
 
-- `--save`: Save intermediate artifacts (chunks, embeddings) to local folders
-- `--vectorstore`: Choose vector store backend (currently supports `chroma`)
-- `--db-path`: Specify local path for vector database storage
-- `--model-name-or-path`: Specify the embedding model to use
-- `--batch-size`: Set batch size for embedding generation
-- `--n-results`: Number of search results to return
-- `--save FILE`: Save query results to a specified file
-- `--save-ast`: Generate and save AST visualizations and analysis data
-- `--ast-output-dir DIR`: Specify directory for AST output (default: `.ast_output`)
-- `--repo-url URL`: Process a remote Git repository by cloning it first
-- `--max-tokens N`: Set maximum tokens per chunk for embedding compatibility
+## AST Visualization
 
-## Examples
+Enable AST visualization to see how your code is parsed:
 
 ```bash
-# Full workflow: chunk, embed, and store in one command
-python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma
-
-# Search for authentication-related code
-python -m src.cli query "user authentication login" --n-results 5
-
-# Save search results to a file
-python -m src.cli query "database connection" --save db_results.txt
-```
-
-## Advanced Options
-
-### AST Visualization and Analysis
-
-The project includes advanced features for Abstract Syntax Tree (AST) analysis and visualization, powered by Tree-sitter parsers for multiple programming languages.
-
-#### Save AST Data During Chunking
-
-Generate detailed AST visualizations and metadata while chunking your codebase:
-
-```bash
-# Save AST data and visualizations during chunking
 python -m src.cli chunk --save --save-ast
-
-# Specify custom output directory for AST data
-python -m src.cli chunk --save --save-ast --ast-output-dir ./ast_analysis
 ```
 
-#### AST Output Structure
-
-When `--save-ast` is enabled, the tool creates detailed AST analysis files in the specified output directory (defaults to `.ast_output`):
-
+**Output structure:**
 ```
-.ast_output/
-├── summary.json              # Overall analysis summary
-├── file_stats.json          # Per-file statistics
-└── files/
-    ├── path_to_file_1.json  # Individual file AST data
-    ├── path_to_file_2.json
-    └── ...
+.chunks/ast_trees/
+├── MyFile_python_ast.json     # Individual file AST
+├── AnotherFile_java_ast.json
+└── ast_overview.json          # Summary of all files
 ```
 
-Each file's AST data includes:
+**AST file contents:**
+- Complete AST tree structure
+- Extracted semantic nodes (functions, classes)
+- Tree statistics (depth, node count)
+- Source code mappings (line numbers, byte positions)
 
-- **Tree Structure**: Complete AST hierarchy with node types and relationships
-- **Semantic Nodes**: Extracted functions, classes, methods, and other code constructs
-- **Metadata**: File statistics, tree depth, node counts, and parsing information
-- **Source Mapping**: Line numbers, byte positions, and content mappings
+## Ignore Patterns
 
+The tool automatically ignores common build artifacts and dependencies:
 
-#### Advanced Command Options
+- **Python**: `__pycache__`, `.venv`, `*.pyc`, `.pytest_cache`
+- **JavaScript/Node**: `node_modules`, `*.min.js`, `.next`, lock files
+- **Java/Kotlin**: `target`, `*.class`, `.gradle`
+- **C/C++**: `*.o`, `*.so`, `CMakeFiles`
+- **Rust**: `target`, `Cargo.lock`
+- **Go**: `vendor`
+- **C#/.NET**: `bin`, `obj`, `.vs`
+- **PHP**: `vendor`, `composer.lock`
+- **Swift**: `.build`, `DerivedData`
+- **General**: `.git`, `.idea`, `.vscode`, `*.log`
 
-- `--save-ast`: Enable AST data generation and saving
-- `--ast-output-dir DIR`: Specify custom directory for AST output (default: `.ast_output`)
-- `--repo-url URL`: Process a remote repository by cloning it first
-- `--max-tokens N`: Set maximum tokens per chunk for embedding compatibility
+See `src/config/settings.py` for the complete list.
 
-#### Example Workflows
+## Configuration
 
-```bash
-# Analyze a local repository with AST visualization
-python -m src.cli chunk --save --save-ast
+Edit `src/config/settings.py` to customize:
 
-# Analyze a remote repository with custom AST output location
-python -m src.cli chunk --save --save-ast --repo-url https://github.com/iamDyeus/suppap --ast-output-dir ./analysis
-
-# Full pipeline with AST analysis
-python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma --save-ast
+```python
+MAX_TOKENS = 512              # Maximum tokens per chunk
+CHUNK_OVERLAP = 50            # Overlap between chunks
+DEFAULT_EMBEDDING_MODEL = '...'  # Embedding model (future use)
 ```
-
 
 # Installation
 
+Install all dependencies:
+
+```bash
+pip install -r requirements.txt
 ```
-pip install tree-sitter tree-sitter-python tree-sitter-javascript tree-sitter-typescript tree-sitter-java tree-sitter-go tree-sitter-rust tree-sitter-cpp tree-sitter-c chromadb
+
+Or install manually:
+
+```bash
+pip install tree-sitter chromadb \
+  tree-sitter-python tree-sitter-javascript tree-sitter-typescript \
+  tree-sitter-java tree-sitter-go tree-sitter-rust \
+  tree-sitter-cpp tree-sitter-c tree-sitter-c-sharp \
+  tree-sitter-php tree-sitter-bash tree-sitter-sql \
+  tree-sitter-kotlin tree-sitter-yaml tree-sitter-markdown \
+  tree-sitter-dockerfile tree-sitter-json tree-sitter-toml \
+  tree-sitter-swift tree-sitter-solidity tree-sitter-lua
 ```
+
+# Troubleshooting
+
+**No chunks generated?**
+- Check if your files have supported extensions
+- Verify files aren't in ignore patterns
+- Use `--save-ast` to debug AST parsing
+
+**Tree-sitter import errors?**
+- Install missing language modules: `pip install tree-sitter-<language>`
+- The tool will fallback to file-level chunking if parsers are missing
+
+**Empty chunks.json?**
+- Ensure you're in a directory with code files
+- Check that file extensions match `SUPPORTED_EXTENSIONS` in settings.py
