@@ -42,19 +42,7 @@ def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_T
     
     if save_ast:
         print("🌳 AST visualization enabled - saving tree structures...")
-        
-        # Check tree-sitter availability
-        try:
-            from .chunking.tree_sitter_setup import setup_tree_sitter_languages
-            setup_attempted = setup_tree_sitter_languages()
-            if not setup_attempted:
-                print("⚠️  Note: Tree-sitter language parsers could not be built.")
-                print("   This is often due to missing C++ build tools on Windows.")
-                print("   Install Microsoft Visual C++ Build Tools for full AST parsing.")
-                print("   Falling back to file-level chunking with basic structure analysis.")
-        except Exception as e:
-            print(f"⚠️  Tree-sitter setup failed: {e}")
-            print("   Using fallback parsing mode.")
+        print("   Using installed tree-sitter language modules...")
     
     for file_path in files:
         # Parse file with optional AST saving

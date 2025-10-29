@@ -15,6 +15,23 @@ SUPPORTED_EXTENSIONS = {
     '.cpp': 'cpp',
     '.c': 'c',
     '.rs': 'rust',
+    '.cs': 'csharp',
+    '.php': 'php',
+    '.sh': 'bash',
+    '.bash': 'bash',
+    '.sql': 'sql',
+    '.kt': 'kotlin',
+    '.kts': 'kotlin',  # Kotlin script files
+    '.yaml': 'yaml',
+    '.yml': 'yaml',
+    '.md': 'markdown',
+    '.dockerfile': 'dockerfile',
+    'Dockerfile': 'dockerfile',
+    '.json': 'json',
+    '.toml': 'toml',
+    '.swift': 'swift',
+    '.sol': 'solidity',
+    '.lua': 'lua',
 }
 
 # Files/directories to ignore

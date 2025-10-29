@@ -3,14 +3,69 @@ from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from ..config import SUPPORTED_EXTENSIONS
 
 try:
-    from tree_sitter import Parser
-    from .tree_sitter_setup import get_language, setup_tree_sitter_languages
+    from tree_sitter import Parser, Language
+    import tree_sitter_python
+    import tree_sitter_javascript
+    import tree_sitter_typescript
+    import tree_sitter_java
+    import tree_sitter_go
+    import tree_sitter_rust
+    import tree_sitter_cpp
+    import tree_sitter_c
+    import tree_sitter_c_sharp
+    import tree_sitter_php
+    import tree_sitter_bash
+    import tree_sitter_sql
+    import tree_sitter_kotlin
+    import tree_sitter_yaml
+    import tree_sitter_markdown
+    import tree_sitter_dockerfile
+    import tree_sitter_json
+    import tree_sitter_toml
+    import tree_sitter_swift
+    import tree_sitter_solidity
+    import tree_sitter_lua
     from .ast_visualizer import save_ast_visualization
+    
+    # Language module mapping
+    LANGUAGE_MODULES = {
+        'python': tree_sitter_python,
+        'javascript': tree_sitter_javascript, 
+        'typescript': tree_sitter_typescript,
+        'tsx': tree_sitter_typescript,  # TSX uses the same TypeScript module
+        'java': tree_sitter_java,
+        'go': tree_sitter_go,
+        'rust': tree_sitter_rust,
+        'cpp': tree_sitter_cpp,
+        'c': tree_sitter_c,
+        'csharp': tree_sitter_c_sharp,
+        'cs': tree_sitter_c_sharp,  # Alternative C# extension
+        'php': tree_sitter_php,
+        'bash': tree_sitter_bash,
+        'sh': tree_sitter_bash,  # Shell scripts
+        'sql': tree_sitter_sql,
+        'kotlin': tree_sitter_kotlin,
+        'kt': tree_sitter_kotlin,  # Kotlin extension
+        'yaml': tree_sitter_yaml,
+        'yml': tree_sitter_yaml,  # Alternative YAML extension
+        'markdown': tree_sitter_markdown,
+        'md': tree_sitter_markdown,  # Markdown extension
+        'dockerfile': tree_sitter_dockerfile,
+        'json': tree_sitter_json,
+        'toml': tree_sitter_toml,
+        'swift': tree_sitter_swift,
+        'solidity': tree_sitter_solidity,
+        'sol': tree_sitter_solidity,  # Solidity extension
+        'lua': tree_sitter_lua,
+    }
+    
     TREE_SITTER_AVAILABLE = True
     print("🌳 Tree-sitter imports successful")
 except ImportError as e:
     TREE_SITTER_AVAILABLE = False
+    LANGUAGE_MODULES = {}
     print(f"⚠️  Tree-sitter import failed: {e}")
+    print("💡 Install missing modules with: pip install tree-sitter tree-sitter-python tree-sitter-javascript ...")
     if TYPE_CHECKING:
         from tree_sitter import Parser
 
@@ -26,11 +81,29 @@ NODE_TYPES = {
     'rust': ['function_item', 'impl_item', 'struct_item', 'enum_item', 'trait_item'],
     'cpp': ['function_definition', 'class_specifier', 'struct_specifier'],
     'c': ['function_definition', 'struct_specifier'],
+    'csharp': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration'],
+    'cs': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration'],
+    'php': ['function_definition', 'class_declaration', 'method_declaration'],
+    'bash': ['function_definition', 'command'],
+    'sh': ['function_definition', 'command'],
+    'sql': ['create_table_statement', 'create_view_statement', 'create_function_statement', 'create_procedure_statement'],
+    'kotlin': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration'],
+    'kt': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration'],
+    'yaml': ['block_mapping', 'block_sequence'],
+    'yml': ['block_mapping', 'block_sequence'],
+    'markdown': ['section', 'heading', 'code_block'],
+    'md': ['section', 'heading', 'code_block'],
+    'dockerfile': ['instruction'],
+    'json': ['object', 'array'],
+    'toml': ['table', 'key_value'],
+    'swift': ['class_declaration', 'function_declaration', 'protocol_declaration', 'struct_declaration'],
+    'solidity': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
+    'sol': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
+    'lua': ['function_definition', 'local_function', 'table_constructor'],
 }
 
 # Cache for parsers
 _parser_cache = {}
-_setup_attempted = False
 
 
 def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) -> Optional[Dict[str, Any]]:
@@ -162,7 +235,7 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
         }],
         'tree_info': {
             'has_ast': False,
-            'fallback_reason': 'tree-sitter not available or parsers not built',
+            'fallback_reason': 'tree-sitter not available or language modules missing',
             'parser_available': TREE_SITTER_AVAILABLE
         }
     }
@@ -170,7 +243,7 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
 
 def get_parser(language: str) -> Optional["Parser"]:
     """Get tree-sitter parser for language."""
-    global _setup_attempted, _parser_cache
+    global _parser_cache
     
     if not TREE_SITTER_AVAILABLE:
         return None
@@ -179,17 +252,17 @@ def get_parser(language: str) -> Optional["Parser"]:
     if language in _parser_cache:
         return _parser_cache[language]
     
-    # Setup tree-sitter on first use only
-    if not _setup_attempted:
-        _setup_attempted = True
-        setup_tree_sitter_languages()  # Just call it, don't check return value here
-    
     try:
-        lang_obj = get_language(language)
-        if not lang_obj:
+        # Get language module
+        lang_module = LANGUAGE_MODULES.get(language)
+        if not lang_module:
+            print(f"⚠️  No language module available for {language}")
             return None
         
-        # Use the new API: Parser(language_object)
+        # Create Language object from module
+        lang_obj = Language(lang_module.language())
+        
+        # Create parser with language
         parser = Parser(lang_obj)
         _parser_cache[language] = parser
         return parser

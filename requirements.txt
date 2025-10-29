@@ -8,3 +8,16 @@ tree-sitter-go
 tree-sitter-rust
 tree-sitter-cpp
 tree-sitter-c
+tree-sitter-c-sharp
+tree-sitter-php
+tree-sitter-bash
+tree-sitter-sql
+tree-sitter-kotlin
+tree-sitter-yaml
+tree-sitter-markdown
+tree-sitter-dockerfile
+tree-sitter-json
+tree-sitter-toml
+tree-sitter-swift
+tree-sitter-solidity
+tree-sitter-lua
