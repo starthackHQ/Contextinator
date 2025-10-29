@@ -22,10 +22,12 @@ python -m src.cli <command> [options]
 
 ### `chunk --save`
 
-Chunks the local Git codebase into semantic units (e.g., functions or classes) and stores them in a `.chunks` folder for further processing.
+Chunks the local Git codebase into semantic units (e.g., functions or classes) and stores them in a `.chunks` folder for further processing. Optionally generates AST visualizations for code analysis.
 
 ```bash
 python -m src.cli chunk --save
+python -m src.cli chunk --save --save-ast --ast-output-dir ./analysis
+python -m src.cli chunk --save --repo-url https://github.com/user/repo
 ```
 
 ### `embed --save`
@@ -48,10 +50,11 @@ python -m src.cli store-embeddings --vectorstore chroma --db-path .chroma_db
 
 ### `chunk-embed-store-embeddings`
 
-Executes the full pipeline of chunking, embedding, and storing in one command, creating all necessary folders and the vector database.
+Executes the full pipeline of chunking, embedding, and storing in one command, creating all necessary folders and the vector database. Supports AST analysis integration.
 
 ```bash
 python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma
+python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma --save-ast
 ```
 
 ### `query`
@@ -72,6 +75,10 @@ python -m src.cli query "myquery" --save results.txt --n-results 10
 - `--batch-size`: Set batch size for embedding generation
 - `--n-results`: Number of search results to return
 - `--save FILE`: Save query results to a specified file
+- `--save-ast`: Generate and save AST visualizations and analysis data
+- `--ast-output-dir DIR`: Specify directory for AST output (default: `.ast_output`)
+- `--repo-url URL`: Process a remote Git repository by cloning it first
+- `--max-tokens N`: Set maximum tokens per chunk for embedding compatibility
 
 ## Examples
 
@@ -84,4 +91,71 @@ python -m src.cli query "user authentication login" --n-results 5
 
 # Save search results to a file
 python -m src.cli query "database connection" --save db_results.txt
+```
+
+## Advanced Options
+
+### AST Visualization and Analysis
+
+The project includes advanced features for Abstract Syntax Tree (AST) analysis and visualization, powered by Tree-sitter parsers for multiple programming languages.
+
+#### Save AST Data During Chunking
+
+Generate detailed AST visualizations and metadata while chunking your codebase:
+
+```bash
+# Save AST data and visualizations during chunking
+python -m src.cli chunk --save --save-ast
+
+# Specify custom output directory for AST data
+python -m src.cli chunk --save --save-ast --ast-output-dir ./ast_analysis
+```
+
+#### AST Output Structure
+
+When `--save-ast` is enabled, the tool creates detailed AST analysis files in the specified output directory (defaults to `.ast_output`):
+
+```
+.ast_output/
+├── summary.json              # Overall analysis summary
+├── file_stats.json          # Per-file statistics
+└── files/
+    ├── path_to_file_1.json  # Individual file AST data
+    ├── path_to_file_2.json
+    └── ...
+```
+
+Each file's AST data includes:
+
+- **Tree Structure**: Complete AST hierarchy with node types and relationships
+- **Semantic Nodes**: Extracted functions, classes, methods, and other code constructs
+- **Metadata**: File statistics, tree depth, node counts, and parsing information
+- **Source Mapping**: Line numbers, byte positions, and content mappings
+
+
+#### Advanced Command Options
+
+- `--save-ast`: Enable AST data generation and saving
+- `--ast-output-dir DIR`: Specify custom directory for AST output (default: `.ast_output`)
+- `--repo-url URL`: Process a remote repository by cloning it first
+- `--max-tokens N`: Set maximum tokens per chunk for embedding compatibility
+
+#### Example Workflows
+
+```bash
+# Analyze a local repository with AST visualization
+python -m src.cli chunk --save --save-ast
+
+# Analyze a remote repository with custom AST output location
+python -m src.cli chunk --save --save-ast --repo-url https://github.com/user/repo --ast-output-dir ./analysis
+
+# Full pipeline with AST analysis
+python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma --save-ast
+```
+
+
+# Installation
+
+```
+pip install tree-sitter tree-sitter-python tree-sitter-javascript tree-sitter-typescript tree-sitter-java tree-sitter-go tree-sitter-rust tree-sitter-cpp tree-sitter-c chromadb
 ```
