@@ -147,7 +147,7 @@ Each file's AST data includes:
 python -m src.cli chunk --save --save-ast
 
 # Analyze a remote repository with custom AST output location
-python -m src.cli chunk --save --save-ast --repo-url https://github.com/user/repo --ast-output-dir ./analysis
+python -m src.cli chunk --save --save-ast --repo-url https://github.com/iamDyeus/suppap --ast-output-dir ./analysis
 
 # Full pipeline with AST analysis
 python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma --save-ast

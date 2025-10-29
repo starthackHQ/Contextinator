@@ -36,19 +36,117 @@ SUPPORTED_EXTENSIONS = {
 
 # Files/directories to ignore
 DEFAULT_IGNORE_PATTERNS = [
-    '__pycache__',
-    'node_modules',
+    # Version Control
     '.git',
+    '.svn',
+    '.hg',
+    
+    # Python
+    '__pycache__',
+    '*.pyc',
+    '*.pyo',
+    '*.pyd',
+    '.Python',
+    'pip-log.txt',
+    'pip-delete-this-directory.txt',
     '.venv',
     'venv',
     'env',
+    'ENV',
+    '.pytest_cache',
+    '.mypy_cache',
+    '.tox',
+    '*.egg-info',
     'dist',
     'build',
-    '.next',
-    'target',
-    '*.pyc',
+    '.eggs',
+    
+    # JavaScript/TypeScript/Node
+    'node_modules',
+    'bower_components',
     '*.min.js',
     '*.bundle.js',
+    '.next',
+    '.nuxt',
+    'out',
+    '.cache',
+    '.parcel-cache',
+    '.npm',
+    '.yarn',
+    'yarn-error.log',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    
+    # Java
+    'target',
+    '*.class',
+    '*.jar',
+    '*.war',
+    '*.ear',
+    '.gradle',
+    '.mvn',
+    
+    # Kotlin
+    '*.kt.class',
+    
+    # C/C++
+    '*.o',
+    '*.obj',
+    '*.so',
+    '*.dylib',
+    '*.dll',
+    '*.exe',
+    '*.out',
+    '*.a',
+    '*.lib',
+    'cmake-build-*',
+    'CMakeFiles',
+    'CMakeCache.txt',
+    
+    # Rust
+    'target',
+    'Cargo.lock',
+    
+    # Go
+    'vendor',
+    '*.test',
+    
+    # C#/.NET
+    'bin',
+    'obj',
+    '*.suo',
+    '*.user',
+    '.vs',
+    'packages',
+    
+    # PHP
+    'vendor',
+    'composer.lock',
+    
+    # Swift
+    '.build',
+    'Packages',
+    '*.xcodeproj',
+    '*.xcworkspace',
+    'DerivedData',
+    
+    # Solidity
+    'artifacts',
+    'cache',
+    
+    # General
+    '.DS_Store',
+    'Thumbs.db',
+    '*.log',
+    '*.tmp',
+    '*.temp',
+    '*.swp',
+    '*.swo',
+    '*~',
+    '.idea',
+    '.vscode',
+    '*.iml',
 ]
 
 # Embedding settings
