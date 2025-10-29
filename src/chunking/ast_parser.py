@@ -259,8 +259,14 @@ def get_parser(language: str) -> Optional["Parser"]:
             print(f"⚠️  No language module available for {language}")
             return None
         
-        # Create Language object from module
-        lang_obj = Language(lang_module.language())
+        # Handle special case for TypeScript/TSX which have different API
+        if language == 'typescript':
+            lang_obj = Language(lang_module.language_typescript())
+        elif language == 'tsx':
+            lang_obj = Language(lang_module.language_tsx())
+        else:
+            # Create Language object from module for other languages
+            lang_obj = Language(lang_module.language())
         
         # Create parser with language
         parser = Parser(lang_obj)
