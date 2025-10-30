@@ -107,28 +107,113 @@ python -m src.cli chunk --save --repo-url https://github.com/user/repo
 
 ### `embed --save`
 
-⚠️ **Not yet implemented** - Generates embeddings for chunks.
+Generates embeddings for chunks using OpenAI's text-embedding-3-large model.
 
+**Options:**
+- `--save`: Save embeddings to `.embeddings/embeddings.json`
+- `--path PATH`: Path to repository (default: current directory)
+- `--repo-url URL`: Clone and embed remote repository
+
+**Examples:**
 ```bash
 python -m src.cli embed --save
-python -m src.cli embed --save --model-name-or-path your-model --batch-size 16
+python -m src.cli embed --save --path /path/to/repo
 ```
 
-### `store-embeddings --vectorstore chroma`
+**Requirements:**
+- Set `OPENAI_API_KEY` in `.env` file
+- Chunks must exist (run `chunk --save` first)
 
-⚠️ **Not yet implemented** - Loads embeddings into vector store.
+### `store-embeddings`
 
+Loads embeddings into ChromaDB vector store.
+
+**Options:**
+- `--path PATH`: Path to repository (default: current directory)
+- `--repo-url URL`: Remote repository URL
+- `--collection-name NAME`: Custom collection name (default: repository name)
+
+**Examples:**
 ```bash
-python -m src.cli store-embeddings --vectorstore chroma
-python -m src.cli store-embeddings --vectorstore chroma --db-path .chroma_db
+python -m src.cli store-embeddings --path .
+python -m src.cli store-embeddings --path . --collection-name MyProject
 ```
+
+**Requirements:**
+- ChromaDB server running (Docker): `docker-compose up -d`
+- Embeddings must exist (run `embed --save` first)
 
 ### `chunk-embed-store-embeddings`
 
-⚠️ **Not yet implemented** - Full pipeline in one command.
+Full pipeline: chunk → embed → store in one command.
 
+**Options:**
+- `--save`: Save intermediate artifacts (chunks + embeddings)
+- `--path PATH`: Path to repository (default: current directory)
+- `--repo-url URL`: Clone and process remote repository
+- `--collection-name NAME`: Custom collection name
+
+**Examples:**
 ```bash
-python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma
+# Process current directory
+python -m src.cli chunk-embed-store-embeddings --save
+
+# Process remote repository
+python -m src.cli chunk-embed-store-embeddings --save --repo-url https://github.com/user/repo
+
+# Custom collection name
+python -m src.cli chunk-embed-store-embeddings --save --collection-name MyProject
+```
+
+### `db-info`
+
+Show ChromaDB database information and statistics.
+
+**Examples:**
+```bash
+python -m src.cli db-info
+```
+
+**Output:**
+- List of all collections
+- Document counts per collection
+- Total documents across all collections
+
+### `db-list`
+
+List all collections in ChromaDB.
+
+**Examples:**
+```bash
+python -m src.cli db-list
+```
+
+### `db-show`
+
+Show details of a specific collection.
+
+**Options:**
+- `collection_name`: Name of the collection (required)
+- `--sample N`: Show N sample documents
+
+**Examples:**
+```bash
+python -m src.cli db-show SemanticSage
+python -m src.cli db-show SemanticSage --sample 5
+```
+
+### `db-clear`
+
+Delete a specific collection from ChromaDB.
+
+**Options:**
+- `collection_name`: Name of the collection to delete (required)
+- `--force`: Skip confirmation prompt
+
+**Examples:**
+```bash
+python -m src.cli db-clear SemanticSage
+python -m src.cli db-clear SemanticSage --force
 ```
 
 ### `query`
@@ -138,6 +223,67 @@ python -m src.cli chunk-embed-store-embeddings --save --vectorstore chroma
 ```bash
 python -m src.cli query "implement user authentication in Python"
 python -m src.cli query "myquery" --save results.txt --n-results 10
+```
+
+# ChromaDB Setup
+
+## Start ChromaDB Server (Docker)
+
+```bash
+# Start ChromaDB server
+docker-compose up -d
+
+# Check if running
+docker ps | grep chroma
+
+# Stop server
+docker-compose down
+```
+
+## View Your Data
+
+### Web Viewer (Recommended)
+
+Start the web viewer to browse your embeddings:
+
+```bash
+python viewer.py
+```
+
+Then open: **http://localhost:5001**
+
+Features:
+- Browse all collections
+- View chunks with metadata (file path, type, line numbers)
+- Paginated navigation
+- Clean, simple interface
+
+### CLI Viewer
+
+Use CLI commands to inspect data:
+
+```bash
+# Show collection info
+python -m src.cli db-info
+
+# List all collections
+python -m src.cli db-list
+
+# Show specific collection with samples
+python -m src.cli db-show SemanticSage --sample 5
+```
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# OpenAI API Key (required for embeddings)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# ChromaDB Configuration
+USE_CHROMA_SERVER=true
+CHROMA_SERVER_URL=http://localhost:8000
 ```
 
 # Advanced Features

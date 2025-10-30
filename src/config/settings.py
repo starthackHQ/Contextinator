@@ -1,3 +1,5 @@
+import re
+import os
 # Configuration settings for SemanticSage
 
 # Chunking settings
@@ -151,9 +153,22 @@ DEFAULT_IGNORE_PATTERNS = [
 
 # Embedding settings
 DEFAULT_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
-EMBEDDING_BATCH_SIZE = 32
+OPENAI_EMBEDDING_MODEL = 'text-embedding-3-large'
+EMBEDDING_BATCH_SIZE = 250  
+OPENAI_MAX_TOKENS = 8191  
 
 # Vector store settings
-CHROMA_DB_PATH = '.chroma_db'
+CHROMA_DB_PATH = os.path.expanduser('~/.semanticsage/chroma_db')
+CHROMA_SERVER_URL = os.getenv('CHROMA_SERVER_URL', 'http://localhost:8000')  # Docker ChromaDB server
+CHROMA_SERVER_AUTH_TOKEN = os.getenv('CHROMA_SERVER_AUTH_TOKEN')  # Optional auth token
 CHUNKS_DIR = '.chunks'
 EMBEDDINGS_DIR = '.embeddings'
+
+# Collection naming
+def sanitize_collection_name(repo_name: str) -> str:
+    """Sanitize repository name for use as ChromaDB collection name."""
+    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', repo_name)
+
+    if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
+        sanitized = '_' + sanitized
+    return sanitized[:63] if sanitized else 'default_collection'
