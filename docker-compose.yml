@@ -1,0 +1,13 @@
+services:
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: chromadb
+    ports:
+      - "8000:8000"         
+    environment:
+      - IS_PERSISTENT=TRUE  
+      - ALLOW_RESET=FALSE
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    volumes:
+      - ./chroma_data:/chroma/chroma  

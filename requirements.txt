@@ -1,5 +1,9 @@
 tree-sitter
 chromadb
+openai
+python-dotenv
+flask
+requests
 tree-sitter-python
 tree-sitter-javascript
 tree-sitter-typescript
