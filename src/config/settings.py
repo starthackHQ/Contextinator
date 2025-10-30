@@ -1,5 +1,10 @@
 import re
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 # Configuration settings for SemanticSage
 
 # Chunking settings
@@ -154,13 +159,16 @@ DEFAULT_IGNORE_PATTERNS = [
 # Embedding settings
 DEFAULT_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 OPENAI_EMBEDDING_MODEL = 'text-embedding-3-large'
-EMBEDDING_BATCH_SIZE = 250  
-OPENAI_MAX_TOKENS = 8191  
+EMBEDDING_BATCH_SIZE = int(os.getenv('EMBEDDING_BATCH_SIZE', '250'))
+OPENAI_MAX_TOKENS = 8191
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Vector store settings
+USE_CHROMA_SERVER = os.getenv('USE_CHROMA_SERVER', 'true').lower() == 'true'
 CHROMA_DB_PATH = os.path.expanduser('~/.semanticsage/chroma_db')
-CHROMA_SERVER_URL = os.getenv('CHROMA_SERVER_URL', 'http://localhost:8000')  # Docker ChromaDB server
-CHROMA_SERVER_AUTH_TOKEN = os.getenv('CHROMA_SERVER_AUTH_TOKEN')  # Optional auth token
+CHROMA_SERVER_URL = os.getenv('CHROMA_SERVER_URL', 'http://localhost:8000')
+CHROMA_SERVER_AUTH_TOKEN = os.getenv('CHROMA_SERVER_AUTH_TOKEN')
+CHROMA_BATCH_SIZE = int(os.getenv('CHROMA_BATCH_SIZE', '100'))
 CHUNKS_DIR = '.chunks'
 EMBEDDINGS_DIR = '.embeddings'
 

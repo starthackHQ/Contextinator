@@ -60,7 +60,7 @@ HTML = """
 
 @app.route('/')
 def index():
-    collection = client.get_collection(name="wtop-test")
+    collection = client.get_collection(name="symentic-v2")
     total = collection.count()
     
     offset = int(request.args.get('offset', 0))
@@ -78,7 +78,7 @@ def index():
     
     return render_template_string(
         HTML,
-        collection_name="wtop-test",
+        collection_name="symentic-v2",
         total=total,
         offset=offset,
         limit=limit,

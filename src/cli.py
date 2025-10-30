@@ -33,7 +33,7 @@ def chunk_func(args):
 
 def embed_func(args):
     """Generate embeddings for existing chunks."""
-    from .embed import embed_chunks
+    from .embedding import embed_chunks
     from .utils import resolve_repo_path
     import os
     
@@ -60,7 +60,7 @@ def embed_func(args):
 
 def store_embeddings_func(args):
     """Store embeddings in ChromaDB vector store."""
-    from .embed import load_embeddings
+    from .embedding import load_embeddings
     from .vectorstore import store_repository_embeddings
     from .utils import resolve_repo_path
     from pathlib import Path
@@ -95,7 +95,7 @@ def store_embeddings_func(args):
 def pipeline_func(args):
     """Combined chunk + embed + store-embeddings pipeline."""
     from .chunk import chunk_repository
-    from .embed import embed_chunks
+    from .embedding import embed_chunks
     from .vectorstore import store_repository_embeddings
     from .utils import resolve_repo_path
     from pathlib import Path
