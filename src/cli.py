@@ -1,12 +1,10 @@
 import argparse
 import sys
 from .utils import resolve_repo_path
-
+import os    
+from .chunking import chunk_repository
 
 def chunk_func(args):
-    from .chunk import chunk_repository
-    import os
-    
     repo_path = resolve_repo_path(
         repo_url=getattr(args, 'repo_url', None),
         path=getattr(args, 'path', None)
@@ -94,7 +92,6 @@ def store_embeddings_func(args):
 
 def pipeline_func(args):
     """Combined chunk + embed + store-embeddings pipeline."""
-    from .chunk import chunk_repository
     from .embedding import embed_chunks
     from .vectorstore import store_repository_embeddings
     from .utils import resolve_repo_path

@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
 from typing import List, Dict, Any
-from .chunking import discover_files, parse_file, collect_nodes, split_chunk, save_ast_overview
-from .chunking.node_collector import NodeCollector
-from .utils import ProgressTracker
-from .config import CHUNKS_DIR, MAX_TOKENS
+from . import discover_files, parse_file, collect_nodes, split_chunk, save_ast_overview
+from .node_collector import NodeCollector
+from ..utils import ProgressTracker
+from ..config import CHUNKS_DIR, MAX_TOKENS
 
 
 def chunk_repository(repo_path: str, save: bool = False, max_tokens: int = MAX_TOKENS, 
