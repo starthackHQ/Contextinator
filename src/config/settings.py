@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configuration settings for SemanticSage
+# Configuration settings for Contextinator
 
 # Chunking settings
 MAX_TOKENS = 512
@@ -165,7 +165,7 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Vector store settings
 USE_CHROMA_SERVER = os.getenv('USE_CHROMA_SERVER', 'true').lower() == 'true'
-CHROMA_DB_PATH = os.path.expanduser('~/.semanticsage/chroma_db')
+CHROMA_DB_DIR = '.chromadb'  # Relative directory for ChromaDB storage
 CHROMA_SERVER_URL = os.getenv('CHROMA_SERVER_URL', 'http://localhost:8000')
 CHROMA_SERVER_AUTH_TOKEN = os.getenv('CHROMA_SERVER_AUTH_TOKEN')
 CHROMA_BATCH_SIZE = int(os.getenv('CHROMA_BATCH_SIZE', '100'))
@@ -180,3 +180,29 @@ def sanitize_collection_name(repo_name: str) -> str:
     if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
         sanitized = '_' + sanitized
     return sanitized[:63] if sanitized else 'default_collection'
+
+
+def get_storage_path(base_dir: str, storage_type: str, repo_name: str):
+    """
+    Get storage path for chunks/embeddings/chromadb with repository isolation.
+    
+    Args:
+        base_dir: Base directory (e.g., repo_path or output_dir)
+        storage_type: 'chunks', 'embeddings', or 'chromadb'
+        repo_name: Repository name (will be sanitized)
+    
+    Returns:
+        Path to storage directory
+    """
+    from pathlib import Path
+    
+    safe_name = sanitize_collection_name(repo_name)
+    
+    if storage_type == 'chunks':
+        return Path(base_dir) / CHUNKS_DIR / safe_name
+    elif storage_type == 'embeddings':
+        return Path(base_dir) / EMBEDDINGS_DIR / safe_name
+    elif storage_type == 'chromadb':
+        return Path(base_dir) / CHROMA_DB_DIR / safe_name
+    else:
+        raise ValueError(f"Unknown storage type: {storage_type}")

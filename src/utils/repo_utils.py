@@ -49,7 +49,7 @@ def clone_repo(repo_url, target_dir=None):
         SystemExit: If cloning fails
     """
     if not target_dir:
-        target_dir = tempfile.mkdtemp(prefix='semanticsage_')
+        target_dir = tempfile.mkdtemp(prefix='contextinator_')
     
     print(f"📥 Cloning {repo_url}...")
     result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 
@@ -105,3 +105,32 @@ def is_valid_git_url(url):
     ]
     
     return any(pattern in url.lower() for pattern in valid_patterns)
+
+
+def extract_repo_name_from_url(repo_url):
+    """
+    Extract repository name from a git URL.
+    
+    Examples:
+        https://github.com/user/repo.git -> repo
+        https://github.com/user/repo -> repo
+        git@github.com:user/repo.git -> repo
+    
+    Args:
+        repo_url: Git repository URL
+    
+    Returns:
+        str: Repository name
+    """
+    if not repo_url:
+        return None
+    
+    # Remove .git suffix if present
+    url = repo_url.rstrip('/')
+    if url.endswith('.git'):
+        url = url[:-4]
+    
+    # Extract last part of path (repository name)
+    # Works for both https and git@ URLs
+    parts = url.replace(':', '/').split('/')
+    return parts[-1] if parts else None

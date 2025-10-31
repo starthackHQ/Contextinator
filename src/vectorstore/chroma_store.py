@@ -6,21 +6,37 @@ import chromadb
 from chromadb.config import Settings
 from ..utils import ProgressTracker
 from ..config import (
-    CHROMA_DB_PATH, 
+    CHROMA_DB_DIR,
     CHROMA_SERVER_URL, 
     CHROMA_SERVER_AUTH_TOKEN, 
     USE_CHROMA_SERVER,
     CHROMA_BATCH_SIZE,
-    sanitize_collection_name
+    sanitize_collection_name,
+    get_storage_path
 )
 
 
 class ChromaVectorStore:
     """ChromaDB vector store for semantic code search."""
     
-    def __init__(self, db_path: Optional[str] = None):
-        """Initialize ChromaDB vector store."""
-        self.db_path = db_path or CHROMA_DB_PATH
+    def __init__(self, db_path: Optional[str] = None, base_dir: Optional[str] = None, repo_name: Optional[str] = None):
+        """
+        Initialize ChromaDB vector store.
+        
+        Args:
+            db_path: Explicit path to ChromaDB database (overrides base_dir/repo_name)
+            base_dir: Base directory for relative path construction
+            repo_name: Repository name for path construction
+        """
+        if db_path:
+            self.db_path = db_path
+        elif base_dir and repo_name:
+            self.db_path = str(get_storage_path(base_dir, 'chromadb', repo_name))
+        else:
+            # Fallback to current directory if nothing provided
+            from pathlib import Path
+            self.db_path = str(Path.cwd() / CHROMA_DB_DIR / 'default')
+        
         self.client = None
         self._initialize_client()
     
@@ -217,26 +233,44 @@ class ChromaVectorStore:
             return []
 
 
-def store_repository_embeddings(repo_path: str, embedded_chunks: List[Dict[str, Any]], 
+def store_repository_embeddings(base_dir: str, repo_name: str, embedded_chunks: List[Dict[str, Any]], 
                                collection_name: Optional[str] = None) -> Dict[str, Any]:
-    """Store embeddings for a repository in ChromaDB."""
+    """
+    Store embeddings for a repository in ChromaDB.
+    
+    Args:
+        base_dir: Base directory for ChromaDB storage
+        repo_name: Repository name for collection naming and path construction
+        embedded_chunks: List of embedded chunks to store
+        collection_name: Optional custom collection name (defaults to repo_name)
+    
+    Returns:
+        Storage statistics
+    """
     if not embedded_chunks:
         raise ValueError("No embedded chunks provided")
     
     if not collection_name:
-        repo_name = Path(repo_path).name
         collection_name = repo_name
     
-    vector_store = ChromaVectorStore()
+    vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
     stats = vector_store.store_embeddings(embedded_chunks, collection_name)
     
     return stats
 
 
-def get_repository_collection_info(repo_path: str, collection_name: Optional[str] = None) -> Dict[str, Any]:
-    """Get information about a repository's collection."""
+def get_repository_collection_info(repo_name: str, collection_name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Get information about a repository's collection.
+    
+    Args:
+        repo_name: Repository name (used as default collection name)
+        collection_name: Optional custom collection name
+    
+    Returns:
+        Collection information
+    """
     if not collection_name:
-        repo_name = Path(repo_path).name
         collection_name = repo_name
     
     vector_store = ChromaVectorStore()

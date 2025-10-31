@@ -5,10 +5,22 @@ import os
 from .chunking import chunk_repository
 
 def chunk_func(args):
+    from pathlib import Path
+    from .utils.repo_utils import extract_repo_name_from_url
+    
+    repo_url = getattr(args, 'repo_url', None)
+    
     repo_path = resolve_repo_path(
-        repo_url=getattr(args, 'repo_url', None),
+        repo_url=repo_url,
         path=getattr(args, 'path', None)
     )
+    
+    # Determine repository name
+    # If cloned from URL, extract name from URL instead of temp directory name
+    if repo_url:
+        repo_name = extract_repo_name_from_url(repo_url)
+    else:
+        repo_name = Path(repo_path).name
     
     # Use output dir if specified, otherwise current directory
     output_dir = getattr(args, 'output', None) or os.getcwd()
@@ -17,39 +29,55 @@ def chunk_func(args):
     save_ast = getattr(args, 'save_ast', False)
     
     chunks = chunk_repository(
-        repo_path, 
+        repo_path=repo_path,
+        repo_name=repo_name,
         save=args.save, 
         output_dir=output_dir, 
         save_ast=save_ast
     )
     print(f"\n✅ Chunking complete: {len(chunks)} chunks created")
     
+    if args.save:
+        print(f"📁 Chunks saved in: {output_dir}/.chunks/{repo_name}/")
+    
     if save_ast:
         print(f"🌳 AST trees saved for analysis")
-        print(f"📁 Check: {output_dir}/.chunks/ast_trees/ for AST files")
+        print(f"📁 Check: {output_dir}/.chunks/{repo_name}/ast_trees/ for AST files")
 
 
 def embed_func(args):
     """Generate embeddings for existing chunks."""
     from .embedding import embed_chunks
     from .utils import resolve_repo_path
+    from .utils.repo_utils import extract_repo_name_from_url
+    from pathlib import Path
     import os
     
     try:
+        repo_url = getattr(args, 'repo_url', None)
+        
         repo_path = resolve_repo_path(
-            repo_url=getattr(args, 'repo_url', None),
+            repo_url=repo_url,
             path=getattr(args, 'path', None)
         )
         
-        print(f"🚀 Generating embeddings for repository: {repo_path}")
+        # Determine repository name
+        if repo_url:
+            repo_name = extract_repo_name_from_url(repo_url)
+        else:
+            repo_name = Path(repo_path).name
+        
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        
+        print(f"🚀 Generating embeddings for repository: {repo_name}")
         
         # Generate embeddings
-        embedded_chunks = embed_chunks(repo_path, save=args.save)
+        embedded_chunks = embed_chunks(base_dir, repo_name, save=args.save)
         
         print(f"✅ Embedding generation complete: {len(embedded_chunks)} chunks embedded")
         
         if args.save:
-            print(f"💾 Embeddings saved to {repo_path}/.embeddings/")
+            print(f"💾 Embeddings saved to {base_dir}/.embeddings/{repo_name}/")
         
     except Exception as e:
         print(f"❌ Embedding generation failed: {str(e)}")
@@ -61,24 +89,36 @@ def store_embeddings_func(args):
     from .embedding import load_embeddings
     from .vectorstore import store_repository_embeddings
     from .utils import resolve_repo_path
+    from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
+    import os
     
     try:
+        repo_url = getattr(args, 'repo_url', None)
+        
         repo_path = resolve_repo_path(
-            repo_url=getattr(args, 'repo_url', None),
+            repo_url=repo_url,
             path=getattr(args, 'path', None)
         )
         
-        print(f"🗄️  Storing embeddings for repository: {repo_path}")
+        # Determine repository name
+        if repo_url:
+            repo_name = extract_repo_name_from_url(repo_url)
+        else:
+            repo_name = Path(repo_path).name
+        
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        
+        print(f"🗄️  Storing embeddings for repository: {repo_name}")
         
         # Load embeddings
-        embedded_chunks = load_embeddings(repo_path)
+        embedded_chunks = load_embeddings(base_dir, repo_name)
         
         # Determine collection name
-        collection_name = getattr(args, 'collection_name', None) or Path(repo_path).name
+        collection_name = getattr(args, 'collection_name', None) or repo_name
         
         # Store in ChromaDB
-        stats = store_repository_embeddings(repo_path, embedded_chunks, collection_name)
+        stats = store_repository_embeddings(base_dir, repo_name, embedded_chunks, collection_name)
         
         print(f"✅ Storage complete:")
         print(f"   📊 Stored: {stats['stored_count']} embeddings")
@@ -95,20 +135,36 @@ def pipeline_func(args):
     from .embedding import embed_chunks
     from .vectorstore import store_repository_embeddings
     from .utils import resolve_repo_path
+    from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
     import os
     
     try:
+        repo_url = getattr(args, 'repo_url', None)
+        
         repo_path = resolve_repo_path(
-            repo_url=getattr(args, 'repo_url', None),
+            repo_url=repo_url,
             path=getattr(args, 'path', None)
         )
         
-        print(f"🚀 Starting complete pipeline for repository: {repo_path}")
+        # Determine repository name
+        if repo_url:
+            repo_name = extract_repo_name_from_url(repo_url)
+        else:
+            repo_name = Path(repo_path).name
+        
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        
+        print(f"🚀 Starting complete pipeline for repository: {repo_name}")
         
         # Step 1: Chunk repository
         print("\n📝 Step 1: Chunking repository...")
-        chunks = chunk_repository(repo_path, save=args.save)
+        chunks = chunk_repository(
+            repo_path=repo_path,
+            repo_name=repo_name,
+            save=args.save,
+            output_dir=base_dir
+        )
         
         if not chunks:
             print("❌ No chunks generated. Pipeline stopped.")
@@ -116,12 +172,12 @@ def pipeline_func(args):
         
         # Step 2: Generate embeddings
         print("\n🧠 Step 2: Generating embeddings...")
-        embedded_chunks = embed_chunks(repo_path, save=args.save, chunks_data=chunks)
+        embedded_chunks = embed_chunks(base_dir, repo_name, save=args.save, chunks_data=chunks)
         
         # Step 3: Store in vector database
         print("\n🗄️  Step 3: Storing in vector database...")
-        collection_name = getattr(args, 'collection_name', None) or Path(repo_path).name
-        stats = store_repository_embeddings(repo_path, embedded_chunks, collection_name)
+        collection_name = getattr(args, 'collection_name', None) or repo_name
+        stats = store_repository_embeddings(base_dir, repo_name, embedded_chunks, collection_name)
         
         print(f"\n✅ Pipeline complete!")
         print(f"   📝 Chunks: {len(chunks)}")
@@ -131,7 +187,7 @@ def pipeline_func(args):
         print(f"   🗄️  Database: {stats['db_path']}")
         
         if args.save:
-            print(f"   💾 Artifacts saved in: {repo_path}")
+            print(f"   💾 Artifacts saved in: {base_dir}/.chunks/{repo_name}/ and {base_dir}/.embeddings/{repo_name}/")
         
     except Exception as e:
         print(f"❌ Pipeline failed: {str(e)}")
@@ -146,12 +202,19 @@ def query_func(args):
 def db_info_func(args):
     """Show ChromaDB database information."""
     from .vectorstore import ChromaVectorStore
+    import os
+    from pathlib import Path
     
     try:
-        vector_store = ChromaVectorStore()
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
         
         print(f"🗄️  ChromaDB Database Information")
+        print(f"📂 Database path: {vector_store.db_path}")
         print(f"=" * 50)
         
         if not collections:
@@ -180,10 +243,18 @@ def db_info_func(args):
 def db_list_func(args):
     """List all collections in ChromaDB."""
     from .vectorstore import ChromaVectorStore
+    import os
+    from pathlib import Path
     
     try:
-        vector_store = ChromaVectorStore()
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         if not collections:
             print("📭 No collections found")
@@ -202,10 +273,18 @@ def db_show_func(args):
     """Show details of a specific collection."""
     from .vectorstore import ChromaVectorStore
     from .config import sanitize_collection_name
+    import os
+    from pathlib import Path
     
     try:
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
         collection_name = args.collection_name
-        vector_store = ChromaVectorStore()
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         # Get collection info
         info = vector_store.get_collection_info(collection_name)
@@ -251,10 +330,18 @@ def db_clear_func(args):
     """Clear/delete a specific collection."""
     from .vectorstore import ChromaVectorStore
     from .config import sanitize_collection_name
+    import os
+    from pathlib import Path
     
     try:
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
         collection_name = args.collection_name
-        vector_store = ChromaVectorStore()
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         # Confirm deletion
         if not args.force:
@@ -278,7 +365,7 @@ def db_clear_func(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='semanticsage', description='Semanticsage — semantic codebase tooling')
+    parser = argparse.ArgumentParser(prog='contextinator', description='Contextinator — semantic codebase tooling')
 
     sub = parser.add_subparsers(title='commands', dest='command')
 
@@ -296,12 +383,14 @@ def main():
     p_embed.add_argument('--save', action='store_true', help='Save embeddings to a .embeddings folder')
     p_embed.add_argument('--repo-url', help='GitHub/Git repository URL to clone and embed')
     p_embed.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_embed.add_argument('--output', '-o', help='Base directory containing .chunks folder (default: current directory)')
     p_embed.set_defaults(func=embed_func)
 
     # store-embeddings
     p_store = sub.add_parser('store-embeddings', help='Load embeddings into ChromaDB vector store')
     p_store.add_argument('--repo-url', help='GitHub/Git repository URL')
     p_store.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_store.add_argument('--output', '-o', help='Base directory containing .embeddings folder (default: current directory)')
     p_store.add_argument('--collection-name', help='Custom collection name (default: repository name)')
     p_store.set_defaults(func=store_embeddings_func)
 
@@ -310,6 +399,7 @@ def main():
     p_pipeline.add_argument('--save', action='store_true', help='Save intermediate artifacts (chunks + embeddings)')
     p_pipeline.add_argument('--repo-url', help='GitHub/Git repository URL to clone and process')
     p_pipeline.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_pipeline.add_argument('--output', '-o', help='Base output directory (default: current directory)')
     p_pipeline.add_argument('--collection-name', help='Custom collection name (default: repository name)')
     p_pipeline.set_defaults(func=pipeline_func)
 
