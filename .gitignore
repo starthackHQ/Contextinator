@@ -217,3 +217,10 @@ __marimo__/
 
 # Generated Chunks 
 .chunks/
+
+# Generated Embeddings
+.embeddings/
+
+# chromadb
+.chroma/
+chroma_data/

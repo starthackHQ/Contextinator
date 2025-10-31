@@ -106,14 +106,14 @@ NODE_TYPES = {
 _parser_cache = {}
 
 
-def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) -> Optional[Dict[str, Any]]:
+def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None) -> Optional[Dict[str, Any]]:
     """
     Parse a file and return its AST representation with extracted nodes.
     
     Args:
         file_path: Path to the file to parse
         save_ast: Whether to save AST visualization data
-        output_dir: Output directory for AST data (required if save_ast=True)
+        chunks_dir: Repository-specific chunks directory for AST data (required if save_ast=True)
     
     Returns:
         Dictionary containing AST nodes and metadata, or None if parsing fails
@@ -132,7 +132,7 @@ def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) 
             result = _fallback_parse(file_path, language, content)
             
             # Save AST visualization if requested (even for fallback)
-            if save_ast and output_dir:
+            if save_ast and chunks_dir:
                 print(f"💾 Saving fallback AST data for {file_path}")
                 try:
                     saved_file = save_ast_visualization(
@@ -141,7 +141,7 @@ def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) 
                         None,  # No root node for fallback
                         content, 
                         result['nodes'], 
-                        output_dir,
+                        chunks_dir,
                         result.get('tree_info')
                     )
                     print(f"✅ Saved fallback AST: {saved_file}")
@@ -183,7 +183,7 @@ def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) 
             }
         
         # Save AST visualization if requested
-        if save_ast and output_dir:
+        if save_ast and chunks_dir:
             print(f"💾 Saving AST for {file_path}")
             try:
                 if 'tree_info' in result and result['tree_info'].get('has_ast', False):
@@ -194,7 +194,7 @@ def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) 
                         tree.root_node, 
                         content, 
                         nodes, 
-                        output_dir,
+                        chunks_dir,
                         result['tree_info']
                     )
                 else:
@@ -205,7 +205,7 @@ def parse_file(file_path: Path, save_ast: bool = False, output_dir: str = None) 
                         None, 
                         content, 
                         result['nodes'], 
-                        output_dir,
+                        chunks_dir,
                         result.get('tree_info')
                     )
             except Exception as e:

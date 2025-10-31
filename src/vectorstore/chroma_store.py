@@ -217,14 +217,24 @@ class ChromaVectorStore:
             return []
 
 
-def store_repository_embeddings(repo_path: str, embedded_chunks: List[Dict[str, Any]], 
+def store_repository_embeddings(base_dir: str, repo_name: str, embedded_chunks: List[Dict[str, Any]], 
                                collection_name: Optional[str] = None) -> Dict[str, Any]:
-    """Store embeddings for a repository in ChromaDB."""
+    """
+    Store embeddings for a repository in ChromaDB.
+    
+    Args:
+        base_dir: Base directory (not used for ChromaDB, kept for API consistency)
+        repo_name: Repository name for collection naming
+        embedded_chunks: List of embedded chunks to store
+        collection_name: Optional custom collection name (defaults to repo_name)
+    
+    Returns:
+        Storage statistics
+    """
     if not embedded_chunks:
         raise ValueError("No embedded chunks provided")
     
     if not collection_name:
-        repo_name = Path(repo_path).name
         collection_name = repo_name
     
     vector_store = ChromaVectorStore()
@@ -233,10 +243,18 @@ def store_repository_embeddings(repo_path: str, embedded_chunks: List[Dict[str, 
     return stats
 
 
-def get_repository_collection_info(repo_path: str, collection_name: Optional[str] = None) -> Dict[str, Any]:
-    """Get information about a repository's collection."""
+def get_repository_collection_info(repo_name: str, collection_name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Get information about a repository's collection.
+    
+    Args:
+        repo_name: Repository name (used as default collection name)
+        collection_name: Optional custom collection name
+    
+    Returns:
+        Collection information
+    """
     if not collection_name:
-        repo_name = Path(repo_path).name
         collection_name = repo_name
     
     vector_store = ChromaVectorStore()

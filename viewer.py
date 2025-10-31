@@ -42,7 +42,7 @@ HTML = """
             🏷️ Type: {{ item.meta.get('node_type', 'N/A') }}<br>
             📍 Lines: {{ item.meta.get('start_line', 'N/A') }} - {{ item.meta.get('end_line', 'N/A') }}
         </div>
-        <div class="content">{{ item.content[:300] }}{% if item.content|length > 300 %}...{% endif %}</div>
+        <div class="content">{{ item.content }}</div>
     </div>
     {% endfor %}
     
@@ -60,7 +60,7 @@ HTML = """
 
 @app.route('/')
 def index():
-    collection = client.get_collection(name="symentic-v2")
+    collection = client.get_collection(name="Contextinator")
     total = collection.count()
     
     offset = int(request.args.get('offset', 0))
@@ -78,7 +78,7 @@ def index():
     
     return render_template_string(
         HTML,
-        collection_name="symentic-v2",
+        collection_name="Contextinator",
         total=total,
         offset=offset,
         limit=limit,

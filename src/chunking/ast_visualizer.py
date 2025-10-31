@@ -103,7 +103,7 @@ def create_ast_summary(root_node, content_bytes: bytes) -> Dict[str, Any]:
 
 
 def save_ast_visualization(file_path: str, language: str, root_node, content: str, 
-                          extracted_nodes: List[Dict[str, Any]], output_dir: str,
+                          extracted_nodes: List[Dict[str, Any]], chunks_dir: Path,
                           tree_info: Dict[str, Any] = None):
     """
     Save AST visualization data to files.
@@ -114,10 +114,10 @@ def save_ast_visualization(file_path: str, language: str, root_node, content: st
         root_node: Root node of the AST (can be None for fallback cases)
         content: Source code content
         extracted_nodes: List of extracted semantic nodes
-        output_dir: Output directory for saving AST data
+        chunks_dir: Chunks directory (repository-specific) for saving AST data
         tree_info: Tree information including whether AST is available
     """
-    ast_dir = Path(output_dir) / CHUNKS_DIR / 'ast_trees'
+    ast_dir = chunks_dir / 'ast_trees'
     ast_dir.mkdir(parents=True, exist_ok=True)
     
     content_bytes = content.encode('utf-8')
@@ -222,17 +222,17 @@ def count_total_nodes(node) -> int:
     return 1 + sum(count_total_nodes(child) for child in node.children)
 
 
-def create_ast_overview(output_dir: str) -> Dict[str, Any]:
+def create_ast_overview(chunks_dir: Path) -> Dict[str, Any]:
     """
-    Create an overview of all AST files in the output directory.
+    Create an overview of all AST files in the chunks directory.
     
     Args:
-        output_dir: Output directory containing AST files
+        chunks_dir: Repository-specific chunks directory containing AST files
     
     Returns:
         Overview dictionary
     """
-    ast_dir = Path(output_dir) / CHUNKS_DIR / 'ast_trees'
+    ast_dir = chunks_dir / 'ast_trees'
     
     if not ast_dir.exists():
         return {
@@ -288,11 +288,16 @@ def create_ast_overview(output_dir: str) -> Dict[str, Any]:
     return overview
 
 
-def save_ast_overview(output_dir: str):
-    """Save AST overview to a summary file."""
-    overview = create_ast_overview(output_dir)
+def save_ast_overview(chunks_dir: Path):
+    """
+    Save AST overview to a summary file.
     
-    ast_dir = Path(output_dir) / CHUNKS_DIR / 'ast_trees'
+    Args:
+        chunks_dir: Repository-specific chunks directory
+    """
+    overview = create_ast_overview(chunks_dir)
+    
+    ast_dir = chunks_dir / 'ast_trees'
     ast_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
     overview_file = ast_dir / 'ast_overview.json'
     
