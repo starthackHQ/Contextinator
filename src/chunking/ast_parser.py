@@ -325,15 +325,58 @@ def extract_nodes(root_node, content: str, language: str) -> List[Dict[str, Any]
 
 
 def get_node_name(node, content_bytes: bytes) -> Optional[str]:
-    """Extract name from a node (function/class name)."""
+    """Extract name from a node with language-aware and node-type-aware logic."""
     try:
-        # Look for identifier child
+        node_type = node.type
+        
+        if node_type in ('section', 'heading'):
+            for child in node.children:
+                if child.type in ('atx_heading', 'setext_heading'):
+                    text = content_bytes[child.start_byte:child.end_byte].decode('utf-8', errors='ignore')
+                    return text.strip().lstrip('#').strip()[:50]  # First 50 chars
+            first_line = content_bytes[node.start_byte:node.end_byte].decode('utf-8', errors='ignore').split('\n')[0]
+            cleaned = first_line.strip().lstrip('#').strip()[:50]
+            return cleaned if cleaned else f"section_line_{node.start_point[0] + 1}"
+        
+        if node_type == 'arrow_function':
+            parent = node.parent
+            if parent and parent.type in ('variable_declarator', 'lexical_declaration'):
+                for child in parent.children:
+                    if child.type == 'identifier':
+                        return content_bytes[child.start_byte:child.end_byte].decode('utf-8', errors='ignore')
+            return f"arrow_fn_line_{node.start_point[0] + 1}"
+        
+        if node_type in ('object', 'block_mapping'):
+            parent = node.parent
+            if parent and parent.type == 'pair':
+                for child in parent.children:
+                    if child.type in ('string', 'flow_node', 'identifier'):
+                        key = content_bytes[child.start_byte:child.end_byte].decode('utf-8', errors='ignore')
+                        cleaned_key = key.strip('"\'')[:30]
+                        return cleaned_key
+            return f"{node_type}_line_{node.start_point[0] + 1}"
+        
+        if node_type in ('array', 'block_sequence'):
+            parent = node.parent
+            if parent and parent.type == 'pair':
+                for child in parent.children:
+                    if child.type in ('string', 'flow_node', 'identifier'):
+                        key = content_bytes[child.start_byte:child.end_byte].decode('utf-8', errors='ignore')
+                        cleaned_key = key.strip('"\'')[:20]
+                        return f"{cleaned_key}_array"
+            return f"{node_type}_line_{node.start_point[0] + 1}"
+
+        identifier_types = {'identifier', 'name', 'property_identifier', 'type_identifier', 'field_identifier'}
         for child in node.children:
-            if child.type == 'identifier' or child.type == 'name':
+            if child.type in identifier_types:
                 return content_bytes[child.start_byte:child.end_byte].decode('utf-8', errors='ignore')
-        return None
+        for child in node.children:
+            for grandchild in child.children:
+                if grandchild.type in identifier_types:
+                    return content_bytes[grandchild.start_byte:grandchild.end_byte].decode('utf-8', errors='ignore')
+        return f"anonymous_{node_type}_line_{node.start_point[0] + 1}"
     except Exception:
-        return None
+        return f"unknown_line_{node.start_point[0] + 1}" if hasattr(node, 'start_point') else None
 
 
 def _count_nodes(node) -> int:
