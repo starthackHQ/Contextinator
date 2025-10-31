@@ -222,5 +222,4 @@ __marimo__/
 .embeddings/
 
 # chromadb
-.chroma/
-chroma_data/
+.chromadb/

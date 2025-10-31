@@ -60,7 +60,7 @@ HTML = """
 
 @app.route('/')
 def index():
-    collection = client.get_collection(name="Contextinator")
+    collection = client.get_collection(name="Market-FusionX") # put the name of collection here
     total = collection.count()
     
     offset = int(request.args.get('offset', 0))
@@ -78,7 +78,7 @@ def index():
     
     return render_template_string(
         HTML,
-        collection_name="Contextinator",
+        collection_name="Market-FusionX",
         total=total,
         offset=offset,
         limit=limit,

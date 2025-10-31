@@ -202,12 +202,19 @@ def query_func(args):
 def db_info_func(args):
     """Show ChromaDB database information."""
     from .vectorstore import ChromaVectorStore
+    import os
+    from pathlib import Path
     
     try:
-        vector_store = ChromaVectorStore()
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
         
         print(f"🗄️  ChromaDB Database Information")
+        print(f"📂 Database path: {vector_store.db_path}")
         print(f"=" * 50)
         
         if not collections:
@@ -236,10 +243,18 @@ def db_info_func(args):
 def db_list_func(args):
     """List all collections in ChromaDB."""
     from .vectorstore import ChromaVectorStore
+    import os
+    from pathlib import Path
     
     try:
-        vector_store = ChromaVectorStore()
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         if not collections:
             print("📭 No collections found")
@@ -258,10 +273,18 @@ def db_show_func(args):
     """Show details of a specific collection."""
     from .vectorstore import ChromaVectorStore
     from .config import sanitize_collection_name
+    import os
+    from pathlib import Path
     
     try:
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
         collection_name = args.collection_name
-        vector_store = ChromaVectorStore()
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         # Get collection info
         info = vector_store.get_collection_info(collection_name)
@@ -307,10 +330,18 @@ def db_clear_func(args):
     """Clear/delete a specific collection."""
     from .vectorstore import ChromaVectorStore
     from .config import sanitize_collection_name
+    import os
+    from pathlib import Path
     
     try:
+        # Use output directory if provided, otherwise current directory
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        
         collection_name = args.collection_name
-        vector_store = ChromaVectorStore()
+        vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
+        
+        print(f"📂 Database path: {vector_store.db_path}")
         
         # Confirm deletion
         if not args.force:
