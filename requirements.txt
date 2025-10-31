@@ -1,6 +1,7 @@
 tree-sitter
 chromadb
 openai
+tiktoken
 python-dotenv
 flask
 requests
