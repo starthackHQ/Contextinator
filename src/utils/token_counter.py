@@ -1,8 +1,5 @@
 import tiktoken
 from functools import lru_cache
-from typing import Optional
-
-
 @lru_cache(maxsize=8)
 def _get_encoding(model: str):
     """
