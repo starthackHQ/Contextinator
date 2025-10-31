@@ -49,7 +49,7 @@ def clone_repo(repo_url, target_dir=None):
         SystemExit: If cloning fails
     """
     if not target_dir:
-        target_dir = tempfile.mkdtemp(prefix='semanticsage_')
+        target_dir = tempfile.mkdtemp(prefix='contextinator_')
     
     print(f"📥 Cloning {repo_url}...")
     result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 

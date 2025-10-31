@@ -1,4 +1,4 @@
-# SemanticSage Architecture
+# Contextinator Architecture
 
 ## Module Structure
 
@@ -32,30 +32,35 @@ src/
 ## Chunking Pipeline
 
 ### 1. File Discovery (`file_discovery.py`)
+
 - Walks repository directory tree
 - Filters by supported extensions (`.py`, `.js`, `.ts`, etc.)
 - Respects ignore patterns (node_modules, .git, etc.)
 - Returns list of files to process
 
 ### 2. AST Parsing (`ast_parser.py`)
+
 - Parses each file using tree-sitter (TODO: implement)
 - Currently returns basic file structure
 - Handles parse errors gracefully
 - Returns AST + metadata
 
 ### 3. Node Collection (`node_collector.py`)
+
 - Traverses AST to extract semantic units
 - Deduplicates by content hash (SHA256)
 - Tracks all occurrences of duplicates
 - Returns unique chunks with metadata
 
 ### 4. Chunk Splitting (`splitter.py`)
+
 - Splits chunks exceeding `MAX_TOKENS`
 - Line-by-line splitting with token counting
 - Configurable overlap between splits
 - Preserves metadata in split chunks
 
 ### 5. Context Building (`context_builder.py`)
+
 - Builds contextual information for chunks
 - Includes file path, language, node type, line range
 - Used for better retrieval and display
@@ -72,6 +77,7 @@ DEFAULT_IGNORE_PATTERNS = [...] # Patterns to ignore
 ## Current Status
 
 ### ✅ Implemented
+
 - Modular architecture
 - File discovery with filtering
 - Basic file parsing
@@ -81,6 +87,7 @@ DEFAULT_IGNORE_PATTERNS = [...] # Patterns to ignore
 - CLI integration
 
 ### 🚧 TODO
+
 - Tree-sitter AST parsing (currently treats files as single chunks)
 - Better token counting (use tiktoken)
 - Embedding generation (`embed.py`)

@@ -365,7 +365,7 @@ def db_clear_func(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='semanticsage', description='Semanticsage — semantic codebase tooling')
+    parser = argparse.ArgumentParser(prog='contextinator', description='Contextinator — semantic codebase tooling')
 
     sub = parser.add_subparsers(title='commands', dest='command')
 

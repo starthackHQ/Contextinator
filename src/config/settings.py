@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configuration settings for SemanticSage
+# Configuration settings for Contextinator
 
 # Chunking settings
 MAX_TOKENS = 512

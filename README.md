@@ -53,6 +53,7 @@ After running `chunk --save`, you'll find:
 ```
 
 **chunks.json structure:**
+
 ```json
 {
   "chunks": [
@@ -79,6 +80,7 @@ After running `chunk --save`, you'll find:
 Python, JavaScript, TypeScript, TSX, Java, Go, Rust, C, C++, C#, PHP, Bash, SQL, Kotlin, YAML, Markdown, Dockerfile, JSON, TOML, Swift, Solidity, Lua
 
 Each language extracts semantic units like:
+
 - **Functions/Methods**: Function definitions, arrow functions, method declarations
 - **Classes**: Class declarations, interfaces, structs
 - **Other**: Properties, objects, tables, commands (language-specific)
@@ -92,6 +94,7 @@ Each language extracts semantic units like:
 Chunks the codebase into semantic units using Tree-sitter AST parsing.
 
 **Options:**
+
 - `--save`: Save chunks to `.chunks/chunks.json`
 - `--save-ast`: Generate AST visualizations for debugging
 - `--path PATH`: Path to repository (default: current directory)
@@ -99,6 +102,7 @@ Chunks the codebase into semantic units using Tree-sitter AST parsing.
 - `--repo-url URL`: Clone and chunk remote repository
 
 **Examples:**
+
 ```bash
 python -m src.cli chunk --save
 python -m src.cli chunk --save --save-ast
@@ -110,17 +114,20 @@ python -m src.cli chunk --save --repo-url https://github.com/user/repo
 Generates embeddings for chunks using OpenAI's text-embedding-3-large model.
 
 **Options:**
+
 - `--save`: Save embeddings to `.embeddings/embeddings.json`
 - `--path PATH`: Path to repository (default: current directory)
 - `--repo-url URL`: Clone and embed remote repository
 
 **Examples:**
+
 ```bash
 python -m src.cli embed --save
 python -m src.cli embed --save --path /path/to/repo
 ```
 
 **Requirements:**
+
 - Set `OPENAI_API_KEY` in `.env` file
 - Chunks must exist (run `chunk --save` first)
 
@@ -129,17 +136,20 @@ python -m src.cli embed --save --path /path/to/repo
 Loads embeddings into ChromaDB vector store.
 
 **Options:**
+
 - `--path PATH`: Path to repository (default: current directory)
 - `--repo-url URL`: Remote repository URL
 - `--collection-name NAME`: Custom collection name (default: repository name)
 
 **Examples:**
+
 ```bash
 python -m src.cli store-embeddings --path .
 python -m src.cli store-embeddings --path . --collection-name MyProject
 ```
 
 **Requirements:**
+
 - ChromaDB server running (Docker): `docker-compose up -d`
 - Embeddings must exist (run `embed --save` first)
 
@@ -148,12 +158,14 @@ python -m src.cli store-embeddings --path . --collection-name MyProject
 Full pipeline: chunk → embed → store in one command.
 
 **Options:**
+
 - `--save`: Save intermediate artifacts (chunks + embeddings)
 - `--path PATH`: Path to repository (default: current directory)
 - `--repo-url URL`: Clone and process remote repository
 - `--collection-name NAME`: Custom collection name
 
 **Examples:**
+
 ```bash
 # Process current directory
 python -m src.cli chunk-embed-store-embeddings --save
@@ -170,11 +182,13 @@ python -m src.cli chunk-embed-store-embeddings --save --collection-name MyProjec
 Show ChromaDB database information and statistics.
 
 **Examples:**
+
 ```bash
 python -m src.cli db-info
 ```
 
 **Output:**
+
 - List of all collections
 - Document counts per collection
 - Total documents across all collections
@@ -184,6 +198,7 @@ python -m src.cli db-info
 List all collections in ChromaDB.
 
 **Examples:**
+
 ```bash
 python -m src.cli db-list
 ```
@@ -193,13 +208,15 @@ python -m src.cli db-list
 Show details of a specific collection.
 
 **Options:**
+
 - `collection_name`: Name of the collection (required)
 - `--sample N`: Show N sample documents
 
 **Examples:**
+
 ```bash
-python -m src.cli db-show SemanticSage
-python -m src.cli db-show SemanticSage --sample 5
+python -m src.cli db-show Contextinator
+python -m src.cli db-show Contextinator --sample 5
 ```
 
 ### `db-clear`
@@ -207,13 +224,15 @@ python -m src.cli db-show SemanticSage --sample 5
 Delete a specific collection from ChromaDB.
 
 **Options:**
+
 - `collection_name`: Name of the collection to delete (required)
 - `--force`: Skip confirmation prompt
 
 **Examples:**
+
 ```bash
-python -m src.cli db-clear SemanticSage
-python -m src.cli db-clear SemanticSage --force
+python -m src.cli db-clear Contextinator
+python -m src.cli db-clear Contextinator --force
 ```
 
 ### `query`
@@ -253,6 +272,7 @@ python viewer.py
 Then open: **http://localhost:5001**
 
 Features:
+
 - Browse all collections
 - View chunks with metadata (file path, type, line numbers)
 - Paginated navigation
@@ -270,7 +290,7 @@ python -m src.cli db-info
 python -m src.cli db-list
 
 # Show specific collection with samples
-python -m src.cli db-show SemanticSage --sample 5
+python -m src.cli db-show Contextinator --sample 5
 ```
 
 ## Environment Configuration
@@ -297,6 +317,7 @@ python -m src.cli chunk --save --save-ast
 ```
 
 **Output structure:**
+
 ```
 .chunks/ast_trees/
 ├── MyFile_python_ast.json     # Individual file AST
@@ -305,6 +326,7 @@ python -m src.cli chunk --save --save-ast
 ```
 
 **AST file contents:**
+
 - Complete AST tree structure
 - Extracted semantic nodes (functions, classes)
 - Tree statistics (depth, node count)
@@ -361,14 +383,17 @@ pip install tree-sitter chromadb \
 # Troubleshooting
 
 **No chunks generated?**
+
 - Check if your files have supported extensions
 - Verify files aren't in ignore patterns
 - Use `--save-ast` to debug AST parsing
 
 **Tree-sitter import errors?**
+
 - Install missing language modules: `pip install tree-sitter-<language>`
 - The tool will fallback to file-level chunking if parsers are missing
 
 **Empty chunks.json?**
+
 - Ensure you're in a directory with code files
 - Check that file extensions match `SUPPORTED_EXTENSIONS` in settings.py

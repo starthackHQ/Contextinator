@@ -1,5 +1,5 @@
 """
-AST Visualizer for SemanticSage
+AST Visualizer for Contextinator
 
 This module provides functionality to visualize and save AST trees
 created by tree-sitter for understanding the parsing and chunking process.
