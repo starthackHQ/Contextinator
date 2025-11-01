@@ -65,7 +65,7 @@ try:
 except ImportError as e:
     TREE_SITTER_AVAILABLE = False
     LANGUAGE_MODULES = {}
-    logger.warning("Tree-sitter import failed: {e}")
+    logger.warning(f"Tree-sitter import failed: {e}")
     logger.info("💡 Install missing modules with: pip install tree-sitter tree-sitter-python tree-sitter-javascript ...")
     if TYPE_CHECKING:
         from tree_sitter import Parser
@@ -129,7 +129,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         
         if not TREE_SITTER_AVAILABLE:
             # Fallback: return entire file as one chunk
-            logger.warning("Tree-sitter not available, using fallback for {file_path}")
+            logger.warning(f"Tree-sitter not available, using fallback for {file_path}")
             result = _fallback_parse(file_path, language, content)
             
             # Save AST visualization if requested (even for fallback)
@@ -157,7 +157,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         parser = get_parser(language)
         if not parser:
             # Fallback if language not supported
-            logger.warning("No parser available for {language}, using fallback for {file_path}")
+            logger.warning(f"No parser available for {language}, using fallback for {file_path}")
             return _fallback_parse(file_path, language, content)
         
         tree = parser.parse(bytes(content, 'utf-8'))
@@ -167,7 +167,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         
         # If no nodes extracted, fallback to file-level
         if not nodes:
-            logger.warning("No semantic nodes found in {file_path}, using file-level chunking")
+            logger.warning(f"No semantic nodes found in {file_path}, using file-level chunking")
             result = _fallback_parse(file_path, language, content)
         else:
             result = {
@@ -257,7 +257,7 @@ def get_parser(language: str) -> Optional["Parser"]:
         # Get language module
         lang_module = LANGUAGE_MODULES.get(language)
         if not lang_module:
-            logger.warning("No language module available for {language}")
+            logger.warning(f"No language module available for {language}")
             return None
         
         # Handle special case for TypeScript/TSX which have different API
@@ -275,7 +275,7 @@ def get_parser(language: str) -> Optional["Parser"]:
         return parser
         
     except Exception as e:
-        logger.warning("Error creating parser for {language}: {e}")
+        logger.warning(f"Error creating parser for {language}: {e}")
         return None
 
 

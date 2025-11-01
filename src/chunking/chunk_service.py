@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Dict, Any
-from . import discover_files, parse_file, collect_nodes, split_chunk, save_ast_overview
+from . import discover_files, parse_file, split_chunk, save_ast_overview
 from .node_collector import NodeCollector
 from ..utils import ProgressTracker, logger
 from ..config import CHUNKS_DIR, MAX_TOKENS
@@ -23,12 +23,12 @@ def chunk_repository(repo_path: str, repo_name: str = None, save: bool = False, 
     Returns:
         List of chunks
     """
-    logger.info("Discovering files in {repo_path}...")
+    logger.info(f"Discovering files in {repo_path}...")
     files = discover_files(repo_path)
-    logger.info("Found {len(files)} files to process")
+    logger.info(f"Found {len(files)} files to process")
     
     if not files:
-        logger.info("No supported files found")
+        logger.info(f"No supported files found")
         return []
     
     # Determine repository name and output directory
@@ -74,10 +74,10 @@ def chunk_repository(repo_path: str, repo_name: str = None, save: bool = False, 
     stats = collector.get_stats()
     
     logger.info("\n📊 Chunking Statistics:")
-    logger.info("  Files processed: {len(files)}")
-    logger.info("  Total chunks: {len(all_chunks)}")
-    logger.info("  Unique chunks: {stats['unique_hashes']}")
-    logger.info("  Duplicates found: {stats['duplicates_found']}")
+    logger.info(f"  Files processed: {len(files)}")
+    logger.info(f"  Total chunks: {len(all_chunks)}")
+    logger.info(f"  Unique chunks: {stats['unique_hashes']}")
+    logger.info(f"  Duplicates found: {stats['duplicates_found']}")
     
     if save:
         save_chunks(all_chunks, actual_output_dir, repo_name, stats)
@@ -85,7 +85,7 @@ def chunk_repository(repo_path: str, repo_name: str = None, save: bool = False, 
     if save_ast:
         logger.info("🌳 Creating AST overview...")
         save_ast_overview(chunks_dir)
-        logger.info("AST files saved in: {chunks_dir / 'ast_trees'}")
+        logger.info(f"AST files saved in: {chunks_dir / 'ast_trees'}")
     
     return all_chunks
 
@@ -117,7 +117,7 @@ def save_chunks(chunks: List[Dict[str, Any]], base_dir: str, repo_name: str, sta
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
-    logger.info("\n✅ Chunks saved to {output_file}")
+    logger.info(f"\n✅ Chunks saved to {output_file}")
 
 
 def load_chunks(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
@@ -138,7 +138,7 @@ def load_chunks(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
     if not chunks_file.exists():
         raise FileNotFoundError(f"Chunks file not found: {chunks_file}")
     
-    logger.info("📂 Loading chunks from {chunks_file}")
+    logger.info(f"📂 Loading chunks from {chunks_file}")
     
     with open(chunks_file, 'r', encoding='utf-8') as f:
         data = json.load(f)

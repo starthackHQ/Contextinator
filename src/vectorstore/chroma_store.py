@@ -44,14 +44,14 @@ class ChromaVectorStore:
         """Initialize ChromaDB client."""
         try:
             if USE_CHROMA_SERVER:
-                logger.info("Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
+                logger.info(f"Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
                 self.client = chromadb.HttpClient(host="localhost", port=8000)
                 
                 try:
                     self.client.heartbeat()
                     logger.info("ChromaDB server connection successful")
                 except Exception as e:
-                    logger.error("ChromaDB server connection failed: {str(e)}")
+                    logger.error(f"ChromaDB server connection failed: {str(e)}")
                     logger.info("🔄 Falling back to local persistence...")
                     raise e
             else:
@@ -63,7 +63,7 @@ class ChromaVectorStore:
                         allow_reset=True
                     )
                 )
-                logger.info("ChromaDB local persistence at: {self.db_path}")
+                logger.info(f"ChromaDB local persistence at: {self.db_path}")
         except Exception as e:
             if USE_CHROMA_SERVER:
                 logger.info("🔄 Server connection failed, using local persistence...")
@@ -76,7 +76,7 @@ class ChromaVectorStore:
                             allow_reset=True
                         )
                     )
-                    logger.info("ChromaDB local persistence at: {self.db_path}")
+                    logger.info(f"ChromaDB local persistence at: {self.db_path}")
                 except Exception as fallback_e:
                     raise RuntimeError(f"Failed to initialize ChromaDB client: {str(fallback_e)}")
             else:
@@ -89,14 +89,14 @@ class ChromaVectorStore:
             
             try:
                 collection = self.client.get_collection(name=safe_name)
-                logger.info("Using existing collection: {safe_name}")
+                logger.info(f"Using existing collection: {safe_name}")
                 return collection
             except Exception:
                 collection = self.client.create_collection(
                     name=safe_name,
                     metadata={"description": f"Code chunks for repository: {collection_name}"}
                 )
-                logger.info("Created new collection: {safe_name}")
+                logger.info(f"Created new collection: {safe_name}")
                 return collection
         except Exception as e:
             raise RuntimeError(f"Failed to get/create collection '{collection_name}': {str(e)}")
@@ -197,7 +197,7 @@ class ChromaVectorStore:
             "db_path": self.db_path
         }
         
-        logger.info("Successfully stored {stored_count} embeddings")
+        logger.info(f"Successfully stored {stored_count} embeddings")
         logger.info("📊 Collection now contains %d items", collection_count)
         
         return stats
