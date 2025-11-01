@@ -3,6 +3,7 @@ import sys
 import tempfile
 from subprocess import run
 from pathlib import Path
+from ..utils.logger import logger
 
 
 def git_root(path=None):
@@ -28,7 +29,7 @@ def git_root(path=None):
     if result.returncode != 0:
         if not path:
             path = os.getcwd()
-        print(f"❌ {path} is not a git repo. Run this in a git repository or use --path or --repo-url")
+        logger.error("{path} is not a git repo. Run this in a git repository or use --path or --repo-url")
         sys.exit(1)
     
     return result.stdout.strip()
@@ -51,15 +52,15 @@ def clone_repo(repo_url, target_dir=None):
     if not target_dir:
         target_dir = tempfile.mkdtemp(prefix='contextinator_')
     
-    print(f"📥 Cloning {repo_url}...")
+    logger.info("📥 Cloning {repo_url}...")
     result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 
                  capture_output=True, text=True)
     
     if result.returncode != 0:
-        print(f"❌ Failed to clone repository: {result.stderr}")
+        logger.error("Failed to clone repository: {result.stderr}")
         sys.exit(1)
     
-    print(f"✅ Repository cloned to {target_dir}")
+    logger.info("Repository cloned to {target_dir}")
     return target_dir
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import chromadb
 from chromadb.config import Settings
-from ..utils import ProgressTracker
+from ..utils import ProgressTracker, logger
 from ..config import (
     CHROMA_DB_DIR,
     CHROMA_SERVER_URL, 
@@ -44,15 +44,15 @@ class ChromaVectorStore:
         """Initialize ChromaDB client."""
         try:
             if USE_CHROMA_SERVER:
-                print(f"🗄️  Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
+                logger.info("Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
                 self.client = chromadb.HttpClient(host="localhost", port=8000)
                 
                 try:
                     self.client.heartbeat()
-                    print(f"✅ ChromaDB server connection successful")
+                    logger.info("ChromaDB server connection successful")
                 except Exception as e:
-                    print(f"❌ ChromaDB server connection failed: {str(e)}")
-                    print("🔄 Falling back to local persistence...")
+                    logger.error("ChromaDB server connection failed: {str(e)}")
+                    logger.info("🔄 Falling back to local persistence...")
                     raise e
             else:
                 os.makedirs(self.db_path, exist_ok=True)
@@ -63,10 +63,10 @@ class ChromaVectorStore:
                         allow_reset=True
                     )
                 )
-                print(f"🗄️  ChromaDB local persistence at: {self.db_path}")
+                logger.info("ChromaDB local persistence at: {self.db_path}")
         except Exception as e:
             if USE_CHROMA_SERVER:
-                print("🔄 Server connection failed, using local persistence...")
+                logger.info("🔄 Server connection failed, using local persistence...")
                 try:
                     os.makedirs(self.db_path, exist_ok=True)
                     self.client = chromadb.PersistentClient(
@@ -76,7 +76,7 @@ class ChromaVectorStore:
                             allow_reset=True
                         )
                     )
-                    print(f"🗄️  ChromaDB local persistence at: {self.db_path}")
+                    logger.info("ChromaDB local persistence at: {self.db_path}")
                 except Exception as fallback_e:
                     raise RuntimeError(f"Failed to initialize ChromaDB client: {str(fallback_e)}")
             else:
@@ -89,14 +89,14 @@ class ChromaVectorStore:
             
             try:
                 collection = self.client.get_collection(name=safe_name)
-                print(f"📚 Using existing collection: {safe_name}")
+                logger.info("Using existing collection: {safe_name}")
                 return collection
             except Exception:
                 collection = self.client.create_collection(
                     name=safe_name,
                     metadata={"description": f"Code chunks for repository: {collection_name}"}
                 )
-                print(f"📚 Created new collection: {safe_name}")
+                logger.info("Created new collection: {safe_name}")
                 return collection
         except Exception as e:
             raise RuntimeError(f"Failed to get/create collection '{collection_name}': {str(e)}")
@@ -145,20 +145,20 @@ class ChromaVectorStore:
                         collection_name: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
         """Store embeddings in ChromaDB."""
         if not embedded_chunks:
-            print("No embedded chunks to store")
+            logger.info("No embedded chunks to store")
             return {"stored_count": 0, "collection_name": collection_name}
         
         batch_size = batch_size or CHROMA_BATCH_SIZE
         
-        print(f"🚀 Storing {len(embedded_chunks)} embeddings in ChromaDB...")
-        print(f"📦 Collection: {collection_name}")
-        print(f"📊 Batch size: {batch_size}")
+        logger.info("🚀 Storing %d embeddings in ChromaDB...", len(embedded_chunks))
+        logger.info("📦 Collection: %s", collection_name)
+        logger.info("📊 Batch size: %d", batch_size)
         
         collection = self._get_or_create_collection(collection_name)
         
         try:
             collection.delete()
-            print("🗑️  Cleared existing data in collection")
+            logger.info("🗑️  Cleared existing data in collection")
         except Exception:
             pass
         
@@ -197,8 +197,8 @@ class ChromaVectorStore:
             "db_path": self.db_path
         }
         
-        print(f"✅ Successfully stored {stored_count} embeddings")
-        print(f"📊 Collection now contains {collection_count} items")
+        logger.info("Successfully stored {stored_count} embeddings")
+        logger.info("📊 Collection now contains %d items", collection_count)
         
         return stats
     
@@ -229,7 +229,7 @@ class ChromaVectorStore:
                 for col in collections
             ]
         except Exception as e:
-            print(f"Error listing collections: {str(e)}")
+            logger.error("Error listing collections: %s", str(e))
             return []
 
 

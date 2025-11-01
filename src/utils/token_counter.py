@@ -1,4 +1,5 @@
 import tiktoken
+from .logger import logger
 from functools import lru_cache
 @lru_cache(maxsize=8)
 def _get_encoding(model: str):
@@ -15,7 +16,7 @@ def _get_encoding(model: str):
         return tiktoken.encoding_for_model(model)
     except KeyError:
         # Fallback to cl100k_base encoding (used by GPT-4, GPT-3.5-turbo, text-embedding-3-*)
-        print(f"Warning: Model '{model}' not found in tiktoken, using cl100k_base encoding")
+        logger.warning("Model '%s' not found in tiktoken, using cl100k_base encoding", model)
         return tiktoken.get_encoding("cl100k_base")
 
 

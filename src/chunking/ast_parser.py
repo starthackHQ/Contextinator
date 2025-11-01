@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from ..config import SUPPORTED_EXTENSIONS
+from ..utils.logger import logger
 
 try:
     from tree_sitter import Parser, Language
@@ -60,12 +61,12 @@ try:
     }
     
     TREE_SITTER_AVAILABLE = True
-    print("🌳 Tree-sitter imports successful")
+    logger.info("Tree-sitter imports successful")
 except ImportError as e:
     TREE_SITTER_AVAILABLE = False
     LANGUAGE_MODULES = {}
-    print(f"⚠️  Tree-sitter import failed: {e}")
-    print("💡 Install missing modules with: pip install tree-sitter tree-sitter-python tree-sitter-javascript ...")
+    logger.warning("Tree-sitter import failed: {e}")
+    logger.info("💡 Install missing modules with: pip install tree-sitter tree-sitter-python tree-sitter-javascript ...")
     if TYPE_CHECKING:
         from tree_sitter import Parser
 
@@ -128,12 +129,12 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         
         if not TREE_SITTER_AVAILABLE:
             # Fallback: return entire file as one chunk
-            print(f"⚠️  Tree-sitter not available, using fallback for {file_path}")
+            logger.warning("Tree-sitter not available, using fallback for {file_path}")
             result = _fallback_parse(file_path, language, content)
             
             # Save AST visualization if requested (even for fallback)
             if save_ast and chunks_dir:
-                print(f"💾 Saving fallback AST data for {file_path}")
+                logger.debug("Saving fallback AST data for %s", file_path)
                 try:
                     saved_file = save_ast_visualization(
                         str(file_path), 
@@ -144,9 +145,9 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
                         chunks_dir,
                         result.get('tree_info')
                     )
-                    print(f"✅ Saved fallback AST: {saved_file}")
+                    logger.debug("Saved fallback AST: %s", saved_file)
                 except Exception as e:
-                    print(f"❌ Error saving fallback AST for {file_path}: {e}")
+                    logger.error("Error saving fallback AST for %s: %s", file_path, e)
                     import traceback
                     traceback.print_exc()
             
@@ -156,17 +157,17 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         parser = get_parser(language)
         if not parser:
             # Fallback if language not supported
-            print(f"⚠️  No parser available for {language}, using fallback for {file_path}")
+            logger.warning("No parser available for {language}, using fallback for {file_path}")
             return _fallback_parse(file_path, language, content)
         
         tree = parser.parse(bytes(content, 'utf-8'))
         nodes = extract_nodes(tree.root_node, content, language)
         
-        print(f"🌳 Parsed {file_path} - Found {len(nodes)} semantic nodes")
+        logger.debug("Parsed %s - Found %d semantic nodes", file_path, len(nodes))
         
         # If no nodes extracted, fallback to file-level
         if not nodes:
-            print(f"⚠️  No semantic nodes found in {file_path}, using file-level chunking")
+            logger.warning("No semantic nodes found in {file_path}, using file-level chunking")
             result = _fallback_parse(file_path, language, content)
         else:
             result = {
@@ -184,7 +185,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         
         # Save AST visualization if requested
         if save_ast and chunks_dir:
-            print(f"💾 Saving AST for {file_path}")
+            logger.debug("Saving AST for %s", file_path)
             try:
                 if 'tree_info' in result and result['tree_info'].get('has_ast', False):
                     # Real AST case
@@ -209,12 +210,12 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
                         result.get('tree_info')
                     )
             except Exception as e:
-                print(f"Warning: Could not save AST for {file_path}: {e}")
+                logger.warning("Could not save AST for %s: %s", file_path, e)
         
         return result
     
     except Exception as e:
-        print(f"Error parsing {file_path}: {e}")
+        logger.error("Error parsing %s: %s", file_path, e)
         return None
 
 
@@ -256,7 +257,7 @@ def get_parser(language: str) -> Optional["Parser"]:
         # Get language module
         lang_module = LANGUAGE_MODULES.get(language)
         if not lang_module:
-            print(f"⚠️  No language module available for {language}")
+            logger.warning("No language module available for {language}")
             return None
         
         # Handle special case for TypeScript/TSX which have different API
@@ -274,7 +275,7 @@ def get_parser(language: str) -> Optional["Parser"]:
         return parser
         
     except Exception as e:
-        print(f"⚠️  Error creating parser for {language}: {e}")
+        logger.warning("Error creating parser for {language}: {e}")
         return None
 
 

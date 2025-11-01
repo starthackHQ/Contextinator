@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from ..config import CHUNKS_DIR
+from ..utils.logger import logger
 
 
 def serialize_node(node, content_bytes: bytes, max_depth: int = None, current_depth: int = 0) -> Dict[str, Any]:
@@ -160,7 +161,7 @@ def save_ast_visualization(file_path: str, language: str, root_node, content: st
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(ast_data, f, indent=2, ensure_ascii=False)
     
-    print(f"📊 AST saved: {output_file}")
+    logger.info("AST saved: {output_file}")
     return output_file
 
 
@@ -283,7 +284,7 @@ def create_ast_overview(chunks_dir: Path) -> Dict[str, Any]:
             })
             
         except Exception as e:
-            print(f"Error reading {ast_file}: {e}")
+            logger.info("Error reading {ast_file}: {e}")
     
     return overview
 
@@ -304,5 +305,5 @@ def save_ast_overview(chunks_dir: Path):
     with open(overview_file, 'w', encoding='utf-8') as f:
         json.dump(overview, f, indent=2, ensure_ascii=False)
     
-    print(f"📈 AST overview saved: {overview_file}")
+    logger.info("📈 AST overview saved: {overview_file}")
     return overview

@@ -1,6 +1,6 @@
 import argparse
 import sys
-from .utils import resolve_repo_path
+from .utils import resolve_repo_path, logger
 import os    
 from .chunking import chunk_repository
 
@@ -35,20 +35,20 @@ def chunk_func(args):
         output_dir=output_dir, 
         save_ast=save_ast
     )
-    print(f"\n✅ Chunking complete: {len(chunks)} chunks created")
+    logger.info("✅ Chunking complete: {len(chunks)} chunks created")
     
     if args.save:
-        print(f"📁 Chunks saved in: {output_dir}/.chunks/{repo_name}/")
+        logger.info("Chunks saved in: {output_dir}/.chunks/{repo_name}/")
     
     if save_ast:
-        print(f"🌳 AST trees saved for analysis")
-        print(f"📁 Check: {output_dir}/.chunks/{repo_name}/ast_trees/ for AST files")
+        logger.info("AST trees saved for analysis")
+        logger.info("Check: {output_dir}/.chunks/{repo_name}/ast_trees/ for AST files")
 
 
 def embed_func(args):
     """Generate embeddings for existing chunks."""
     from .embedding import embed_chunks
-    from .utils import resolve_repo_path
+    from .utils import resolve_repo_path, logger
     from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
     import os
@@ -69,18 +69,18 @@ def embed_func(args):
         
         base_dir = getattr(args, 'output', None) or os.getcwd()
         
-        print(f"🚀 Generating embeddings for repository: {repo_name}")
+        logger.info("Generating embeddings for repository: {repo_name}")
         
         # Generate embeddings
         embedded_chunks = embed_chunks(base_dir, repo_name, save=args.save)
         
-        print(f"✅ Embedding generation complete: {len(embedded_chunks)} chunks embedded")
+        logger.info("Embedding generation complete: {len(embedded_chunks)} chunks embedded")
         
         if args.save:
-            print(f"💾 Embeddings saved to {base_dir}/.embeddings/{repo_name}/")
+            logger.info("Embeddings saved to {base_dir}/.embeddings/{repo_name}/")
         
     except Exception as e:
-        print(f"❌ Embedding generation failed: {str(e)}")
+        logger.error("Embedding generation failed: {str(e)}")
         exit(1)
 
 
@@ -88,7 +88,7 @@ def store_embeddings_func(args):
     """Store embeddings in ChromaDB vector store."""
     from .embedding import load_embeddings
     from .vectorstore import store_repository_embeddings
-    from .utils import resolve_repo_path
+    from .utils import resolve_repo_path, logger
     from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
     import os
@@ -109,7 +109,7 @@ def store_embeddings_func(args):
         
         base_dir = getattr(args, 'output', None) or os.getcwd()
         
-        print(f"🗄️  Storing embeddings for repository: {repo_name}")
+        logger.info("Storing embeddings for repository: {repo_name}")
         
         # Load embeddings
         embedded_chunks = load_embeddings(base_dir, repo_name)
@@ -120,13 +120,13 @@ def store_embeddings_func(args):
         # Store in ChromaDB
         stats = store_repository_embeddings(base_dir, repo_name, embedded_chunks, collection_name)
         
-        print(f"✅ Storage complete:")
-        print(f"   📊 Stored: {stats['stored_count']} embeddings")
-        print(f"   📚 Collection: {stats['collection_name']}")
-        print(f"   🗄️  Database: {stats['db_path']}")
+        logger.info("Storage complete:")
+        logger.info("   📊 Stored: %d embeddings", stats["stored_count"])
+        logger.info("   📚 Collection: %s", stats["collection_name"])
+        logger.info("   🗄️  Database: %s", stats["db_path"])
         
     except Exception as e:
-        print(f"❌ Embedding storage failed: {str(e)}")
+        logger.error("Embedding storage failed: {str(e)}")
         exit(1)
 
 
@@ -134,7 +134,7 @@ def pipeline_func(args):
     """Combined chunk + embed + store-embeddings pipeline."""
     from .embedding import embed_chunks
     from .vectorstore import store_repository_embeddings
-    from .utils import resolve_repo_path
+    from .utils import resolve_repo_path, logger
     from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
     import os
@@ -155,10 +155,10 @@ def pipeline_func(args):
         
         base_dir = getattr(args, 'output', None) or os.getcwd()
         
-        print(f"🚀 Starting complete pipeline for repository: {repo_name}")
+        logger.info("Starting complete pipeline for repository: {repo_name}")
         
         # Step 1: Chunk repository
-        print("\n📝 Step 1: Chunking repository...")
+        logger.info("\n📝 Step 1: Chunking repository...")
         chunks = chunk_repository(
             repo_path=repo_path,
             repo_name=repo_name,
@@ -167,35 +167,35 @@ def pipeline_func(args):
         )
         
         if not chunks:
-            print("❌ No chunks generated. Pipeline stopped.")
+            logger.info("❌ No chunks generated. Pipeline stopped.")
             exit(1)
         
         # Step 2: Generate embeddings
-        print("\n🧠 Step 2: Generating embeddings...")
+        logger.info("\n🧠 Step 2: Generating embeddings...")
         embedded_chunks = embed_chunks(base_dir, repo_name, save=args.save, chunks_data=chunks)
         
         # Step 3: Store in vector database
-        print("\n🗄️  Step 3: Storing in vector database...")
+        logger.info("\n🗄️  Step 3: Storing in vector database...")
         collection_name = getattr(args, 'collection_name', None) or repo_name
         stats = store_repository_embeddings(base_dir, repo_name, embedded_chunks, collection_name)
         
-        print(f"\n✅ Pipeline complete!")
-        print(f"   📝 Chunks: {len(chunks)}")
-        print(f"   🧠 Embeddings: {len(embedded_chunks)}")
-        print(f"   📊 Stored: {stats['stored_count']}")
-        print(f"   📚 Collection: {stats['collection_name']}")
-        print(f"   🗄️  Database: {stats['db_path']}")
+        logger.info("✅ Pipeline complete!")
+        logger.info("   📝 Chunks: %d", len(chunks))
+        logger.info("   🧠 Embeddings: %d", len(embedded_chunks))
+        logger.info("   📊 Stored: %d", stats["stored_count"])
+        logger.info("   📚 Collection: %s", stats["collection_name"])
+        logger.info("   🗄️  Database: %s", stats["db_path"])
         
         if args.save:
-            print(f"   💾 Artifacts saved in: {base_dir}/.chunks/{repo_name}/ and {base_dir}/.embeddings/{repo_name}/")
+            logger.info("   💾 Artifacts saved in: %s/.chunks/%s/ and %s/.embeddings/%s/", base_dir, repo_name, base_dir, repo_name)
         
     except Exception as e:
-        print(f"❌ Pipeline failed: {str(e)}")
+        logger.error("Pipeline failed: {str(e)}")
         exit(1)
 
 
 def query_func(args):
-    print("query this functionality")
+    logger.info("query this functionality")
     pass
 
 
@@ -231,7 +231,7 @@ def search_func(args):
             format_search_results(results, query=query, collection=args.collection)
         
     except Exception as e:
-        print(f"❌ Search failed: {e}")
+        logger.error("Search failed: {e}")
         exit(1)
 
 
@@ -260,7 +260,7 @@ def symbol_func(args):
             format_search_results(results, query=f"Symbol: {args.symbol_name}", collection=args.collection)
         
     except Exception as e:
-        print(f"❌ Symbol search failed: {e}")
+        logger.error("Symbol search failed: {e}")
         exit(1)
 
 
@@ -290,7 +290,7 @@ def pattern_func(args):
             format_search_results(results, query=f"Pattern: {args.pattern}", collection=args.collection)
         
     except Exception as e:
-        print(f"❌ Pattern search failed: {e}")
+        logger.error("Pattern search failed: {e}")
         exit(1)
 
 
@@ -312,7 +312,7 @@ def read_file_func(args):
             format_file_content(file_data)
         
     except Exception as e:
-        print(f"❌ Read file failed: {e}")
+        logger.error("Read file failed: {e}")
         exit(1)
 
 
@@ -368,7 +368,7 @@ def search_advanced_func(args):
             format_search_results(results, query=query_desc, collection=args.collection)
         
     except Exception as e:
-        print(f"❌ Advanced search failed: {e}")
+        logger.error("Advanced search failed: {e}")
         exit(1)
 
 
@@ -386,30 +386,30 @@ def db_info_func(args):
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
         
-        print(f"🗄️  ChromaDB Database Information")
-        print(f"📂 Database path: {vector_store.db_path}")
-        print(f"=" * 50)
+        logger.info("ChromaDB Database Information")
+        logger.info("Database path: {vector_store.db_path}")
+        logger.info("=" * 50)
         
         if not collections:
-            print("📭 No collections found in the database")
+            logger.info("📭 No collections found in the database")
             return
         
-        print(f"📚 Found {len(collections)} collection(s):")
-        print()
+        logger.info("Found {len(collections)} collection(s):")
+        logger.info("")
         
         for collection in collections:
-            print(f"  📖 Collection: {collection['name']}")
-            print(f"     📊 Documents: {collection['count']}")
+            logger.info("  📖 Collection: %s", collection["name"])
+            logger.info("     📊 Documents: %d", collection["count"])
             if collection.get('metadata'):
-                print(f"     📝 Description: {collection['metadata'].get('description', 'N/A')}")
-            print()
+                logger.info("     📝 Description: %s", collection["metadata"].get("description", "N/A"))
+            logger.info("")
         
         # Show total documents
         total_docs = sum(col['count'] for col in collections)
-        print(f"📈 Total documents across all collections: {total_docs}")
+        logger.info("Total documents across all collections: {total_docs}")
         
     except Exception as e:
-        print(f"❌ Failed to get database info: {str(e)}")
+        logger.error("Failed to get database info: {str(e)}")
         exit(1)
 
 
@@ -427,18 +427,18 @@ def db_list_func(args):
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         collections = vector_store.list_collections()
         
-        print(f"📂 Database path: {vector_store.db_path}")
+        logger.info("Database path: {vector_store.db_path}")
         
         if not collections:
-            print("📭 No collections found")
+            logger.info("📭 No collections found")
             return
         
-        print("📚 Collections:")
+        logger.info("📚 Collections:")
         for collection in collections:
-            print(f"  - {collection['name']} ({collection['count']} documents)")
+            logger.info("  - %s (%d documents)", collection["name"], collection["count"])
         
     except Exception as e:
-        print(f"❌ Failed to list collections: {str(e)}")
+        logger.error("Failed to list collections: {str(e)}")
         exit(1)
 
 
@@ -457,19 +457,19 @@ def db_show_func(args):
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         
-        print(f"📂 Database path: {vector_store.db_path}")
+        logger.info("Database path: {vector_store.db_path}")
         
         # Get collection info
         info = vector_store.get_collection_info(collection_name)
         
         if not info.get('exists', True):
-            print(f"❌ Collection '{collection_name}' not found")
+            logger.error("Collection '{collection_name}' not found")
             return
         
-        print(f"📖 Collection: {info['name']}")
-        print(f"📊 Documents: {info['count']}")
+        logger.info("Collection: {info['name']}")
+        logger.info("Documents: {info['count']}")
         if info.get('metadata'):
-            print(f"📝 Description: {info['metadata'].get('description', 'N/A')}")
+            logger.info("Description: {info['metadata'].get('description', 'N/A')}")
         
         # Get a few sample documents if requested
         if args.sample and info['count'] > 0:
@@ -481,21 +481,21 @@ def db_show_func(args):
                 sample_size = min(args.sample, info['count'])
                 results = collection.get(limit=sample_size)
                 
-                print(f"\n📄 Sample documents (showing {sample_size}):")
+                logger.info("📄 Sample documents (showing {sample_size}):")
                 for i, (doc_id, document, metadata) in enumerate(zip(
                     results['ids'], results['documents'], results['metadatas']
                 )):
-                    print(f"\n  Document {i+1}:")
-                    print(f"    ID: {doc_id}")
-                    print(f"    Content: {document[:200]}{'...' if len(document) > 200 else ''}")
+                    logger.info("  Document {i+1}:")
+                    logger.info("    ID: %s", doc_id)
+                    logger.info("    Content: %s%s", document[:200], "..." if len(document) > 200 else "")
                     if metadata:
-                        print(f"    Metadata: {metadata}")
+                        logger.info("    Metadata: %s", metadata)
                         
             except Exception as e:
-                print(f"⚠️  Could not fetch sample documents: {str(e)}")
+                logger.warning("Could not fetch sample documents: {str(e)}")
         
     except Exception as e:
-        print(f"❌ Failed to show collection: {str(e)}")
+        logger.error("Failed to show collection: {str(e)}")
         exit(1)
 
 
@@ -514,26 +514,26 @@ def db_clear_func(args):
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
         
-        print(f"📂 Database path: {vector_store.db_path}")
+        logger.info("Database path: {vector_store.db_path}")
         
         # Confirm deletion
         if not args.force:
             response = input(f"⚠️  Are you sure you want to delete collection '{collection_name}'? (y/N): ")
             if response.lower() != 'y':
-                print("❌ Operation cancelled")
+                logger.info("❌ Operation cancelled")
                 return
         
         # Delete collection
         safe_name = sanitize_collection_name(collection_name)
         try:
             vector_store.client.delete_collection(name=safe_name)
-            print(f"✅ Collection '{collection_name}' deleted successfully")
+            logger.info("Collection '{collection_name}' deleted successfully")
         except Exception as e:
-            print(f"❌ Failed to delete collection: {str(e)}")
+            logger.error("Failed to delete collection: {str(e)}")
             exit(1)
         
     except Exception as e:
-        print(f"❌ Failed to clear collection: {str(e)}")
+        logger.error("Failed to clear collection: {str(e)}")
         exit(1)
 
 
