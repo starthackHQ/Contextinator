@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import openai
-from ..utils import ProgressTracker
+from ..utils import ProgressTracker, logger
 from ..config import (
     OPENAI_EMBEDDING_MODEL, 
     EMBEDDING_BATCH_SIZE, 
@@ -55,7 +55,7 @@ class EmbeddingService:
         
         estimated_tokens = len(content) // 4
         if estimated_tokens > OPENAI_MAX_TOKENS:
-            print(f"Warning: Chunk may exceed token limit ({estimated_tokens} estimated tokens)")
+            logger.info("Warning: Chunk may exceed token limit ({estimated_tokens} estimated tokens)")
             return False
         
         return True
@@ -63,12 +63,12 @@ class EmbeddingService:
     def generate_embeddings(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Generate embeddings for a list of chunks."""
         if not chunks:
-            print("No chunks provided for embedding generation")
+            logger.info("No chunks provided for embedding generation")
             return []
         
-        print(f"🚀 Starting embedding generation for {len(chunks)} chunks...")
-        print(f"📊 Using model: {OPENAI_EMBEDDING_MODEL}")
-        print(f"📦 Batch size: {EMBEDDING_BATCH_SIZE}")
+        logger.info("🚀 Starting embedding generation for {len(chunks)} chunks...")
+        logger.info("📊 Using model: {OPENAI_EMBEDDING_MODEL}")
+        logger.info("📦 Batch size: {EMBEDDING_BATCH_SIZE}")
         
         valid_chunks = []
         for i, chunk in enumerate(chunks):
@@ -76,12 +76,12 @@ class EmbeddingService:
             if self._validate_chunk_content(content):
                 valid_chunks.append((i, chunk))
             else:
-                print(f"⚠️  Skipping invalid chunk at index {i}")
+                logger.info("⚠️  Skipping invalid chunk at index {i}")
         
         if not valid_chunks:
             raise RuntimeError("No valid chunks found for embedding generation")
         
-        print(f"✅ Processing {len(valid_chunks)} valid chunks")
+        logger.info("✅ Processing {len(valid_chunks)} valid chunks")
         
         embedded_chunks = []
         total_batches = (len(valid_chunks) + EMBEDDING_BATCH_SIZE - 1) // EMBEDDING_BATCH_SIZE
@@ -100,7 +100,7 @@ class EmbeddingService:
                 raise RuntimeError(f"Embedding generation failed at batch {batch_idx//EMBEDDING_BATCH_SIZE + 1}: {str(e)}")
         
         progress.finish()
-        print(f"✅ Successfully generated embeddings for {len(embedded_chunks)} chunks")
+        logger.info("✅ Successfully generated embeddings for {len(embedded_chunks)} chunks")
         return embedded_chunks
     
     def _generate_batch_embeddings(self, batch_chunks: List[tuple]) -> List[Dict[str, Any]]:
@@ -146,7 +146,7 @@ def embed_chunks(base_dir: str, repo_name: str, save: bool = False, chunks_data:
         chunks_data = load_chunks(base_dir, repo_name)
     
     if not chunks_data:
-        print("No chunks found to embed")
+        logger.info("No chunks found to embed")
         return []
     
     embedding_service = EmbeddingService()
@@ -176,7 +176,7 @@ def load_chunks(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
     if not chunks_file.exists():
         raise FileNotFoundError(f"Chunks file not found: {chunks_file}")
     
-    print(f"📂 Loading chunks from {chunks_file}")
+    logger.info("📂 Loading chunks from {chunks_file}")
     
     with open(chunks_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -186,7 +186,7 @@ def load_chunks(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
     else:
         chunks = data.get('chunks', [])
     
-    print(f"📊 Loaded {len(chunks)} chunks")
+    logger.info("📊 Loaded {len(chunks)} chunks")
     return chunks
 
 
@@ -216,7 +216,7 @@ def save_embeddings(embedded_chunks: List[Dict[str, Any]], base_dir: str, repo_n
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
-    print(f"💾 Embeddings saved to {output_file}")
+    logger.info("💾 Embeddings saved to {output_file}")
 
 
 def load_embeddings(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
@@ -237,7 +237,7 @@ def load_embeddings(base_dir: str, repo_name: str) -> List[Dict[str, Any]]:
     if not embeddings_file.exists():
         raise FileNotFoundError(f"Embeddings file not found: {embeddings_file}")
     
-    print(f"📂 Loading embeddings from {embeddings_file}")
+    logger.info("📂 Loading embeddings from {embeddings_file}")
     
     with open(embeddings_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
