@@ -33,8 +33,8 @@ def full_text_search(
         List of matching chunks with metadata
         
     Raises:
-        ValueError: If collection_name is empty or limit is non-positive
-        RuntimeError: If search fails
+        ValidationError: If collection_name is empty or limit is non-positive
+        SearchError: If search fails
     
     Examples:
         >>> # Find all imports in auth.ts
@@ -46,15 +46,23 @@ def full_text_search(
         >>> full_text_search("my-repo",
         ...     where={"language": "python", "node_type": "function"})
     """
+    from ..utils.exceptions import ValidationError, SearchError
+    
     if not collection_name:
-        raise ValueError("Collection name cannot be empty")
+        raise ValidationError("Collection name cannot be empty", "collection_name", "non-empty string")
     if limit <= 0:
-        raise ValueError("Limit must be positive")
+        raise ValidationError("Limit must be positive", "limit", "positive integer")
     
     logger.debug(f"Full text search in collection '{collection_name}'")
     
     try:
-        tool = SearchTool(collection_name)
+        # Handle missing collection gracefully
+        try:
+            tool = SearchTool(collection_name)
+        except ValidationError as e:
+            # Collection doesn't exist
+            logger.warning(f"Collection '{collection_name}' not found: {e}")
+            return []
         
         if text_pattern:
             # Use ChromaDB's get method with where clause for text search
@@ -63,8 +71,8 @@ def full_text_search(
                 limit=limit,
                 include=['documents', 'metadatas']
             )
-            
-            # Filter by text pattern manually (ChromaDB doesn't have built-in text search)
+
+            # Filter by text pattern, continue with matches
             filtered_results = {
                 'ids': [],
                 'documents': [],
@@ -72,10 +80,15 @@ def full_text_search(
             }
             
             for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
-                if text_pattern.lower() in doc.lower():
-                    filtered_results['ids'].append(id_)
-                    filtered_results['documents'].append(doc)
-                    filtered_results['metadatas'].append(meta)
+                try:
+                    if text_pattern.lower() in doc.lower():
+                        filtered_results['ids'].append(id_)
+                        filtered_results['documents'].append(doc)
+                        filtered_results['metadatas'].append(meta)
+                except Exception as e:
+                    # Skip problematic documents
+                    logger.debug(f"Skipping document {id_}: {e}")
+                    continue
             
             results = filtered_results
         else:
@@ -90,9 +103,12 @@ def full_text_search(
         logger.debug(f"Found {len(formatted)} matches")
         return formatted
         
+    except (ValidationError, SearchError):
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
         logger.error(f"Full text search failed: {e}")
-        raise RuntimeError(f"Full text search failed: {e}")
+        raise SearchError(f"Full text search failed: {e}", text_pattern or "metadata_filter", "full_text")
 
 
 def hybrid_search(

@@ -34,14 +34,17 @@ def discover_files(
         List of Path objects for supported files
         
     Raises:
-        ValueError: If repo_path doesn't exist or is not a directory
+        ValidationError: If repo_path doesn't exist or is not a directory
+        FileSystemError: If unable to access repository directory
     """
+    from ..utils.exceptions import ValidationError, FileSystemError
+    
     repo_path = Path(repo_path)
     
     if not repo_path.exists():
-        raise ValueError(f"Repository path does not exist: {repo_path}")
+        raise ValidationError(f"Repository path does not exist: {repo_path}", "repo_path", "existing path")
     if not repo_path.is_dir():
-        raise ValueError(f"Repository path is not a directory: {repo_path}")
+        raise ValidationError(f"Repository path is not a directory: {repo_path}", "repo_path", "directory")
     
     # Use default ignore patterns if none provided
     if ignore_patterns is None:
@@ -52,39 +55,64 @@ def discover_files(
     
     files = []
     ignored_count = 0
+    permission_errors = []
     
     logger.debug(f"Scanning repository: {repo_path}")
     logger.debug(f"Supported extensions: {list(SUPPORTED_EXTENSIONS.keys())}")
     
     try:
+        # Handle permission errors gracefully, continue scanning
         for root, dirs, filenames in os.walk(repo_path):
-            # Filter out ignored directories in-place to prevent traversal
-            original_dirs = dirs.copy()
-            dirs[:] = [d for d in dirs if not _should_ignore(d, ignore_patterns)]
-            
-            # Log ignored directories for debugging
-            ignored_dirs = set(original_dirs) - set(dirs)
-            if ignored_dirs:
-                logger.debug(f"Ignoring directories in {root}: {ignored_dirs}")
-            
-            # Process files in current directory
-            for filename in filenames:
-                file_path = Path(root) / filename
+            try:
+                # Filter out ignored directories in-place to prevent traversal
+                original_dirs = dirs.copy()
+                dirs[:] = [d for d in dirs if not _should_ignore(d, ignore_patterns)]
                 
-                # Check if file extension is supported
-                if file_path.suffix in SUPPORTED_EXTENSIONS or filename in SUPPORTED_EXTENSIONS:
-                    # Check if file should be ignored
-                    relative_path = str(file_path.relative_to(repo_path))
-                    if not _should_ignore(relative_path, ignore_patterns):
-                        files.append(file_path)
-                        logger.debug(f"Found supported file: {relative_path}")
-                    else:
-                        ignored_count += 1
-                        logger.debug(f"Ignoring file: {relative_path}")
+                # Log ignored directories for debugging
+                ignored_dirs = set(original_dirs) - set(dirs)
+                if ignored_dirs:
+                    logger.debug(f"Ignoring directories in {root}: {ignored_dirs}")
+                
+                # Process files in current directory
+                for filename in filenames:
+                    try:
+                        file_path = Path(root) / filename
+                        
+                        # Check if file extension is supported
+                        if file_path.suffix in SUPPORTED_EXTENSIONS or filename in SUPPORTED_EXTENSIONS:
+                            # Check if file should be ignored
+                            relative_path = str(file_path.relative_to(repo_path))
+                            if not _should_ignore(relative_path, ignore_patterns):
+                                # Pattern 1: Test file accessibility
+                                try:
+                                    # Quick accessibility test
+                                    file_path.stat()
+                                    files.append(file_path)
+                                    logger.debug(f"Found supported file: {relative_path}")
+                                except (PermissionError, OSError) as e:
+                                    permission_errors.append(str(file_path))
+                                    logger.debug(f"Permission denied: {relative_path}")
+                            else:
+                                ignored_count += 1
+                                logger.debug(f"Ignoring file: {relative_path}")
+                                
+                    except Exception as e:
+                        # Log individual file errors and continue
+                        logger.debug(f"Error processing file {filename}: {e}")
+                        continue
+                        
+            except (PermissionError, OSError) as e:
+                # Log directory access errors and continue
+                logger.warning(f"Cannot access directory {root}: {e}")
+                continue
                         
     except Exception as e:
-        logger.error(f"Error during file discovery in {repo_path}: {e}")
-        raise
+        raise FileSystemError(f"Error during file discovery: {e}", str(repo_path), "scan")
+    
+    # Report results
+    if permission_errors:
+        logger.warning(f"Skipped {len(permission_errors)} files due to permission errors")
+        logger.debug(f"Permission errors: {permission_errors[:5]}{'...' if len(permission_errors) > 5 else ''}")
     
     logger.info(f"File discovery complete: {len(files)} files found, {ignored_count} files ignored")
     return files

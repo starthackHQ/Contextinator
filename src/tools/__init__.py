@@ -39,48 +39,71 @@ class SearchTool:
             repo_name: Optional repository name (for future use)
             
         Raises:
-            RuntimeError: If ChromaDB connection fails
-            ValueError: If collection doesn't exist
+            SearchError: If ChromaDB connection fails
+            ValidationError: If collection doesn't exist
         """
+        from ..utils.exceptions import SearchError, ValidationError
+        
+        if not collection_name:
+            raise ValidationError("Collection name cannot be empty", "collection_name", "non-empty string")
+            
         self.collection_name = collection_name
-        self.client = self._get_client()
-        self.collection = self._get_collection()
+        
+        try:
+            self.client = self._get_client()
+            self.collection = self._get_collection()
+        except Exception as e:
+            raise SearchError(f"Failed to initialize search tool: {e}", collection_name, "initialization")
     
     def _get_client(self) -> chromadb.Client:
         """
-        Get ChromaDB client (matches viewer.py pattern).
+        Get ChromaDB client with fallback handling.
         
         Returns:
             ChromaDB client instance
             
         Raises:
-            RuntimeError: If client initialization fails
+            SearchError: If client initialization fails
         """
+        from ..utils.exceptions import SearchError
+        
         try:
+            # Try server first, fallback to local
             if USE_CHROMA_SERVER:
-                return chromadb.HttpClient(host="localhost", port=8000)
-            else:
-                from pathlib import Path
-                db_path = str(Path.cwd() / '.chromadb')
-                return chromadb.PersistentClient(path=db_path)
+                try:
+                    client = chromadb.HttpClient(host="localhost", port=8000)
+                    # Test connection
+                    client.heartbeat()
+                    return client
+                except Exception as e:
+                    logger.warning(f"ChromaDB server unavailable, using local storage: {e}")
+                    # Fall through to local client
+            
+            # Use local client
+            from pathlib import Path
+            db_path = str(Path.cwd() / '.chromadb')
+            return chromadb.PersistentClient(path=db_path)
+            
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize ChromaDB client: {e}")
+            raise SearchError(f"Failed to initialize ChromaDB client: {e}", self.collection_name, "client_init")
     
     def _get_collection(self) -> chromadb.Collection:
         """
-        Get collection by name.
+        Get collection by name with error handling.
         
         Returns:
             ChromaDB collection instance
             
         Raises:
-            ValueError: If collection doesn't exist
+            ValidationError: If collection doesn't exist
         """
+        from ..utils.exceptions import ValidationError
+        
         try:
             safe_name = sanitize_collection_name(self.collection_name)
             return self.client.get_collection(name=safe_name)
         except Exception as e:
-            raise ValueError(f"Collection '{self.collection_name}' not found: {e}")
+            raise ValidationError(f"Collection '{self.collection_name}' not found: {e}", "collection_name", "existing collection")
     
     def format_results(self, results: Dict[str, Any]) -> List[Dict[str, Any]]:
         """

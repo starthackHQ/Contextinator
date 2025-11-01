@@ -66,45 +66,60 @@ class ChromaVectorStore:
         Initialize ChromaDB client with fallback from server to local.
         
         Raises:
-            RuntimeError: If both server and local client initialization fail
+            VectorStoreError: If both server and local client initialization fail
         """
-        try:
-            if USE_CHROMA_SERVER:
+        from ..utils.exceptions import VectorStoreError
+        
+        # Try server first, fallback to local
+        if USE_CHROMA_SERVER:
+            try:
                 logger.info(f"Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
                 self.client = chromadb.HttpClient(host="localhost", port=8000)
                 
-                try:
-                    self.client.heartbeat()
-                    logger.info("ChromaDB server connection successful")
-                    return
-                except Exception as e:
-                    logger.error(f"ChromaDB server connection failed: {str(e)}")
-                    logger.info("🔄 Falling back to local persistence...")
-                    raise e
-            else:
-                self._initialize_local_client()
+                # Test connection
+                self.client.heartbeat()
+                logger.info("ChromaDB server connection successful")
+                return
                 
+            except Exception as e:
+                logger.warning(f"ChromaDB server connection failed: {e}")
+                logger.info("🔄 Falling back to local persistence...")
+                # Continue to local fallback
+        
+        # Initialize local client (either by choice or as fallback)
+        try:
+            self._initialize_local_client()
         except Exception as e:
             if USE_CHROMA_SERVER:
-                logger.info("🔄 Server connection failed, using local persistence...")
-                try:
-                    self._initialize_local_client()
-                except Exception as fallback_e:
-                    raise RuntimeError(f"Failed to initialize ChromaDB client: {str(fallback_e)}")
+                raise VectorStoreError(f"Both server and local ChromaDB initialization failed: {e}", "initialize")
             else:
-                raise RuntimeError(f"Failed to initialize ChromaDB client: {str(e)}")
+                raise VectorStoreError(f"Local ChromaDB initialization failed: {e}", "initialize")
     
     def _initialize_local_client(self) -> None:
-        """Initialize local ChromaDB client with persistence."""
-        os.makedirs(self.db_path, exist_ok=True)
-        self.client = chromadb.PersistentClient(
-            path=self.db_path,
-            settings=Settings(
-                anonymized_telemetry=False,
-                allow_reset=True
+        """
+        Initialize local ChromaDB client with persistence.
+        
+        Raises:
+            VectorStoreError: If local client initialization fails
+        """
+        from ..utils.exceptions import VectorStoreError, FileSystemError
+        
+        try:
+            os.makedirs(self.db_path, exist_ok=True)
+        except Exception as e:
+            raise FileSystemError(f"Cannot create ChromaDB directory: {e}", self.db_path, "create")
+            
+        try:
+            self.client = chromadb.PersistentClient(
+                path=self.db_path,
+                settings=Settings(
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
             )
-        )
-        logger.info(f"ChromaDB local persistence at: {self.db_path}")
+            logger.info(f"ChromaDB local persistence at: {self.db_path}")
+        except Exception as e:
+            raise VectorStoreError(f"Failed to create local ChromaDB client: {e}", "initialize")
     
     def _get_or_create_collection(self, collection_name: str) -> chromadb.Collection:
         """
@@ -117,19 +132,23 @@ class ChromaVectorStore:
             ChromaDB collection instance
             
         Raises:
-            RuntimeError: If collection creation/retrieval fails
+            VectorStoreError: If collection creation/retrieval fails
         """
+        from ..utils.exceptions import VectorStoreError
+        
         if not self.client:
-            raise RuntimeError("ChromaDB client not initialized")
+            raise VectorStoreError("ChromaDB client not initialized", "get_collection")
             
         try:
             safe_name = sanitize_collection_name(collection_name)
             
+            # Try to get existing collection, fallback to create new
             try:
                 collection = self.client.get_collection(name=safe_name)
                 logger.info(f"Using existing collection: {safe_name}")
                 return collection
             except Exception:
+                # Collection doesn't exist, create it
                 collection = self.client.create_collection(
                     name=safe_name,
                     metadata={"description": f"Code chunks for repository: {collection_name}"}
@@ -138,7 +157,7 @@ class ChromaVectorStore:
                 return collection
                 
         except Exception as e:
-            raise RuntimeError(f"Failed to get/create collection '{collection_name}': {str(e)}")
+            raise VectorStoreError(f"Failed to get/create collection '{collection_name}': {e}", "get_collection", collection_name)
     
     def _prepare_batch_data(self, embedded_chunks: List[Dict[str, Any]]) -> Tuple[List[str], List[List[float]], List[Dict[str, Any]], List[str]]:
         """
@@ -215,7 +234,7 @@ class ChromaVectorStore:
         batch_size: Optional[int] = None
     ) -> Dict[str, Any]:
         """
-        Store embeddings in ChromaDB with batch processing.
+        Store embeddings in ChromaDB with batch processing and error recovery.
         
         Args:
             embedded_chunks: List of chunks with embeddings
@@ -226,12 +245,17 @@ class ChromaVectorStore:
             Storage statistics dictionary
             
         Raises:
-            ValueError: If no chunks provided
-            RuntimeError: If storage fails
+            ValidationError: If no chunks provided or collection_name is empty
+            VectorStoreError: If storage fails completely
         """
+        from ..utils.exceptions import ValidationError, VectorStoreError
+        
         if not embedded_chunks:
             logger.info("No embedded chunks to store")
             return {"stored_count": 0, "collection_name": collection_name}
+            
+        if not collection_name:
+            raise ValidationError("Collection name cannot be empty", "collection_name", "non-empty string")
         
         batch_size = batch_size or CHROMA_BATCH_SIZE
         
@@ -239,24 +263,29 @@ class ChromaVectorStore:
         logger.info(f"📦 Collection: {collection_name}")
         logger.info(f"📊 Batch size: {batch_size}")
         
-        collection = self._get_or_create_collection(collection_name)
+        try:
+            collection = self._get_or_create_collection(collection_name)
+        except Exception as e:
+            raise VectorStoreError(f"Failed to get/create collection: {e}", "create_collection", collection_name)
         
         # Clear existing data in collection
         try:
             collection.delete()
             logger.info("🗑️  Cleared existing data in collection")
-        except Exception:
-            # Collection might be empty, continue
-            pass
+        except Exception as e:
+            logger.warning(f"Could not clear existing collection data: {e}")
+            # Continue anyway - might be empty collection lol
         
-        # Process in batches
+        # Process in batches, continue on failures
         total_batches = (len(embedded_chunks) + batch_size - 1) // batch_size
         progress = ProgressTracker(total_batches, "Storing embeddings")
         stored_count = 0
+        failed_batches = []
         
         for batch_idx in range(0, len(embedded_chunks), batch_size):
             batch_end = min(batch_idx + batch_size, len(embedded_chunks))
             batch_chunks = embedded_chunks[batch_idx:batch_end]
+            batch_num = batch_idx // batch_size + 1
             
             try:
                 ids, embeddings, metadatas, documents = self._prepare_batch_data(batch_chunks)
@@ -272,29 +301,48 @@ class ChromaVectorStore:
                 progress.update()
                 
             except Exception as e:
-                progress.finish()
-                raise RuntimeError(f"Failed to store batch {batch_idx//batch_size + 1}: {str(e)}")
+                # Log batch failure and continue with other batches
+                logger.warning(f"Batch {batch_num}/{total_batches} failed, skipping {len(batch_chunks)} chunks: {e}")
+                failed_batches.append(batch_num)
+                progress.update()
+                continue
         
         progress.finish()
         
+        # Check if any data was stored
+        if stored_count == 0:
+            raise VectorStoreError("All batches failed - no embeddings stored", "store", collection_name)
+        
         # Get final collection count
-        collection_count = collection.count()
+        try:
+            collection_count = collection.count()
+        except Exception as e:
+            logger.warning(f"Could not get collection count: {e}")
+            collection_count = stored_count  # Use our count as fallback
+        
+        # Report results
+        if failed_batches:
+            logger.warning(f"Failed to store {len(failed_batches)} batches: {failed_batches}")
         
         stats = {
             "stored_count": stored_count,
             "collection_name": sanitize_collection_name(collection_name),
             "collection_count": collection_count,
-            "db_path": self.db_path
+            "db_path": self.db_path,
+            "failed_batches": len(failed_batches),
+            "success_rate": f"{((total_batches - len(failed_batches)) / total_batches * 100):.1f}%"
         }
         
         logger.info(f"✅ Successfully stored {stored_count} embeddings")
         logger.info(f"📊 Collection now contains {collection_count} items")
+        if failed_batches:
+            logger.warning(f"⚠️  {len(failed_batches)} batches failed out of {total_batches}")
         
         return stats
     
     def get_collection_info(self, collection_name: str) -> Dict[str, Any]:
         """
-        Get information about a collection.
+        Get information about a collection with error recovery.
         
         Args:
             collection_name: Name of the collection
@@ -302,8 +350,10 @@ class ChromaVectorStore:
         Returns:
             Collection information dictionary
         """
+        from ..utils.exceptions import VectorStoreError
+        
         if not self.client:
-            raise RuntimeError("ChromaDB client not initialized")
+            raise VectorStoreError("ChromaDB client not initialized", "get_info")
             
         try:
             safe_name = sanitize_collection_name(collection_name)
@@ -315,35 +365,54 @@ class ChromaVectorStore:
                 "metadata": collection.metadata,
                 "exists": True
             }
-        except ValueError:
+        except Exception as e:
+            # Collection doesn't exist or other error
+            logger.debug(f"Collection info error for '{collection_name}': {e}")
             return {
                 "name": sanitize_collection_name(collection_name), 
                 "count": 0, 
-                "exists": False
+                "exists": False,
+                "error": str(e)
             }
     
     def list_collections(self) -> List[Dict[str, Any]]:
         """
-        List all collections in the database.
+        List all collections in the database with error recovery.
         
         Returns:
             List of collection information dictionaries
         """
+        from ..utils.exceptions import VectorStoreError
+        
         if not self.client:
-            raise RuntimeError("ChromaDB client not initialized")
+            raise VectorStoreError("ChromaDB client not initialized", "list_collections")
             
         try:
             collections = self.client.list_collections()
-            return [
-                {
-                    "name": col.name,
-                    "count": col.count(),
-                    "metadata": col.metadata
-                }
-                for col in collections
-            ]
+            result = []
+            
+            # Continue processing even if individual collections fail
+            for col in collections:
+                try:
+                    result.append({
+                        "name": col.name,
+                        "count": col.count(),
+                        "metadata": col.metadata
+                    })
+                except Exception as e:
+                    logger.warning(f"Error getting info for collection '{col.name}': {e}")
+                    # Add partial info
+                    result.append({
+                        "name": col.name,
+                        "count": -1,  # Indicates error
+                        "metadata": {},
+                        "error": str(e)
+                    })
+            
+            return result
+            
         except Exception as e:
-            logger.error(f"Error listing collections: {str(e)}")
+            logger.error(f"Error listing collections: {e}")
             return []
 
 

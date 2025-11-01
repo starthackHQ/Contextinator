@@ -37,8 +37,8 @@ def semantic_search(
         List of most relevant chunks with cosine similarity scores
         
     Raises:
-        ValueError: If collection_name or query is empty
-        RuntimeError: If ChromaDB query fails
+        ValidationError: If collection_name or query is empty
+        SearchError: If search fails
     
     Examples:
         >>> # Find authentication logic
@@ -50,17 +50,25 @@ def semantic_search(
         >>> # Find database logic in specific file
         >>> semantic_search("my-repo", "database connection", file_path="db.py")
     """
+    from ..utils.exceptions import ValidationError, SearchError
+    
     if not collection_name:
-        raise ValueError("Collection name cannot be empty")
+        raise ValidationError("Collection name cannot be empty", "collection_name", "non-empty string")
     if not query:
-        raise ValueError("Query cannot be empty")
+        raise ValidationError("Query cannot be empty", "query", "non-empty string")
     if n_results <= 0:
-        raise ValueError("n_results must be positive")
+        raise ValidationError("n_results must be positive", "n_results", "positive integer")
     
     logger.debug(f"Semantic search: '{query}' in collection '{collection_name}'")
     
     try:
-        tool = SearchTool(collection_name)
+        # Pattern 2: Handle missing collection gracefully
+        try:
+            tool = SearchTool(collection_name)
+        except ValueError as e:
+            # Collection doesn't exist
+            logger.warning(f"Collection '{collection_name}' not found: {e}")
+            return []
         
         # Build where clause for metadata filters
         where = {}
@@ -78,6 +86,11 @@ def semantic_search(
             where=where if where else None,
             include=['documents', 'metadatas', 'distances']
         )
+        
+        # Handle empty results
+        if not results or not results.get('ids') or not results['ids'][0]:
+            logger.debug("No semantic matches found")
+            return []
         
         # Format results with cosine similarity scores
         # ChromaDB returns distances, convert to cosine similarity: similarity = 1 - distance
@@ -99,9 +112,12 @@ def semantic_search(
         logger.debug(f"Found {len(formatted)} semantic matches")
         return formatted
         
+    except (ValidationError, SearchError):
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
         logger.error(f"Semantic search failed: {e}")
-        raise RuntimeError(f"Semantic search failed: {e}")
+        raise SearchError(f"Semantic search failed: {e}", query, "semantic")
 
 
 def semantic_search_with_context(

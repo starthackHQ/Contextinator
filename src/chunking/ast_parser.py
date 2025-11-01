@@ -134,10 +134,13 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
         Dictionary containing AST nodes and metadata, or None if parsing fails
         
     Raises:
-        ValueError: If save_ast is True but chunks_dir is None
+        ValidationError: If save_ast is True but chunks_dir is None
+        FileSystemError: If file cannot be read
     """
+    from ..utils.exceptions import ValidationError, FileSystemError, ParsingError
+    
     if save_ast and chunks_dir is None:
-        raise ValueError("chunks_dir is required when save_ast=True")
+        raise ValidationError("chunks_dir is required when save_ast=True", "chunks_dir", "Path object")
         
     try:
         language = SUPPORTED_EXTENSIONS.get(file_path.suffix)
@@ -145,31 +148,39 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
             logger.debug(f"Unsupported file extension: {file_path.suffix}")
             return None
         
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        # Handle file reading errors gracefully
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+        except (OSError, IOError, PermissionError) as e:
+            raise FileSystemError(f"Cannot read file: {e}", str(file_path), "read")
         
         if not TREE_SITTER_AVAILABLE:
-            # Fallback: return entire file as one chunk
+            # Fallback when Tree-sitter unavailable
             logger.warning(f"Tree-sitter not available, using fallback for {file_path}")
             result = _fallback_parse(file_path, language, content)
             
-            # Save AST visualization if requested (even for fallback)
             if save_ast and chunks_dir:
                 _save_ast_safely(file_path, language, None, content, result['nodes'], chunks_dir, result.get('tree_info'))
             
             return result
-        
-        # Parse with tree-sitter
-        parser = get_parser(language)
-        if not parser:
-            # Fallback if language not supported
-            logger.warning(f"No parser available for {language}, using fallback for {file_path}")
+
+        # Try AST parsing with fallback
+        try:
+            parser = get_parser(language)
+            if not parser:
+                logger.warning(f"No parser available for {language}, using fallback for {file_path}")
+                return _fallback_parse(file_path, language, content)
+            
+            tree = parser.parse(bytes(content, 'utf-8'))
+            nodes = extract_nodes(tree.root_node, content, language)
+            
+            logger.debug(f"Parsed {file_path} - Found {len(nodes)} semantic nodes")
+            
+        except Exception as e:
+            # Fallback to file-level chunking on any parsing error
+            logger.warning(f"AST parsing failed for {file_path}, using fallback: {e}")
             return _fallback_parse(file_path, language, content)
-        
-        tree = parser.parse(bytes(content, 'utf-8'))
-        nodes = extract_nodes(tree.root_node, content, language)
-        
-        logger.debug(f"Parsed {file_path} - Found {len(nodes)} semantic nodes")
         
         # If no nodes extracted, fallback to file-level
         if not nodes:
@@ -196,8 +207,12 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
         
         return result
     
+    except (ValidationError, FileSystemError):
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        logger.error(f"Error parsing {file_path}: {e}")
+        # Pattern 1: Log unexpected errors and continue
+        logger.error(f"Unexpected error parsing {file_path}: {e}")
         return None
 
 

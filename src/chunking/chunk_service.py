@@ -45,16 +45,25 @@ def chunk_repository(
         List of chunk dictionaries containing code content and metadata
         
     Raises:
-        ValueError: If repo_path doesn't exist or is not a directory
+        ValidationError: If repo_path doesn't exist or is not a directory
+        FileSystemError: If unable to access repository or save files
     """
+    from ..utils.exceptions import ValidationError, FileSystemError
+    
     repo_path = Path(repo_path)
     if not repo_path.exists():
-        raise ValueError(f"Repository path does not exist: {repo_path}")
+        raise ValidationError(f"Repository path does not exist: {repo_path}", "repo_path", "existing directory")
     if not repo_path.is_dir():
-        raise ValueError(f"Repository path is not a directory: {repo_path}")
+        raise ValidationError(f"Repository path is not a directory: {repo_path}", "repo_path", "directory")
         
     logger.info(f"Discovering files in {repo_path}...")
-    files = discover_files(repo_path)
+
+    # Handle file discovery errors gracefully
+    try:
+        files = discover_files(repo_path)
+    except Exception as e:
+        raise FileSystemError(f"Failed to discover files: {e}", str(repo_path), "scan")
+        
     logger.info(f"Found {len(files)} files to process")
     
     if not files:
@@ -72,6 +81,7 @@ def chunk_repository(
     # Initialize collector for deduplication
     collector = NodeCollector()
     all_chunks = []
+    failed_files = []
     
     # Progress tracking
     progress = ProgressTracker(len(files), "Chunking files")
@@ -79,13 +89,14 @@ def chunk_repository(
     if save_ast:
         logger.info("🌳 AST visualization enabled - saving tree structures...")
         logger.info("   Using installed tree-sitter language modules...")
-    
-    # Process each file
+
+    # Process each file, continue on failures
     for file_path in files:
         try:
             # Parse file with optional AST saving
             parsed = parse_file(file_path, save_ast=save_ast, chunks_dir=chunks_dir)
             if not parsed:
+                logger.debug(f"Skipping unsupported file: {file_path}")
                 progress.update()
                 continue
             
@@ -94,34 +105,52 @@ def chunk_repository(
             
             # Split large chunks if needed
             for chunk in chunks:
-                split_chunks = split_chunk(chunk, max_tokens)
-                all_chunks.extend(split_chunks)
-                
+                try:
+                    split_chunks = split_chunk(chunk, max_tokens)
+                    all_chunks.extend(split_chunks)
+                except Exception as e:
+                    logger.warning(f"Failed to split chunk from {file_path}: {e}")
+                    # Add original chunk if splitting fails
+                    all_chunks.append(chunk)
+                    
         except Exception as e:
-            logger.error(f"Error processing {file_path}: {e}")
+            # Log error and continue with other files
+            logger.warning(f"Failed to process {file_path}: {e}")
+            failed_files.append(str(file_path))
         finally:
             progress.update()
     
     progress.finish()
     
+    # Report processing results
+    if failed_files:
+        logger.warning(f"Failed to process {len(failed_files)} files: {failed_files[:5]}{'...' if len(failed_files) > 5 else ''}")
+    
     # Get statistics
     stats = collector.get_stats()
     
     logger.info("\n📊 Chunking Statistics:")
-    logger.info(f"  Files processed: {len(files)}")
+    logger.info(f"  Files processed: {len(files) - len(failed_files)}/{len(files)}")
     logger.info(f"  Total chunks: {len(all_chunks)}")
     logger.info(f"  Unique chunks: {stats['unique_hashes']}")
     logger.info(f"  Duplicates found: {stats['duplicates_found']}")
     
     # Save chunks if requested
     if save:
-        save_chunks(all_chunks, actual_output_dir, repo_name, stats)
+        try:
+            save_chunks(all_chunks, actual_output_dir, repo_name, stats)
+        except Exception as e:
+            logger.error(f"Failed to save chunks: {e}")
+            # Don't raise - return chunks even if saving fails
     
     # Save AST overview if requested
     if save_ast and chunks_dir:
-        logger.info("🌳 Creating AST overview...")
-        save_ast_overview(chunks_dir)
-        logger.info(f"AST files saved in: {chunks_dir / 'ast_trees'}")
+        try:
+            logger.info("🌳 Creating AST overview...")
+            save_ast_overview(chunks_dir)
+            logger.info(f"AST files saved in: {chunks_dir / 'ast_trees'}")
+        except Exception as e:
+            logger.warning(f"Failed to save AST overview: {e}")
     
     return all_chunks
 
