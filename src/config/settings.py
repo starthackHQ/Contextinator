@@ -192,10 +192,12 @@ def sanitize_collection_name(repo_name: str) -> str:
         Sanitized collection name following ChromaDB naming rules
         
     Raises:
-        ValueError: If repo_name is empty or None
+        ValidationError: If repo_name is empty or None
     """
+    from ..utils.exceptions import ValidationError
+    
     if not repo_name:
-        raise ValueError("Repository name cannot be empty")
+        raise ValidationError("Repository name cannot be empty", "repo_name", "non-empty string")
         
     sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', repo_name)
 
@@ -219,8 +221,21 @@ def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: s
         Path to storage directory
         
     Raises:
-        ValueError: If storage_type is not recognized
+        ValidationError: If storage_type is not recognized or repo_name is empty
     """
+    from ..utils.exceptions import ValidationError
+    
+    if not repo_name:
+        raise ValidationError("Repository name cannot be empty", "repo_name", "non-empty string")
+    
+    valid_types = {'chunks', 'embeddings', 'chromadb'}
+    if storage_type not in valid_types:
+        raise ValidationError(
+            f"Unknown storage type: {storage_type}. Must be one of: {', '.join(valid_types)}", 
+            "storage_type", 
+            f"one of {valid_types}"
+        )
+    
     safe_name = sanitize_collection_name(repo_name)
     base_path = Path(base_dir)
     
@@ -230,8 +245,6 @@ def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: s
         return base_path / EMBEDDINGS_DIR / safe_name
     elif storage_type == 'chromadb':
         return base_path / CHROMA_DB_DIR / safe_name
-    else:
-        raise ValueError(f"Unknown storage type: {storage_type}")
 
 
 def validate_config() -> None:
@@ -239,26 +252,28 @@ def validate_config() -> None:
     Validate configuration settings and raise errors for invalid values.
     
     Raises:
-        ValueError: If critical configuration is invalid
+        ConfigurationError: If critical configuration is invalid
     """
+    from ..utils.exceptions import ConfigurationError
+    
     if MAX_TOKENS <= 0:
-        raise ValueError("MAX_TOKENS must be positive")
+        raise ConfigurationError("MAX_TOKENS must be positive", "MAX_TOKENS")
         
     if CHUNK_OVERLAP < 0:
-        raise ValueError("CHUNK_OVERLAP cannot be negative")
+        raise ConfigurationError("CHUNK_OVERLAP cannot be negative", "CHUNK_OVERLAP")
         
     if CHUNK_OVERLAP >= MAX_TOKENS:
-        raise ValueError("CHUNK_OVERLAP must be less than MAX_TOKENS")
+        raise ConfigurationError("CHUNK_OVERLAP must be less than MAX_TOKENS", "CHUNK_OVERLAP")
         
     if not OPENAI_API_KEY:
         import warnings
         warnings.warn("OPENAI_API_KEY not set - OpenAI embeddings will not work")
         
     if EMBEDDING_BATCH_SIZE <= 0:
-        raise ValueError("EMBEDDING_BATCH_SIZE must be positive")
+        raise ConfigurationError("EMBEDDING_BATCH_SIZE must be positive", "EMBEDDING_BATCH_SIZE")
         
     if CHROMA_BATCH_SIZE <= 0:
-        raise ValueError("CHROMA_BATCH_SIZE must be positive")
+        raise ConfigurationError("CHROMA_BATCH_SIZE must be positive", "CHROMA_BATCH_SIZE")
 
 
 # Export all public symbols

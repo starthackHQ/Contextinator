@@ -1,107 +1,159 @@
-"""Output formatting utilities for CLI search results."""
+"""
+Output formatting utilities for CLI search results.
+
+This module provides functions to format and display search results,
+file contents, and other CLI output using the centralized logger.
+"""
+
 import json
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+from .logger import logger
 
 
-def format_search_results(results: List[Dict[str, Any]], query: str = None, collection: str = None) -> None:
-    """Format and print search results to console."""
+def format_search_results(results: List[Dict[str, Any]], query: Optional[str] = None, collection: Optional[str] = None) -> None:
+    """
+    Format and display search results to console using logger.
+    
+    Args:
+        results: List of search result dictionaries
+        query: Optional search query string
+        collection: Optional collection name
+    """
     if not results:
-        print("❌ No results found")
+        logger.info("❌ No results found")
         return
     
     # Header
     if query:
-        print(f"\n🔍 Search Results: \"{query}\"")
+        logger.info(f"\n🔍 Search Results: \"{query}\"")
     else:
-        print(f"\n🔍 Search Results")
+        logger.info("\n🔍 Search Results")
     
     if collection:
-        print(f"Collection: {collection}")
+        logger.info(f"Collection: {collection}")
     
-    print(f"Found: {len(results)} result(s)\n")
+    logger.info(f"Found: {len(results)} result(s)\n")
     
     # Results
     for i, result in enumerate(results, 1):
-        print("━" * 80)
+        logger.info("━" * 80)
         
         # Result header with similarity if available
         if 'cosine_similarity' in result:
-            print(f"Result {i}/{len(results)} | Similarity: {result['cosine_similarity']:.3f}")
+            logger.info(f"Result {i}/{len(results)} | Similarity: {result['cosine_similarity']:.3f}")
         else:
-            print(f"Result {i}/{len(results)}")
+            logger.info(f"Result {i}/{len(results)}")
         
-        print("━" * 80)
+        logger.info("━" * 80)
         
         # Metadata
         meta = result.get('metadata', {})
-        print(f"📄 File: {meta.get('file_path', 'N/A')}")
+        logger.info(f"📄 File: {meta.get('file_path', 'N/A')}")
         
         node_type = meta.get('node_type', 'N/A')
         node_name = meta.get('node_name', 'N/A')
-        print(f"🏷️  Type: {node_type} | Symbol: {node_name}")
+        logger.info(f"🏷️  Type: {node_type} | Symbol: {node_name}")
         
         start_line = meta.get('start_line', 'N/A')
         end_line = meta.get('end_line', 'N/A')
-        print(f"📍 Lines: {start_line}-{end_line}\n")
+        logger.info(f"📍 Lines: {start_line}-{end_line}\n")
         
         # Content (truncate if too long)
         content = result.get('content', '')
         if len(content) > 500:
-            print(content[:500] + "\n... (truncated)")
+            logger.info(content[:500] + "\n... (truncated)")
         else:
-            print(content)
+            logger.info(content)
         
-        print()
+        logger.info("")
 
 
 def format_file_content(file_data: Dict[str, Any]) -> None:
-    """Format and print reconstructed file content."""
-    if not file_data.get('found'):
-        print(f"❌ File not found: {file_data.get('file_path')}")
+    """
+    Format and display reconstructed file content using logger.
+    
+    Args:
+        file_data: Dictionary containing file information and chunks
+    """
+    if not file_data.get('chunks'):
+        logger.error(f"❌ File not found: {file_data.get('file_path')}")
         return
     
-    print(f"\n📄 File: {file_data['file_path']}")
-    print(f"📊 Total chunks: {file_data['total_chunks']}")
-    print("━" * 80)
+    logger.info(f"\n📄 File: {file_data['file_path']}")
+    logger.info(f"📊 Total chunks: {file_data['total_chunks']}")
+    logger.info("━" * 80)
     
     if file_data.get('content'):
-        print(file_data['content'])
+        # Full file content available
+        logger.info(file_data['content'])
     else:
-        # Print chunks separately
-        for i, chunk in enumerate(file_data.get('chunks', []), 1):
-            print(f"\n--- Chunk {i}/{file_data['total_chunks']} (Lines {chunk['start_line']}-{chunk['metadata'].get('end_line')}) ---")
-            print(chunk['content'])
+        # Show individual chunks
+        for i, chunk in enumerate(file_data['chunks'], 1):
+            logger.info(f"\n--- Chunk {i}/{file_data['total_chunks']} (Lines {chunk['start_line']}-{chunk['metadata'].get('end_line')}) ---")
+            logger.info(chunk['content'])
 
 
 def format_symbol_list(symbols: List[str], title: str = "Symbols") -> None:
-    """Format and print list of symbols."""
+    """
+    Format and display list of symbols using logger.
+    
+    Args:
+        symbols: List of symbol names
+        title: Title for the symbol list
+    """
     if not symbols:
-        print("❌ No symbols found")
+        logger.info("❌ No symbols found")
         return
     
-    print(f"\n📚 {title}: {len(symbols)} found\n")
+    logger.info(f"\n📚 {title}: {len(symbols)} found\n")
     for symbol in symbols:
-        print(f"  • {symbol}")
-    print()
+        logger.info(f"  • {symbol}")
+    logger.info("")
 
 
 def format_file_list(files: List[str]) -> None:
-    """Format and print list of files."""
+    """
+    Format and display list of files using logger.
+    
+    Args:
+        files: List of file paths
+    """
     if not files:
-        print("❌ No files found")
+        logger.info("❌ No files found")
         return
     
-    print(f"\n📁 Files: {len(files)} found\n")
+    logger.info(f"\n📁 Files: {len(files)} found\n")
     for file in files:
-        print(f"  • {file}")
-    print()
+        logger.info(f"  • {file}")
+    logger.info("")
 
 
-def export_json(data: Any, filepath: str) -> None:
-    """Export data to JSON file."""
+def export_results_json(results: List[Dict[str, Any]], filepath: str) -> None:
+    """
+    Export search results to JSON file.
+    
+    Args:
+        results: List of search results
+        filepath: Path to output JSON file
+        
+    Raises:
+        FileSystemError: If unable to write file
+    """
+    from .exceptions import FileSystemError
+    
     try:
         with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print(f"✅ Results exported to: {filepath}")
+            json.dump(results, f, indent=2, ensure_ascii=False)
+        logger.info(f"✅ Results exported to: {filepath}")
     except Exception as e:
-        print(f"❌ Failed to export JSON: {e}")
+        raise FileSystemError(f"Failed to export JSON: {e}", filepath, "write")
+
+
+__all__ = [
+    'export_results_json',
+    'format_file_content',
+    'format_file_list',
+    'format_search_results',
+    'format_symbol_list',
+]

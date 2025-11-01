@@ -27,10 +27,12 @@ class ProgressTracker:
             description: Description of the operation being tracked
             
         Raises:
-            ValueError: If total is negative
+            ValidationError: If total is negative
         """
+        from .exceptions import ValidationError
+        
         if total < 0:
-            raise ValueError("Total must be non-negative")
+            raise ValidationError("Total must be non-negative", "total", "non-negative integer")
             
         self.total = total
         self.current = 0
@@ -44,10 +46,12 @@ class ProgressTracker:
             n: Number of steps to advance (default: 1)
             
         Raises:
-            ValueError: If n is negative or would exceed total
+            ValidationError: If n is negative or would exceed total
         """
+        from .exceptions import ValidationError
+        
         if n < 0:
-            raise ValueError("Progress increment must be non-negative")
+            raise ValidationError("Progress increment must be non-negative", "n", "non-negative integer")
             
         if self.current + n > self.total:
             logger.warning(f"Progress update would exceed total: {self.current + n} > {self.total}")
@@ -55,11 +59,13 @@ class ProgressTracker:
             
         self.current += n
         percentage = (self.current / self.total * 100) if self.total > 0 else 0
-        print(f"\r{self.description}: {self.current}/{self.total} ({percentage:.1f}%)", end='', flush=True)
+        
+        # Log progress updates
+        logger.info(f"{self.description}: {self.current}/{self.total} ({percentage:.1f}%)")
     
     def finish(self) -> None:
-        """Mark progress as complete and add newline."""
-        print()  # New line after progress
+        """Mark progress as complete."""
+        logger.info(f"✅ {self.description} completed: {self.current}/{self.total}")
         logger.debug(f"Progress tracking completed: {self.description}")
 
 
