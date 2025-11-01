@@ -1,11 +1,26 @@
-from typing import List, Dict, Any, Set
+"""
+Node collector module for Contextinator.
+
+This module provides functionality to collect and deduplicate AST nodes
+from parsed files, tracking duplicate code across the codebase.
+"""
+
+from typing import Any, Dict, List, Optional, Set
+
 from ..utils import hash_content
+from ..utils.logger import logger
 
 
 class NodeCollector:
-    """Collects and deduplicates AST nodes."""
+    """
+    Collects and deduplicates AST nodes from parsed files.
     
-    def __init__(self):
+    Tracks unique code chunks by content hash and maintains statistics
+    about duplicates found across the codebase.
+    """
+    
+    def __init__(self) -> None:
+        """Initialize the node collector with empty state."""
         self.seen_hashes: Set[str] = set()
         self.chunks: List[Dict[str, Any]] = []
         self.duplicate_locations: Dict[str, List[str]] = {}
@@ -14,54 +29,80 @@ class NodeCollector:
         """
         Collect nodes from parsed file, deduplicating by content hash.
         
+        Processes all nodes from a parsed file, creates chunk metadata,
+        and tracks duplicates for deduplication statistics.
+        
         Args:
-            parsed_file: Parsed file data from ast_parser
+            parsed_file: Parsed file data from ast_parser containing 'nodes' list
         
         Returns:
-            List of unique chunks
+            List of unique chunks from this file
+            
+        Raises:
+            TypeError: If parsed_file is not a dictionary
+            KeyError: If required keys are missing from parsed_file
         """
+        if not isinstance(parsed_file, dict):
+            raise TypeError("parsed_file must be a dictionary")
+            
         if not parsed_file or 'nodes' not in parsed_file:
+            logger.debug("No nodes found in parsed file")
             return []
         
         collected = []
+        file_path = parsed_file.get('file_path', 'unknown')
+        language = parsed_file.get('language', 'unknown')
         
         for node in parsed_file['nodes']:
-            content = node['content']
-            content_hash = hash_content(content)
-            
-            # Create chunk metadata
-            chunk = {
-                'content': content,
-                'file_path': parsed_file['file_path'],
-                'language': parsed_file['language'],
-                'hash': content_hash,
-                'node_type': node['type'],
-                'node_name': node.get('name'),
-                'start_line': node['start_line'],
-                'end_line': node['end_line'],
-                'start_byte': node['start_byte'],
-                'end_byte': node['end_byte']
-            }
-            
-            # Track location
-            location = f"{parsed_file['file_path']}:{node['start_line']}-{node['end_line']}"
-            
-            if content_hash in self.seen_hashes:
-                # Duplicate found - track location
-                if content_hash not in self.duplicate_locations:
-                    self.duplicate_locations[content_hash] = []
-                self.duplicate_locations[content_hash].append(location)
-            else:
-                # New unique chunk
-                self.seen_hashes.add(content_hash)
-                chunk['locations'] = [location]
-                self.chunks.append(chunk)
-                collected.append(chunk)
+            try:
+                content = node['content']
+                content_hash = hash_content(content)
+                
+                # Create chunk metadata
+                chunk = {
+                    'content': content,
+                    'file_path': file_path,
+                    'language': language,
+                    'hash': content_hash,
+                    'node_type': node['type'],
+                    'node_name': node.get('name'),
+                    'start_line': node['start_line'],
+                    'end_line': node['end_line'],
+                    'start_byte': node['start_byte'],
+                    'end_byte': node['end_byte']
+                }
+                
+                # Track location for duplicate analysis
+                location = f"{file_path}:{node['start_line']}-{node['end_line']}"
+                
+                if content_hash in self.seen_hashes:
+                    # Duplicate found - track location
+                    if content_hash not in self.duplicate_locations:
+                        self.duplicate_locations[content_hash] = []
+                    self.duplicate_locations[content_hash].append(location)
+                    logger.debug(f"Duplicate code found: {location}")
+                else:
+                    # New unique chunk
+                    self.seen_hashes.add(content_hash)
+                    chunk['locations'] = [location]
+                    self.chunks.append(chunk)
+                    collected.append(chunk)
+                    
+            except (KeyError, TypeError) as e:
+                logger.warning(f"Skipping malformed node in {file_path}: {e}")
+                continue
         
+        logger.debug(f"Collected {len(collected)} unique nodes from {file_path}")
         return collected
     
     def get_stats(self) -> Dict[str, Any]:
-        """Get collection statistics."""
+        """
+        Get collection statistics.
+        
+        Returns:
+            Dictionary containing collection statistics including total chunks,
+            unique hashes, duplicates found, and duplicate locations
+        """
         return {
             'total_chunks': len(self.chunks),
             'unique_hashes': len(self.seen_hashes),
@@ -70,18 +111,30 @@ class NodeCollector:
         }
 
 
-def collect_nodes(parsed_file: Dict[str, Any], collector: NodeCollector = None) -> List[Dict[str, Any]]:
+def collect_nodes(
+    parsed_file: Dict[str, Any], 
+    collector: Optional[NodeCollector] = None
+) -> List[Dict[str, Any]]:
     """
     Convenience function to collect nodes from a parsed file.
     
     Args:
-        parsed_file: Parsed file data
+        parsed_file: Parsed file data from ast_parser
         collector: Optional NodeCollector instance for deduplication across files
     
     Returns:
-        List of chunks
+        List of chunks from the parsed file
+        
+    Raises:
+        TypeError: If parsed_file is not a dictionary
     """
     if collector is None:
         collector = NodeCollector()
     
     return collector.collect_nodes(parsed_file)
+
+
+__all__ = [
+    'NodeCollector',
+    'collect_nodes',
+]

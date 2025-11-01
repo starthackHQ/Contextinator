@@ -1,12 +1,21 @@
+"""
+Repository utilities for Contextinator.
+
+This module provides functions for working with Git repositories including
+cloning, path resolution, and URL validation.
+"""
+
 import os
 import sys
 import tempfile
-from subprocess import run
 from pathlib import Path
-from ..utils.logger import logger
+from subprocess import run, CalledProcessError
+from typing import Optional
+
+from .logger import logger
 
 
-def git_root(path=None):
+def git_root(path: Optional[str] = None) -> str:
     """
     Return the git top-level directory for path (or cwd).
     
@@ -14,28 +23,26 @@ def git_root(path=None):
         path: Optional path to check. Uses cwd if None.
     
     Returns:
-        str: Git repository root path
+        Git repository root path
     
     Raises:
-        SystemExit: If not a git repository
+        SystemExit: If not a git repository or git command fails
     """
     path_params = []
     if path:
-        path_params = ['-C', path]
+        path_params = ['-C', str(path)]
     
-    result = run(['git'] + path_params + ['rev-parse', '--show-toplevel'], 
-                 capture_output=True, text=True)
-    
-    if result.returncode != 0:
-        if not path:
-            path = os.getcwd()
-        logger.error(f"{path} is not a git repo. Run this in a git repository or use --path or --repo-url")
+    try:
+        result = run(['git'] + path_params + ['rev-parse', '--show-toplevel'], 
+                     capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except (CalledProcessError, FileNotFoundError) as e:
+        check_path = path or os.getcwd()
+        logger.error(f"{check_path} is not a git repo. Run this in a git repository or use --path or --repo-url")
         sys.exit(1)
-    
-    return result.stdout.strip()
 
 
-def clone_repo(repo_url, target_dir=None):
+def clone_repo(repo_url: str, target_dir: Optional[str] = None) -> str:
     """
     Clone a git repository to target directory or temp directory.
     
@@ -44,27 +51,31 @@ def clone_repo(repo_url, target_dir=None):
         target_dir: Optional target directory. Uses temp dir if None.
     
     Returns:
-        str: Path to cloned repository
+        Path to cloned repository
     
     Raises:
         SystemExit: If cloning fails
+        ValueError: If repo_url is empty
     """
+    if not repo_url:
+        raise ValueError("Repository URL cannot be empty")
+        
     if not target_dir:
         target_dir = tempfile.mkdtemp(prefix='contextinator_')
     
     logger.info(f"📥 Cloning {repo_url}...")
-    result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 
-                 capture_output=True, text=True)
     
-    if result.returncode != 0:
-        logger.error(f"Failed to clone repository: {result.stderr}")
+    try:
+        result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 
+                     capture_output=True, text=True, check=True)
+        logger.info(f"Repository cloned to {target_dir}")
+        return target_dir
+    except (CalledProcessError, FileNotFoundError) as e:
+        logger.error(f"Failed to clone repository: {e}")
         sys.exit(1)
-    
-    logger.info(f"Repository cloned to {target_dir}")
-    return target_dir
 
 
-def resolve_repo_path(repo_url=None, path=None):
+def resolve_repo_path(repo_url: Optional[str] = None, path: Optional[str] = None) -> str:
     """
     Resolve repository path from URL, path, or current directory.
     
@@ -75,7 +86,10 @@ def resolve_repo_path(repo_url=None, path=None):
         path: Optional local path to repository
     
     Returns:
-        str: Resolved repository path
+        Resolved repository path
+        
+    Raises:
+        SystemExit: If repository resolution fails
     """
     if repo_url:
         return clone_repo(repo_url)
@@ -85,7 +99,7 @@ def resolve_repo_path(repo_url=None, path=None):
         return git_root()
 
 
-def is_valid_git_url(url):
+def is_valid_git_url(url: Optional[str]) -> bool:
     """
     Check if URL is a valid git repository URL.
     
@@ -93,9 +107,9 @@ def is_valid_git_url(url):
         url: URL to validate
     
     Returns:
-        bool: True if valid git URL
+        True if valid git URL, False otherwise
     """
-    if not url:
+    if not url or not isinstance(url, str):
         return False
     
     valid_patterns = [
@@ -108,7 +122,7 @@ def is_valid_git_url(url):
     return any(pattern in url.lower() for pattern in valid_patterns)
 
 
-def extract_repo_name_from_url(repo_url):
+def extract_repo_name_from_url(repo_url: Optional[str]) -> Optional[str]:
     """
     Extract repository name from a git URL.
     
@@ -121,9 +135,9 @@ def extract_repo_name_from_url(repo_url):
         repo_url: Git repository URL
     
     Returns:
-        str: Repository name
+        Repository name or None if URL is invalid
     """
-    if not repo_url:
+    if not repo_url or not isinstance(repo_url, str):
         return None
     
     # Remove .git suffix if present
@@ -135,3 +149,12 @@ def extract_repo_name_from_url(repo_url):
     # Works for both https and git@ URLs
     parts = url.replace(':', '/').split('/')
     return parts[-1] if parts else None
+
+
+__all__ = [
+    'git_root',
+    'clone_repo', 
+    'resolve_repo_path',
+    'is_valid_git_url',
+    'extract_repo_name_from_url',
+]

@@ -1,8 +1,20 @@
-import tiktoken
-from .logger import logger
+"""
+Token counting utilities for Contextinator.
+
+This module provides functions for counting tokens in text using tiktoken,
+OpenAI's official tokenizer, ensuring accurate token counts for chunking.
+"""
+
 from functools import lru_cache
+from typing import Optional
+
+import tiktoken
+
+from .logger import logger
+
+
 @lru_cache(maxsize=8)
-def _get_encoding(model: str):
+def _get_encoding(model: str) -> tiktoken.Encoding:
     """
     Get tiktoken encoding for a model with caching.
     
@@ -11,12 +23,18 @@ def _get_encoding(model: str):
     
     Returns:
         tiktoken.Encoding object
+        
+    Raises:
+        ValueError: If model is empty or None
     """
+    if not model:
+        raise ValueError("Model name cannot be empty")
+        
     try:
         return tiktoken.encoding_for_model(model)
     except KeyError:
         # Fallback to cl100k_base encoding (used by GPT-4, GPT-3.5-turbo, text-embedding-3-*)
-        logger.warning("Model '%s' not found in tiktoken, using cl100k_base encoding", model)
+        logger.warning(f"Model '{model}' not found in tiktoken, using cl100k_base encoding")
         return tiktoken.get_encoding("cl100k_base")
 
 
@@ -34,6 +52,10 @@ def count_tokens(text: str, model: str = "text-embedding-3-large") -> int:
     
     Returns:
         Number of tokens in the text
+        
+    Raises:
+        TypeError: If text is not a string
+        ValueError: If model is empty or None
     
     Examples:
         >>> count_tokens("Hello world")
@@ -41,8 +63,14 @@ def count_tokens(text: str, model: str = "text-embedding-3-large") -> int:
         >>> count_tokens("def hello():\\n    pass", model="gpt-4")
         8
     """
+    if not isinstance(text, str):
+        raise TypeError("Text must be a string")
+        
     if not text:
         return 0
     
     encoding = _get_encoding(model)
     return len(encoding.encode(text))
+
+
+__all__ = ['count_tokens']

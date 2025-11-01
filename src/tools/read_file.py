@@ -1,104 +1,124 @@
-"""Read file - Reconstruct complete files from chunks."""
-from typing import List, Dict, Any, Optional
+"""
+File reading module for Contextinator.
+
+This module provides functionality to read and list files from
+the ChromaDB collection with filtering capabilities.
+"""
+
+from typing import Any, Dict, List, Optional, Set
+
 from . import SearchTool
+from ..utils.logger import logger
 
 
 def read_file(
     collection_name: str,
     file_path: str,
-    join_chunks: bool = True
-) -> Dict[str, Any]:
+    node_type: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
-    Retrieve and reconstruct a complete file from chunks.
+    Read all chunks from a specific file.
     
     Args:
         collection_name: ChromaDB collection name
-        file_path: Full or partial file path to retrieve
-        join_chunks: If True, join chunks into single content string
-    
-    Returns:
-        Dictionary with file content and metadata
-    
-    Examples:
-        # Get complete file
-        read_file("my-repo", "src/auth.py")
+        file_path: Path to the file (can be partial)
+        node_type: Optional filter by node type
         
-        # Get chunks without joining
-        read_file("my-repo", "auth.py", join_chunks=False)
+    Returns:
+        List of chunks from the specified file
+        
+    Raises:
+        ValueError: If collection_name or file_path is empty
+        RuntimeError: If search fails
     """
-    tool = SearchTool(collection_name)
+    if not collection_name:
+        raise ValueError("Collection name cannot be empty")
+    if not file_path:
+        raise ValueError("File path cannot be empty")
     
-    results = tool.collection.get(
-        where={"file_path": {"$contains": file_path}},
-        include=['documents', 'metadatas']
-    )
+    logger.debug(f"Reading file '{file_path}' from collection '{collection_name}'")
     
-    if not results['ids']:
-        return {
-            'file_path': file_path,
-            'found': False,
-            'chunks': [],
-            'content': None
-        }
-    
-    # Sort chunks by start_line
-    chunks = []
-    for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
-        chunks.append({
-            'id': id_,
-            'content': doc,
-            'metadata': meta,
-            'start_line': meta.get('start_line', 0)
-        })
-    
-    chunks.sort(key=lambda x: x['start_line'])
-    
-    if join_chunks:
-        content = '\n'.join(chunk['content'] for chunk in chunks)
-        return {
-            'file_path': file_path,
-            'found': True,
-            'total_chunks': len(chunks),
-            'content': content,
-            'chunks': chunks
-        }
-    else:
-        return {
-            'file_path': file_path,
-            'found': True,
-            'total_chunks': len(chunks),
-            'chunks': chunks
-        }
+    try:
+        tool = SearchTool(collection_name)
+        
+        where = {"file_path": {"$contains": file_path}}
+        if node_type:
+            where["node_type"] = node_type
+        
+        results = tool.collection.get(
+            where=where,
+            include=['documents', 'metadatas']
+        )
+        
+        formatted = tool.format_results(results)
+        
+        # Sort by line number if available
+        formatted.sort(key=lambda x: x['metadata'].get('start_line', 0))
+        
+        logger.debug(f"Found {len(formatted)} chunks in file")
+        return formatted
+        
+    except Exception as e:
+        logger.error(f"Read file failed: {e}")
+        raise RuntimeError(f"Read file failed: {e}")
 
 
 def list_files(
     collection_name: str,
     language: Optional[str] = None,
-    path_filter: Optional[str] = None
+    pattern: Optional[str] = None
 ) -> List[str]:
     """
-    List all unique file paths in collection.
+    List all files in the collection with optional filtering.
     
     Args:
         collection_name: ChromaDB collection name
-        language: Optional filter by language
-        path_filter: Optional path substring filter
-    
+        language: Optional language filter
+        pattern: Optional file path pattern filter
+        
     Returns:
         Sorted list of unique file paths
+        
+    Raises:
+        ValueError: If collection_name is empty
+        RuntimeError: If listing fails
     """
-    tool = SearchTool(collection_name)
+    if not collection_name:
+        raise ValueError("Collection name cannot be empty")
     
-    where = {}
-    if language:
-        where["language"] = language
-    if path_filter:
-        where["file_path"] = {"$contains": path_filter}
+    logger.debug(f"Listing files in collection '{collection_name}'")
     
-    results = tool.collection.get(
-        where=where if where else None,
-        include=['metadatas']
-    )
-    
-    files = {meta.get('file_path') for meta in results['metadatas'] if meta.get('file_path')}
-    return sorted(files)
+    try:
+        tool = SearchTool(collection_name)
+        
+        where = {}
+        if language:
+            where["language"] = language
+        if pattern:
+            where["file_path"] = {"$contains": pattern}
+        
+        results = tool.collection.get(
+            where=where if where else None,
+            include=['metadatas']
+        )
+        
+        # Extract unique file paths
+        files: Set[str] = set()
+        for meta in results['metadatas']:
+            file_path = meta.get('file_path')
+            if file_path:
+                files.add(file_path)
+        
+        sorted_files = sorted(files)
+        logger.debug(f"Found {len(sorted_files)} unique files")
+        return sorted_files
+        
+    except Exception as e:
+        logger.error(f"List files failed: {e}")
+        raise RuntimeError(f"List files failed: {e}")
+
+
+__all__ = [
+    'list_files',
+    'read_file',
+]

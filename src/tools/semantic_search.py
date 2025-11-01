@@ -1,6 +1,14 @@
-"""Semantic search - Natural language code search using embeddings."""
-from typing import List, Dict, Any, Optional
+"""
+Semantic search module for Contextinator.
+
+This module provides natural language code search functionality using embeddings
+and cosine similarity for finding semantically similar code chunks.
+"""
+
+from typing import Any, Dict, List, Optional, Set
+
 from . import SearchTool
+from ..utils.logger import logger
 
 
 def semantic_search(
@@ -13,100 +21,153 @@ def semantic_search(
 ) -> List[Dict[str, Any]]:
     """
     Search for semantically similar code using natural language queries.
-    Uses cosine similarity for vector comparison.
+    
+    Uses cosine similarity for vector comparison to find code chunks that are
+    semantically similar to the natural language query.
     
     Args:
         collection_name: ChromaDB collection name
         query: Natural language query (e.g., "How is authentication handled?")
-        n_results: Number of results to return
+        n_results: Number of results to return (default: 5)
         language: Optional filter by programming language
         file_path: Optional filter by file path (partial match)
-        node_type: Optional filter by node type
+        node_type: Optional filter by node type (function, class, etc.)
     
     Returns:
         List of most relevant chunks with cosine similarity scores
+        
+    Raises:
+        ValueError: If collection_name or query is empty
+        RuntimeError: If ChromaDB query fails
     
     Examples:
-        # Find authentication logic
-        semantic_search("my-repo", "How is authentication handled?")
+        >>> # Find authentication logic
+        >>> semantic_search("my-repo", "How is authentication handled?")
         
-        # Find error handling in Python
-        semantic_search("my-repo", "error handling patterns", language="python")
+        >>> # Find error handling in Python
+        >>> semantic_search("my-repo", "error handling patterns", language="python")
         
-        # Find database logic in specific file
-        semantic_search("my-repo", "database connection", file_path="db.py")
+        >>> # Find database logic in specific file
+        >>> semantic_search("my-repo", "database connection", file_path="db.py")
     """
-    tool = SearchTool(collection_name)
+    if not collection_name:
+        raise ValueError("Collection name cannot be empty")
+    if not query:
+        raise ValueError("Query cannot be empty")
+    if n_results <= 0:
+        raise ValueError("n_results must be positive")
     
-    # Build where clause for metadata filters
-    where = {}
-    if language:
-        where["language"] = language
-    if file_path:
-        where["file_path"] = {"$contains": file_path}
-    if node_type:
-        where["node_type"] = node_type
+    logger.debug(f"Semantic search: '{query}' in collection '{collection_name}'")
     
-    # ChromaDB uses cosine similarity by default for query
-    results = tool.collection.query(
-        query_texts=[query],
-        n_results=n_results,
-        where=where if where else None,
-        include=['documents', 'metadatas', 'distances']
-    )
-    
-    # Format results with cosine similarity scores
-    # ChromaDB returns distances, convert to cosine similarity: similarity = 1 - distance
-    formatted = []
-    for id_, doc, meta, distance in zip(
-        results['ids'][0],
-        results['documents'][0],
-        results['metadatas'][0],
-        results['distances'][0]
-    ):
-        formatted.append({
-            'id': id_,
-            'content': doc,
-            'metadata': meta,
-            'distance': distance,
-            'cosine_similarity': 1 - distance
-        })
-    
-    return formatted
+    try:
+        tool = SearchTool(collection_name)
+        
+        # Build where clause for metadata filters
+        where = {}
+        if language:
+            where["language"] = language
+        if file_path:
+            where["file_path"] = {"$contains": file_path}
+        if node_type:
+            where["node_type"] = node_type
+        
+        # ChromaDB uses cosine similarity by default for query
+        results = tool.collection.query(
+            query_texts=[query],
+            n_results=n_results,
+            where=where if where else None,
+            include=['documents', 'metadatas', 'distances']
+        )
+        
+        # Format results with cosine similarity scores
+        # ChromaDB returns distances, convert to cosine similarity: similarity = 1 - distance
+        formatted = []
+        for id_, doc, meta, distance in zip(
+            results['ids'][0],
+            results['documents'][0],
+            results['metadatas'][0],
+            results['distances'][0]
+        ):
+            formatted.append({
+                'id': id_,
+                'content': doc,
+                'metadata': meta,
+                'distance': distance,
+                'cosine_similarity': 1 - distance
+            })
+        
+        logger.debug(f"Found {len(formatted)} semantic matches")
+        return formatted
+        
+    except Exception as e:
+        logger.error(f"Semantic search failed: {e}")
+        raise RuntimeError(f"Semantic search failed: {e}")
 
 
 def semantic_search_with_context(
     collection_name: str,
     query: str,
     n_results: int = 3,
-    **filters
+    **filters: Any
 ) -> Dict[str, Any]:
     """
     Semantic search with additional context about results.
     
+    Performs semantic search and provides additional context information
+    about the results including files, languages, and node types found.
+    
     Args:
         collection_name: ChromaDB collection name
         query: Natural language query
-        n_results: Number of results to return
+        n_results: Number of results to return (default: 3)
         **filters: Additional metadata filters (language, file_path, node_type)
     
     Returns:
         Dictionary with results and context information
+        
+    Raises:
+        ValueError: If collection_name or query is empty
+        RuntimeError: If search fails
+        
+    Examples:
+        >>> result = semantic_search_with_context("my-repo", "authentication")
+        >>> print(f"Found {result['total_results']} results")
+        >>> print(f"Files: {result['context']['files']}")
     """
-    results = semantic_search(collection_name, query, n_results, **filters)
+    if not collection_name:
+        raise ValueError("Collection name cannot be empty")
+    if not query:
+        raise ValueError("Query cannot be empty")
     
-    # Extract context
-    files = {r['metadata'].get('file_path') for r in results}
-    languages = {r['metadata'].get('language') for r in results}
-    node_types = {r['metadata'].get('node_type') for r in results}
-    
-    return {
-        'query': query,
-        'total_results': len(results),
-        'results': results,
-        'context': {
-            'files': sorted(files),
-            'languages': sorted(languages),
-            'node_types': sorted(node_types)
+    try:
+        results = semantic_search(collection_name, query, n_results, **filters)
+        
+        # Extract context information
+        files: Set[Optional[str]] = {r['metadata'].get('file_path') for r in results}
+        languages: Set[Optional[str]] = {r['metadata'].get('language') for r in results}
+        node_types: Set[Optional[str]] = {r['metadata'].get('node_type') for r in results}
+        
+        # Filter out None values and sort
+        context = {
+            'files': sorted([f for f in files if f is not None]),
+            'languages': sorted([l for l in languages if l is not None]),
+            'node_types': sorted([nt for nt in node_types if nt is not None])
         }
-    }
+        
+        return {
+            'query': query,
+            'total_results': len(results),
+            'results': results,
+            'context': context,
+            'filters_applied': filters
+        }
+        
+    except Exception as e:
+        logger.error(f"Semantic search with context failed: {e}")
+        raise RuntimeError(f"Semantic search with context failed: {e}")
+
+
+__all__ = [
+    'semantic_search',
+    'semantic_search_with_context',
+]

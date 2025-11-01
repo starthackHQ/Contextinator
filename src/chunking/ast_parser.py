@@ -1,35 +1,47 @@
+"""
+Abstract Syntax Tree (AST) parsing module for Contextinator.
+
+This module provides functionality to parse source code files using Tree-sitter
+parsers and extract semantic code chunks like functions, classes, and methods.
+"""
+
 from pathlib import Path
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
 from ..config import SUPPORTED_EXTENSIONS
 from ..utils.logger import logger
 
+# Tree-sitter imports with graceful fallback
 try:
-    from tree_sitter import Parser, Language
-    import tree_sitter_python
-    import tree_sitter_javascript
-    import tree_sitter_typescript
-    import tree_sitter_java
-    import tree_sitter_go
-    import tree_sitter_rust
-    import tree_sitter_cpp
+    from tree_sitter import Language, Parser
+    
+    # Language-specific imports
+    import tree_sitter_bash
     import tree_sitter_c
     import tree_sitter_c_sharp
-    import tree_sitter_php
-    import tree_sitter_bash
-    import tree_sitter_sql
-    import tree_sitter_kotlin
-    import tree_sitter_yaml
-    import tree_sitter_markdown
+    import tree_sitter_cpp
     import tree_sitter_dockerfile
+    import tree_sitter_go
+    import tree_sitter_java
+    import tree_sitter_javascript
     import tree_sitter_json
-    import tree_sitter_toml
-    import tree_sitter_swift
-    import tree_sitter_solidity
+    import tree_sitter_kotlin
     import tree_sitter_lua
+    import tree_sitter_markdown
+    import tree_sitter_php
+    import tree_sitter_python
+    import tree_sitter_rust
+    import tree_sitter_solidity
+    import tree_sitter_sql
+    import tree_sitter_swift
+    import tree_sitter_toml
+    import tree_sitter_typescript
+    import tree_sitter_yaml
+    
     from .ast_visualizer import save_ast_visualization
     
-    # Language module mapping
-    LANGUAGE_MODULES = {
+    # Language module mapping for parser creation
+    LANGUAGE_MODULES: Dict[str, Any] = {
         'python': tree_sitter_python,
         'javascript': tree_sitter_javascript, 
         'typescript': tree_sitter_typescript,
@@ -62,17 +74,19 @@ try:
     
     TREE_SITTER_AVAILABLE = True
     logger.info("Tree-sitter imports successful")
+    
 except ImportError as e:
     TREE_SITTER_AVAILABLE = False
     LANGUAGE_MODULES = {}
     logger.warning(f"Tree-sitter import failed: {e}")
     logger.info("💡 Install missing modules with: pip install tree-sitter tree-sitter-python tree-sitter-javascript ...")
+    
     if TYPE_CHECKING:
         from tree_sitter import Parser
 
 
-# Node types to extract per language
-NODE_TYPES = {
+# Node types to extract per language for semantic chunking
+NODE_TYPES: Dict[str, List[str]] = {
     'python': ['function_definition', 'class_definition', 'decorated_definition'],
     'javascript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition'],
     'typescript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration'],
@@ -103,11 +117,11 @@ NODE_TYPES = {
     'lua': ['function_definition', 'local_function', 'table_constructor'],
 }
 
-# Cache for parsers
-_parser_cache = {}
+# Cache for parsers to avoid recreation
+_parser_cache: Dict[str, "Parser"] = {}
 
 
-def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None) -> Optional[Dict[str, Any]]:
+def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
     """
     Parse a file and return its AST representation with extracted nodes.
     
@@ -118,10 +132,17 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
     
     Returns:
         Dictionary containing AST nodes and metadata, or None if parsing fails
+        
+    Raises:
+        ValueError: If save_ast is True but chunks_dir is None
     """
+    if save_ast and chunks_dir is None:
+        raise ValueError("chunks_dir is required when save_ast=True")
+        
     try:
         language = SUPPORTED_EXTENSIONS.get(file_path.suffix)
         if not language:
+            logger.debug(f"Unsupported file extension: {file_path.suffix}")
             return None
         
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -134,22 +155,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
             
             # Save AST visualization if requested (even for fallback)
             if save_ast and chunks_dir:
-                logger.debug("Saving fallback AST data for %s", file_path)
-                try:
-                    saved_file = save_ast_visualization(
-                        str(file_path), 
-                        language, 
-                        None,  # No root node for fallback
-                        content, 
-                        result['nodes'], 
-                        chunks_dir,
-                        result.get('tree_info')
-                    )
-                    logger.debug("Saved fallback AST: %s", saved_file)
-                except Exception as e:
-                    logger.error("Error saving fallback AST for %s: %s", file_path, e)
-                    import traceback
-                    traceback.print_exc()
+                _save_ast_safely(file_path, language, None, content, result['nodes'], chunks_dir, result.get('tree_info'))
             
             return result
         
@@ -163,7 +169,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         tree = parser.parse(bytes(content, 'utf-8'))
         nodes = extract_nodes(tree.root_node, content, language)
         
-        logger.debug("Parsed %s - Found %d semantic nodes", file_path, len(nodes))
+        logger.debug(f"Parsed {file_path} - Found {len(nodes)} semantic nodes")
         
         # If no nodes extracted, fallback to file-level
         if not nodes:
@@ -185,42 +191,28 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Path = None)
         
         # Save AST visualization if requested
         if save_ast and chunks_dir:
-            logger.debug("Saving AST for %s", file_path)
-            try:
-                if 'tree_info' in result and result['tree_info'].get('has_ast', False):
-                    # Real AST case
-                    save_ast_visualization(
-                        str(file_path), 
-                        language, 
-                        tree.root_node, 
-                        content, 
-                        nodes, 
-                        chunks_dir,
-                        result['tree_info']
-                    )
-                else:
-                    # Fallback case
-                    save_ast_visualization(
-                        str(file_path), 
-                        language, 
-                        None, 
-                        content, 
-                        result['nodes'], 
-                        chunks_dir,
-                        result.get('tree_info')
-                    )
-            except Exception as e:
-                logger.warning("Could not save AST for %s: %s", file_path, e)
+            root_node = tree.root_node if 'tree_info' in result and result['tree_info'].get('has_ast', False) else None
+            _save_ast_safely(file_path, language, root_node, content, result['nodes'], chunks_dir, result.get('tree_info'))
         
         return result
     
     except Exception as e:
-        logger.error("Error parsing %s: %s", file_path, e)
+        logger.error(f"Error parsing {file_path}: {e}")
         return None
 
 
 def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, Any]:
-    """Fallback parsing when tree-sitter is unavailable."""
+    """
+    Fallback parsing when tree-sitter is unavailable or fails.
+    
+    Args:
+        file_path: Path to the file being parsed
+        language: Programming language identifier
+        content: File content
+        
+    Returns:
+        Dictionary with file-level chunk information
+    """
     return {
         'file_path': str(file_path),
         'language': language,
@@ -243,7 +235,15 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
 
 
 def get_parser(language: str) -> Optional["Parser"]:
-    """Get tree-sitter parser for language."""
+    """
+    Get tree-sitter parser for language with caching.
+    
+    Args:
+        language: Programming language identifier
+        
+    Returns:
+        Parser instance or None if unavailable
+    """
     global _parser_cache
     
     if not TREE_SITTER_AVAILABLE:
@@ -279,9 +279,9 @@ def get_parser(language: str) -> Optional["Parser"]:
         return None
 
 
-def extract_nodes(root_node, content: str, language: str) -> List[Dict[str, Any]]:
+def extract_nodes(root_node: Any, content: str, language: str) -> List[Dict[str, Any]]:
     """
-    Extract relevant nodes from AST.
+    Extract relevant nodes from AST based on language-specific node types.
     
     Args:
         root_node: Root node of the AST
@@ -298,8 +298,8 @@ def extract_nodes(root_node, content: str, language: str) -> List[Dict[str, Any]
     nodes = []
     content_bytes = content.encode('utf-8')
     
-    def traverse(node):
-        """Recursively traverse AST."""
+    def traverse(node: Any) -> None:
+        """Recursively traverse AST and extract target nodes."""
         if node.type in target_types:
             # Extract node content
             node_content = content_bytes[node.start_byte:node.end_byte].decode('utf-8', errors='ignore')
@@ -325,11 +325,21 @@ def extract_nodes(root_node, content: str, language: str) -> List[Dict[str, Any]
     return nodes
 
 
-def get_node_name(node, content_bytes: bytes) -> Optional[str]:
-    """Extract name from a node with language-aware and node-type-aware logic."""
+def get_node_name(node: Any, content_bytes: bytes) -> Optional[str]:
+    """
+    Extract name from a node with language-aware and node-type-aware logic.
+    
+    Args:
+        node: AST node
+        content_bytes: Source code as bytes
+        
+    Returns:
+        Node name or generated identifier
+    """
     try:
         node_type = node.type
         
+        # Special handling for different node types
         if node_type in ('section', 'heading'):
             for child in node.children:
                 if child.type in ('atx_heading', 'setext_heading'):
@@ -367,6 +377,7 @@ def get_node_name(node, content_bytes: bytes) -> Optional[str]:
                         return f"{cleaned_key}_array"
             return f"{node_type}_line_{node.start_point[0] + 1}"
 
+        # Generic identifier extraction
         identifier_types = {'identifier', 'name', 'property_identifier', 'type_identifier', 'field_identifier'}
         for child in node.children:
             if child.type in identifier_types:
@@ -375,18 +386,69 @@ def get_node_name(node, content_bytes: bytes) -> Optional[str]:
             for grandchild in child.children:
                 if grandchild.type in identifier_types:
                     return content_bytes[grandchild.start_byte:grandchild.end_byte].decode('utf-8', errors='ignore')
+        
         return f"anonymous_{node_type}_line_{node.start_point[0] + 1}"
+        
     except Exception:
         return f"unknown_line_{node.start_point[0] + 1}" if hasattr(node, 'start_point') else None
 
 
-def _count_nodes(node) -> int:
-    """Count total number of nodes in the AST."""
+def _save_ast_safely(file_path: Path, language: str, root_node: Any, content: str, 
+                    nodes: List[Dict[str, Any]], chunks_dir: Path, tree_info: Optional[Dict[str, Any]]) -> None:
+    """
+    Safely save AST visualization with error handling.
+    
+    Args:
+        file_path: Path to source file
+        language: Programming language
+        root_node: AST root node (None for fallback)
+        content: Source code content
+        nodes: Extracted nodes
+        chunks_dir: Directory for AST files
+        tree_info: Tree metadata
+    """
+    try:
+        logger.debug(f"Saving AST for {file_path}")
+        save_ast_visualization(str(file_path), language, root_node, content, nodes, chunks_dir, tree_info)
+    except Exception as e:
+        logger.warning(f"Could not save AST for {file_path}: {e}")
+
+
+def _count_nodes(node: Any) -> int:
+    """
+    Count total number of nodes in the AST.
+    
+    Args:
+        node: AST node
+        
+    Returns:
+        Total node count
+    """
     return 1 + sum(_count_nodes(child) for child in node.children)
 
 
-def _get_tree_depth(node, current_depth: int = 0) -> int:
-    """Get the maximum depth of the AST."""
+def _get_tree_depth(node: Any, current_depth: int = 0) -> int:
+    """
+    Get the maximum depth of the AST.
+    
+    Args:
+        node: AST node
+        current_depth: Current depth level
+        
+    Returns:
+        Maximum tree depth
+    """
     if not node.children:
         return current_depth
     return max(_get_tree_depth(child, current_depth + 1) for child in node.children)
+
+
+__all__ = [
+    'parse_file',
+    'get_parser',
+    'extract_nodes',
+    'get_node_name',
+    'NODE_TYPES',
+    'LANGUAGE_MODULES',
+    'TREE_SITTER_AVAILABLE',
+]

@@ -307,3 +307,9 @@ def save_ast_overview(chunks_dir: Path):
     
     logger.info(f"📈 AST overview saved: {overview_file}")
     return overview
+
+__all__ = [
+    'save_ast_overview',
+    'save_ast_visualization', 
+    'serialize_node',
+]
