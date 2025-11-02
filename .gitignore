@@ -215,11 +215,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Generated Chunks 
-.chunks/
-
-# Generated Embeddings
-.embeddings/
-
-# chromadb
-.chromadb/
+# Generated Files 
+.contextinator/
