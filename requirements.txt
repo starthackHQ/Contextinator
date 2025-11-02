@@ -5,6 +5,8 @@ tiktoken
 python-dotenv
 flask
 requests
+aiohttp
+asyncio
 tree-sitter-python
 tree-sitter-javascript
 tree-sitter-typescript
