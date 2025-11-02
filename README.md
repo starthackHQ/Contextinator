@@ -1,6 +1,6 @@
 <img src="./docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
-<h1 align="center">Contextinator</h1>
+<h1 align="center">Contextinator <img src="./docs/0banner.png" alt="Contextinator" width="30" /></h1>
 <p align="center">
 The weapon of mass codebase context for agentic AI. <br />
 Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
@@ -97,7 +97,8 @@ docker-compose up -d
 this can be used in 2 ways, either via the CLI or programmatically via python code.
 
 ## CLI
-
+**Production (after installation):** `contextinator <command> [options]`  
+**Development (from source):** `python -m src.contexinator.cli <command> [options]`
 ### 1. Chunking
 
 ```bash
@@ -108,6 +109,7 @@ contextinator chunk --chunks-dir <custom-dir>  # Custom chunks directory
 ```
 
 ### 2. Embedding
+right now, we're only supporting OpenAI embeddings, so make sure you've got the `.env.example` setup'd correctly.
 
 ```bash
 contextinator embed --save --path <repo-path> --output <output-dir>
@@ -116,11 +118,11 @@ contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 ```
 
 ### 3. Storing in Vector Store
-
+**Note:** Make sure ChromaDB server is running: `docker-compose up -d`
 ```bash
 contextinator store-embeddings --path <repo-path> --output <output-dir>
 contextinator store-embeddings --collection-name <custom-name>
-contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
+contextinator store-embeddings --repo-name <repo-name> --collection-name <custom-name>contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
 ### 4. Search Tools
@@ -159,10 +161,27 @@ contextinator db-list           # List all collections
 contextinator db-show <name>    # Show collection details
 contextinator db-clear <name>   # Delete collection
 contextinator db-info --chromadb-dir <custom-dir>  # Use custom ChromaDB location
+contextinator db-info --repo-name <repo-name>      # Use specific repo database
 ```
 
 **Default Storage:** Files are saved to `.contextinator/chunks/`, `.contextinator/embeddings/`, and `.contextinator/chromadb/` directories.
 
 **Custom Directories:** Use `--chunks-dir`, `--embeddings-dir`, or `--chromadb-dir` to override default locations.
+
+## Typical Workflow
+
+```bash
+# 1. Chunk a repository
+contextinator chunk --repo-url https://github.com/user/repo --save
+
+# 2. Generate embeddings  
+contextinator embed --repo-url https://github.com/user/repo --save
+
+# 3. Store in vector database
+contextinator store-embeddings --repo-name repo --collection-name MyRepo
+
+# Or do all steps at once
+contextinator chunk-embed-store-embeddings --repo-url https://github.com/user/repo --save --collection-name MyRepo
+```
 
 
