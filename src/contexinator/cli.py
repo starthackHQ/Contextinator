@@ -114,6 +114,8 @@ def store_embeddings_func(args):
         # Determine repository name
         if repo_url:
             repo_name = extract_repo_name_from_url(repo_url)
+        elif getattr(args, 'repo_name', None):
+            repo_name = args.repo_name
         else:
             repo_name = Path(repo_path).name
         
@@ -237,7 +239,6 @@ def search_func(args):
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
-            language=getattr(args, 'file', None),
         )
         
         if args.json:
@@ -265,7 +266,6 @@ def symbol_func(args):
             collection_name=args.collection,
             symbol_name=args.symbol_name,
             symbol_type=getattr(args, 'type', None),
-            language=getattr(args, 'file', None),
         )
         
         if args.json:
@@ -293,7 +293,6 @@ def pattern_func(args):
             collection_name=args.collection,
             pattern=args.pattern,
             language=getattr(args, 'language', None),
-            language=getattr(args, 'file', None)
             symbol_type=getattr(args, 'type', None),
             
         )
@@ -591,6 +590,7 @@ def main():
     p_store.add_argument('--output', '-o', help='Base directory containing embeddings folder (default: current directory)')
     p_store.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
     p_store.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_store.add_argument('--repo-name', help='Repository name (for locating embeddings when not using --repo-url or --path)')
     p_store.add_argument('--collection-name', help='Custom collection name (default: repository name)')
     p_store.set_defaults(func=store_embeddings_func)
 
@@ -615,11 +615,13 @@ def main():
 
     # db-info
     p_db_info = sub.add_parser('db-info', help='Show ChromaDB database information and statistics')
+    p_db_info.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_info.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_db_info.set_defaults(func=db_info_func)
 
     # db-list
     p_db_list = sub.add_parser('db-list', help='List all collections in ChromaDB')
+    p_db_list.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_list.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_db_list.set_defaults(func=db_list_func)
 
@@ -627,6 +629,7 @@ def main():
     p_db_show = sub.add_parser('db-show', help='Show details of a specific collection')
     p_db_show.add_argument('collection_name', help='Name of the collection to show')
     p_db_show.add_argument('--sample', type=int, default=0, help='Show sample documents (specify number)')
+    p_db_show.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_show.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_db_show.set_defaults(func=db_show_func)
 
@@ -636,6 +639,7 @@ def main():
     p_db_clear.add_argument('--force', action='store_true', help='Skip confirmation prompt')
     p_db_clear.set_defaults(func=db_clear_func)
 
+    p_db_clear.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
 
     # ========================================================================
