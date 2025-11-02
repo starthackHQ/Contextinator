@@ -292,9 +292,7 @@ def pattern_func(args):
         results = regex_search(
             collection_name=args.collection,
             pattern=args.pattern,
-            language=getattr(args, 'language', None),
-            symbol_type=getattr(args, 'type', None),
-            
+            language=getattr(args, 'language', None)
         )
         
         if args.json:
