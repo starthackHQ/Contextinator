@@ -6,7 +6,6 @@ OpenAI's official tokenizer, ensuring accurate token counts for chunking.
 """
 
 from functools import lru_cache
-from typing import Optional
 
 import tiktoken
 

@@ -16,7 +16,6 @@ from chromadb.config import Settings
 from ..config import (
     CHROMA_BATCH_SIZE,
     CHROMA_DB_DIR,
-    CHROMA_SERVER_AUTH_TOKEN,
     CHROMA_SERVER_URL,
     USE_CHROMA_SERVER,
     get_storage_path,

@@ -5,8 +5,6 @@ Transform any codebase into semantically-aware, searchable knowledge
 for AI-powered workflows using AST parsing and vector embeddings.
 """
 
-from typing import List
-
 __version__ = "0.1.0"
 __author__ = "StartHack Team"
 __email__ = "founders@starthack.io"

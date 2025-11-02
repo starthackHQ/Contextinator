@@ -8,7 +8,6 @@ cloning, path resolution, and URL validation.
 import os
 import sys
 import tempfile
-from pathlib import Path
 from subprocess import run, CalledProcessError
 from typing import Optional
 

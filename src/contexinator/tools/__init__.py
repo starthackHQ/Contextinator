@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 import chromadb
 
-from ..config import CHROMA_SERVER_URL, USE_CHROMA_SERVER, sanitize_collection_name, get_storage_path
+from ..config import USE_CHROMA_SERVER, sanitize_collection_name
 from ..utils.logger import logger
 
 

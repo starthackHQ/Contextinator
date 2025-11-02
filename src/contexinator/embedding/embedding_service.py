@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import openai
 
 from ..config import (
-    CHUNKS_DIR,
     EMBEDDING_BATCH_SIZE,
     OPENAI_API_KEY,
     OPENAI_EMBEDDING_MODEL,
