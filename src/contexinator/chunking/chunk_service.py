@@ -24,7 +24,8 @@ def chunk_repository(
     save: bool = False, 
     max_tokens: int = MAX_TOKENS, 
     output_dir: Optional[Union[str, Path]] = None, 
-    save_ast: bool = False
+    save_ast: bool = False,
+    custom_chunks_dir: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Chunk a repository into semantic units using AST parsing.
@@ -76,7 +77,7 @@ def chunk_repository(
     actual_output_dir = Path(output_dir) if output_dir else Path.cwd()
     
     # Get repository-specific chunks directory for AST storage
-    chunks_dir = get_storage_path(actual_output_dir, 'chunks', repo_name) if save_ast else None
+    chunks_dir = get_storage_path(actual_output_dir, 'chunks', repo_name, custom_chunks_dir) if save_ast else None
     
     # Initialize collector for deduplication
     collector = NodeCollector()
@@ -138,7 +139,7 @@ def chunk_repository(
     # Save chunks if requested
     if save:
         try:
-            save_chunks(all_chunks, actual_output_dir, repo_name, stats)
+            save_chunks(all_chunks, actual_output_dir, repo_name, stats, custom_chunks_dir)
         except Exception as e:
             logger.error(f"Failed to save chunks: {e}")
             # Don't raise - return chunks even if saving fails
@@ -159,7 +160,8 @@ def save_chunks(
     chunks: List[Dict[str, Any]], 
     base_dir: Union[str, Path], 
     repo_name: str, 
-    stats: Optional[Dict[str, Any]] = None
+    stats: Optional[Dict[str, Any]] = None,
+    custom_chunks_dir: Optional[str] = None
 ) -> Path:
     """
     Save chunks to repository-specific directory.
@@ -180,7 +182,7 @@ def save_chunks(
     if not repo_name:
         raise ValueError("Repository name cannot be empty")
         
-    chunks_dir = get_storage_path(base_dir, 'chunks', repo_name)
+    chunks_dir = get_storage_path(base_dir, 'chunks', repo_name, custom_chunks_dir)
     chunks_dir.mkdir(parents=True, exist_ok=True)
     
     output_file = chunks_dir / 'chunks.json'

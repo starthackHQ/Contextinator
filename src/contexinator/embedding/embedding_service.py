@@ -297,7 +297,9 @@ def embed_chunks(
     base_dir: Union[str, Path], 
     repo_name: str, 
     save: bool = False, 
-    chunks_data: Optional[List[Dict[str, Any]]] = None
+    chunks_data: Optional[List[Dict[str, Any]]] = None,
+    custom_chunks_dir: Optional[str] = None,
+    custom_embeddings_dir: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Generate embeddings for repository chunks.
@@ -320,7 +322,7 @@ def embed_chunks(
         raise ValueError("Repository name cannot be empty")
         
     if chunks_data is None:
-        chunks_data = load_chunks(base_dir, repo_name)
+        chunks_data = load_chunks(base_dir, repo_name, custom_chunks_dir)
     
     if not chunks_data:
         logger.info("No chunks found to embed")
@@ -330,12 +332,12 @@ def embed_chunks(
     embedded_chunks = embedding_service.generate_embeddings(chunks_data)
     
     if save:
-        save_embeddings(embedded_chunks, base_dir, repo_name)
+        save_embeddings(embedded_chunks, base_dir, repo_name, custom_embeddings_dir)
     
     return embedded_chunks
 
 
-def load_chunks(base_dir: Union[str, Path], repo_name: str) -> List[Dict[str, Any]]:
+def load_chunks(base_dir: Union[str, Path], repo_name: str, custom_chunks_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Load chunks from repository-specific directory.
     
@@ -354,7 +356,7 @@ def load_chunks(base_dir: Union[str, Path], repo_name: str) -> List[Dict[str, An
     if not repo_name:
         raise ValueError("Repository name cannot be empty")
         
-    chunks_file = get_storage_path(base_dir, 'chunks', repo_name) / 'chunks.json'
+    chunks_file = get_storage_path(base_dir, 'chunks', repo_name, custom_chunks_dir) / 'chunks.json'
     
     if not chunks_file.exists():
         raise FileNotFoundError(f"Chunks file not found: {chunks_file}")
@@ -386,7 +388,8 @@ def save_embeddings(
     embedded_chunks: List[Dict[str, Any]], 
     base_dir: Union[str, Path], 
     repo_name: str
-) -> Path:
+    repo_name: str,
+    custom_embeddings_dir: Optional[str] = None) -> Path:
     """
     Save embeddings to repository-specific directory.
     
@@ -408,7 +411,7 @@ def save_embeddings(
         raise ValidationError("No embedded chunks to save", "embedded_chunks", "non-empty list")
         
     try:
-        embeddings_dir = get_storage_path(base_dir, 'embeddings', repo_name)
+        embeddings_dir = get_storage_path(base_dir, 'embeddings', repo_name, custom_embeddings_dir)
         embeddings_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         raise FileSystemError(f"Cannot create embeddings directory: {e}", str(embeddings_dir), "create")
@@ -435,7 +438,7 @@ def save_embeddings(
         raise
 
 
-def load_embeddings(base_dir: Union[str, Path], repo_name: str) -> List[Dict[str, Any]]:
+def load_embeddings(base_dir: Union[str, Path], repo_name: str, custom_embeddings_dir: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Load embeddings from repository-specific directory.
     
@@ -454,7 +457,7 @@ def load_embeddings(base_dir: Union[str, Path], repo_name: str) -> List[Dict[str
     if not repo_name:
         raise ValueError("Repository name cannot be empty")
         
-    embeddings_file = get_storage_path(base_dir, 'embeddings', repo_name) / 'embeddings.json'
+    embeddings_file = get_storage_path(base_dir, 'embeddings', repo_name, custom_embeddings_dir) / 'embeddings.json'
     
     if not embeddings_file.exists():
         raise FileNotFoundError(f"Embeddings file not found: {embeddings_file}")

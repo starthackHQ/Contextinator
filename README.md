@@ -1,17 +1,11 @@
-<div align="center">
+<img src="./docs/banner.webp" alt="Contextinator" width="100%" />
+<br />
+<h1 align="center">Contextinator</h1>
+<p align="center">
+The weapon of mass codebase context for agentic AI. <br />
+Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
+</p>
 
-# 🧠 Contextinator
-
-**Intelligent Codebase Understanding for AI Agents**
-
-_Transform any codebase into semantically-aware, searchable knowledge for AI-powered workflows_
-
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![ChromaDB](https://img.shields.io/badge/vectorstore-ChromaDB-orange.svg)](https://www.trychroma.com/)
-[![openAI](https://img.shields.io/badge/embeddings-OpenAI-blue.svg)](https://www.trychroma.com/)
-
-</div>
 
 ---
 
@@ -26,7 +20,7 @@ _Transform any codebase into semantically-aware, searchable knowledge for AI-pow
 - 🚀 **Full Pipeline Automation** - One command to chunk, embed, and store
 - 🎯 **Smart Deduplication** - Hash-based detection of duplicate code
 - 📊 **Visual AST Explorer** - Debug and visualize code structure
-- 🌐 **Web Viewer** - Browse your embeddings with a clean UI
+
 - 🐳 **Docker-Ready** - ChromaDB server included
 
 ### 🎯 Use Cases
@@ -98,535 +92,77 @@ CHROMA_SERVER_URL=http://localhost:8000
 docker-compose up -d
 ```
 
-### 🎬 First Run
+# Usage
 
-Process your codebase in one command:
+this can be used in 2 ways, either via the CLI or programmatically via python code.
 
-```bash
-# Chunk, embed, and store the current directory
-python -m src.contextinator.cli chunk-embed-store-embeddings --save
+## CLI
 
-# Or process a remote repository
-python -m src.contextinator.cli chunk-embed-store-embeddings --save --repo-url https://github.com/username/repo
-```
-
-**That's it!** Your codebase is now indexed and ready for semantic search.
-
----
-
-## 💡 Usage Guide
-
-### 1. Chunking Code
-
-Extract semantic code chunks using AST parsing:
-
-**Basic chunking:**
+### 1. Chunking
 
 ```bash
-# Chunk current directory → saves to .chunks/chunks.json
-python -m src.contextinator.cli chunk --save
+contextinator chunk --save --path <repo-path> --output <output-dir>
+contextinator chunk --save --repo-url <github-url>
+contextinator chunk --save-ast  # Save AST trees for debugging
+contextinator chunk --chunks-dir <custom-dir>  # Custom chunks directory
 ```
 
-**With AST visualization (recommended for debugging):**
+### 2. Embedding
 
 ```bash
-python -m src.contextinator.cli chunk --save --save-ast
+contextinator embed --save --path <repo-path> --output <output-dir>
+contextinator embed --save --repo-url <github-url>
+contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 ```
 
-**Chunk specific directory:**
+### 3. Storing in Vector Store
 
 ```bash
-python -m src.contextinator.cli chunk --save --path /path/to/your/repo
+contextinator store-embeddings --path <repo-path> --output <output-dir>
+contextinator store-embeddings --collection-name <custom-name>
+contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
-**Custom output location:**
+### 4. Search Tools
 
 ```bash
-python -m src.contextinator.cli chunk --save --output /custom/output/dir
+# Semantic search
+contextinator search "your query" --collection <name> -n 5
+
+# Symbol search
+contextinator symbol <function/class-name> --collection <name>
+
+# Pattern/regex search
+contextinator pattern "pattern" --collection <name>
+
+# Read complete file
+contextinator read-file <file-path> --collection <name>
+
+# Advanced search
+contextinator search-advanced --collection <name> --semantic "query" --language python
 ```
 
-### 2. Chunk Remote Repository
-
-Clone and process GitHub repositories directly:
+### 5. Combined Pipeline
 
 ```bash
-# Basic remote chunking
-python -m src.contextinator.cli chunk --save --repo-url https://github.com/username/repo
-
-# With AST visualization
-python -m src.contextinator.cli chunk --save --save-ast --repo-url https://github.com/username/repo
+# Chunk + Embed + Store (all-in-one)
+contextinator chunk-embed-store-embeddings --save --path <repo-path> --output <output-dir>
+contextinator chunk-embed-store-embeddings --save --repo-url <github-url> --collection-name <name>
+contextinator chunk-embed-store-embeddings --chunks-dir <dir> --embeddings-dir <dir> --chromadb-dir <dir>
 ```
 
-### 3. Understanding the Output
-
-After chunking, you'll find:
-
-```
-.chunks/
-├── chunks.json          # 📦 All extracted code chunks with metadata
-└── ast_trees/          # 🌳 AST visualizations (if --save-ast used)
-    ├── file1_python_ast.json
-    ├── file2_javascript_ast.json
-    └── ast_overview.json
-```
-
-**Example `chunks.json` structure:**
-
-```json
-{
-  "chunks": [
-    {
-      "type": "function_definition",
-      "name": "my_function",
-      "content": "def my_function():\n    return 'hello'",
-      "file_path": "/path/to/file.py",
-      "language": "python",
-      "start_line": 10,
-      "end_line": 12,
-      "hash": "abc123..."
-    }
-  ],
-  "statistics": {
-    "unique_hashes": 150,
-    "duplicates_found": 5
-  }
-}
-```
-
----
-
-## 🌍 Supported Languages
-
-**23 Languages with Full AST Support:**
-
-| Category          | Languages                                               |
-| ----------------- | ------------------------------------------------------- |
-| **Backend**       | Python • Java • Go • Rust • C • C++ • C# • PHP • Kotlin |
-| **Frontend**      | JavaScript • TypeScript • TSX                           |
-| **Scripting**     | Bash • Lua                                              |
-| **Database**      | SQL                                                     |
-| **Config**        | YAML • JSON • TOML • Dockerfile                         |
-| **Documentation** | Markdown                                                |
-| **Blockchain**    | Solidity                                                |
-| **Mobile**        | Swift • Kotlin                                          |
-
-### What Gets Extracted?
-
-Each language extracts semantic units intelligently:
-
-| Element               | Examples                                                   |
-| --------------------- | ---------------------------------------------------------- |
-| **Functions/Methods** | Function definitions, arrow functions, method declarations |
-| **Classes**           | Class declarations, interfaces, structs                    |
-| **Other**             | Properties, objects, tables, commands (language-specific)  |
-
----
-
-## 📚 CLI Reference
-
-### Core Commands
-
-#### 🔹 `chunk --save`
-
-**Extract semantic code chunks using Tree-sitter AST parsing.**
-
-| Option           | Description                                     |
-| ---------------- | ----------------------------------------------- |
-| `--save`         | Save chunks to `.chunks/chunks.json`            |
-| `--save-ast`     | Generate AST visualizations for debugging       |
-| `--path PATH`    | Path to repository (default: current directory) |
-| `--output DIR`   | Output directory (default: current directory)   |
-| `--repo-url URL` | Clone and chunk remote repository               |
-
-**Examples:**
+### Database Management
 
 ```bash
-python -m src.contextinator.cli chunk --save
-python -m src.contextinator.cli chunk --save --save-ast
-python -m src.contextinator.cli chunk --save --repo-url https://github.com/user/repo
+contextinator db-info           # Show database stats
+contextinator db-list           # List all collections
+contextinator db-show <name>    # Show collection details
+contextinator db-clear <name>   # Delete collection
+contextinator db-info --chromadb-dir <custom-dir>  # Use custom ChromaDB location
 ```
 
----
+**Default Storage:** Files are saved to `.contextinator/chunks/`, `.contextinator/embeddings/`, and `.contextinator/chromadb/` directories.
 
-#### 🔹 `embed --save`
+**Custom Directories:** Use `--chunks-dir`, `--embeddings-dir`, or `--chromadb-dir` to override default locations.
 
-**Generate embeddings using OpenAI's `text-embedding-3-large` model.**
 
-| Option           | Description                                      |
-| ---------------- | ------------------------------------------------ |
-| `--save`         | Save embeddings to `.embeddings/embeddings.json` |
-| `--path PATH`    | Path to repository (default: current directory)  |
-| `--repo-url URL` | Clone and embed remote repository                |
-
-**Requirements:**
-
-- ✅ Set `OPENAI_API_KEY` in `.env` file
-- ✅ Chunks must exist (run `chunk --save` first)
-
-**Examples:**
-
-```bash
-python -m src.contextinator.cli embed --save
-python -m src.contextinator.cli embed --save --path /path/to/repo
-```
-
----
-
-#### 🔹 `store-embeddings`
-
-**Load embeddings into ChromaDB vector store.**
-
-| Option                   | Description                                       |
-| ------------------------ | ------------------------------------------------- |
-| `--path PATH`            | Path to repository (default: current directory)   |
-| `--repo-url URL`         | Remote repository URL                             |
-| `--collection-name NAME` | Custom collection name (default: repository name) |
-
-**Requirements:**
-
-- ✅ ChromaDB server running: `docker-compose up -d`
-- ✅ Embeddings must exist (run `embed --save` first)
-
-**Examples:**
-
-```bash
-python -m src.contextinator.cli store-embeddings --path .
-python -m src.contextinator.cli store-embeddings --path . --collection-name MyProject
-```
-
----
-
-#### 🔹 `chunk-embed-store-embeddings`
-
-**🚀 Full pipeline: chunk → embed → store in one command.**
-
-| Option                   | Description                                       |
-| ------------------------ | ------------------------------------------------- |
-| `--save`                 | Save intermediate artifacts (chunks + embeddings) |
-| `--path PATH`            | Path to repository (default: current directory)   |
-| `--repo-url URL`         | Clone and process remote repository               |
-| `--collection-name NAME` | Custom collection name                            |
-
-**Examples:**
-
-```bash
-# Process current directory
-python -m src.contextinator.cli chunk-embed-store-embeddings --save
-
-# Process remote repository
-python -m src.contextinator.cli chunk-embed-store-embeddings --save --repo-url https://github.com/user/repo
-
-# Custom collection name
-python -m src.contextinator.cli chunk-embed-store-embeddings --save --collection-name MyProject
-```
-
----
-
-### Database Commands
-
-#### 🔹 `db-info`
-
-**Display ChromaDB database statistics.**
-
-```bash
-python -m src.contextinator.cli db-info
-```
-
-**Output:**
-
-- 📊 List of all collections
-- 📈 Document counts per collection
-- 🔢 Total documents across all collections
-
----
-
-#### 🔹 `db-list`
-
-**List all collections in ChromaDB.**
-
-```bash
-python -m src.contextinator.cli db-list
-```
-
----
-
-#### 🔹 `db-show`
-
-**Show details of a specific collection.**
-
-| Argument          | Description                       |
-| ----------------- | --------------------------------- |
-| `collection_name` | Name of the collection (required) |
-| `--sample N`      | Show N sample documents           |
-
-**Examples:**
-
-```bash
-python -m src.contextinator.cli db-show Contextinator
-python -m src.contextinator.cli db-show Contextinator --sample 5
-```
-
----
-
-#### 🔹 `db-clear`
-
-**Delete a specific collection from ChromaDB.**
-
-| Argument          | Description                                 |
-| ----------------- | ------------------------------------------- |
-| `collection_name` | Name of the collection to delete (required) |
-| `--force`         | Skip confirmation prompt                    |
-
-**Examples:**
-
-```bash
-python -m src.contextinator.cli db-clear Contextinator
-python -m src.contextinator.cli db-clear Contextinator --force
-```
-
----
-
-#### 🔹 `query`
-
-**⚠️ Coming Soon** - Semantic search on vector store.
-
-```bash
-python -m src.contextinator.cli query "implement user authentication in Python"
-python -m src.contextinator.cli query "myquery" --save results.txt --n-results 10
-```
-
----
-
-## 🗄️ ChromaDB Setup
-
-### Start the Server
-
-```bash
-# Start ChromaDB server (runs on port 8000)
-docker-compose up -d
-
-# Check if running
-docker ps | grep chroma
-
-# Stop server
-docker-compose down
-```
-
----
-
-## 🖥️ Web Viewer
-
-### Launch the Viewer
-
-Browse your code embeddings with a clean web interface:
-
-```bash
-python viewer.py
-```
-
-Then open **http://localhost:5001** in your browser.
-
-### Features
-
-✅ Browse all collections  
-✅ View chunks with metadata (file path, type, line numbers)  
-✅ Paginated navigation  
-✅ Clean, responsive interface
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```bash
-# OpenAI API Key (required for embeddings)
-OPENAI_API_KEY=your_openai_api_key_here
-
-# ChromaDB Configuration
-USE_CHROMA_SERVER=true
-CHROMA_SERVER_URL=http://localhost:8000
-```
-
-### Chunking Settings
-
-Edit `src/config/settings.py` to customize:
-
-```python
-MAX_TOKENS = 512              # Maximum tokens per chunk
-CHUNK_OVERLAP = 50            # Overlap between chunks (for context continuity)
-DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-large'  # OpenAI model
-```
-
----
-
-## 🔧 Advanced Features
-
-### AST Visualization
-
-Debug and understand how your code is parsed:
-
-```bash
-python -m src.contextinator.cli chunk --save --save-ast
-```
-
-**Output structure:**
-
-```
-.chunks/ast_trees/
-├── MyFile_python_ast.json     # 🌳 Individual file AST
-├── AnotherFile_java_ast.json
-└── ast_overview.json          # 📋 Summary of all files
-```
-
-**Each AST file contains:**
-
-- 🌲 Complete AST tree structure
-- 🎯 Extracted semantic nodes (functions, classes)
-- 📊 Tree statistics (depth, node count)
-- 🗺️ Source code mappings (line numbers, byte positions)
-
-### Ignore Patterns
-
-The tool automatically ignores common build artifacts and dependencies:
-
-| Language/Framework  | Ignored Patterns                                 |
-| ------------------- | ------------------------------------------------ |
-| **Python**          | `__pycache__`, `.venv`, `*.pyc`, `.pytest_cache` |
-| **JavaScript/Node** | `node_modules`, `*.min.js`, `.next`, lock files  |
-| **Java/Kotlin**     | `target`, `*.class`, `.gradle`                   |
-| **C/C++**           | `*.o`, `*.so`, `CMakeFiles`                      |
-| **Rust**            | `target`, `Cargo.lock`                           |
-| **Go**              | `vendor`                                         |
-| **C#/.NET**         | `bin`, `obj`, `.vs`                              |
-| **PHP**             | `vendor`, `composer.lock`                        |
-| **Swift**           | `.build`, `DerivedData`                          |
-| **General**         | `.git`, `.idea`, `.vscode`, `*.log`              |
-
-📝 **See `src/config/settings.py` for the complete list**
-
----
-
-## 🛠️ Installation
-
-### Quick Install
-
-```bash
-pip install -r requirements.txt
-```
-
-### Manual Installation
-
-If you prefer to install packages individually:
-
-```bash
-pip install tree-sitter chromadb \
-  tree-sitter-python tree-sitter-javascript tree-sitter-typescript \
-  tree-sitter-java tree-sitter-go tree-sitter-rust \
-  tree-sitter-cpp tree-sitter-c tree-sitter-c-sharp \
-  tree-sitter-php tree-sitter-bash tree-sitter-sql \
-  tree-sitter-kotlin tree-sitter-yaml tree-sitter-markdown \
-  tree-sitter-dockerfile tree-sitter-json tree-sitter-toml \
-  tree-sitter-swift tree-sitter-solidity tree-sitter-lua
-```
-
----
-
-## 🐛 Troubleshooting
-
-### No chunks generated?
-
-**Possible causes:**
-
-✅ Check if your files have supported extensions  
-✅ Verify files aren't in ignore patterns  
-✅ Use `--save-ast` to debug AST parsing  
-✅ Ensure you're in a directory with code files
-
-**Debug command:**
-
-```bash
-python -m src.contextinator.cli chunk --save --save-ast
-# Check .chunks/ast_trees/ for parsing details
-```
-
----
-
-### Tree-sitter import errors?
-
-**Solution:**
-
-Install missing language modules:
-
-```bash
-pip install tree-sitter-<language>
-```
-
-**Note:** The tool will fallback to file-level chunking if parsers are missing.
-
----
-
-### Empty chunks.json?
-
-**Check list:**
-
-✅ Ensure you're in a directory with code files  
-✅ Verify file extensions match `SUPPORTED_EXTENSIONS` in `settings.py`  
-✅ Check if files are being excluded by ignore patterns
-
----
-
-### ChromaDB connection errors?
-
-**Solution:**
-
-```bash
-# Verify ChromaDB is running
-docker ps | grep chroma
-
-# If not running, start it
-docker-compose up -d
-
-# Check logs if issues persist
-docker logs <container_id>
-```
-
----
-
-### OpenAI API errors?
-
-**Check:**
-
-✅ `OPENAI_API_KEY` is set in `.env`  
-✅ API key is valid and has credits  
-✅ You're using the correct embedding model
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
----
-
-## 📞 Support
-
-If you encounter any issues or have questions, please [open an issue](https://github.com/starthackHQ/Contextinator/issues) on GitHub.
-
----
-
-<div align="center">
-
-**Made with ❤️ for AI Agents**
-
-⭐ Star this repo if you find it useful!
-
-</div>

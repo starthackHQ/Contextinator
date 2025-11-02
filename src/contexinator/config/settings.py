@@ -173,12 +173,12 @@ OPENAI_API_KEY: Optional[str] = os.getenv('OPENAI_API_KEY')
 
 # Vector store settings
 USE_CHROMA_SERVER: bool = os.getenv('USE_CHROMA_SERVER', 'true').lower() == 'true'
-CHROMA_DB_DIR: str = '.chromadb'  # Relative directory for ChromaDB storage
+CHROMA_DB_DIR: str = '.contextinator/chromadb'  # Relative directory for ChromaDB storage
 CHROMA_SERVER_URL: str = os.getenv('CHROMA_SERVER_URL', 'http://localhost:8000')
 CHROMA_SERVER_AUTH_TOKEN: Optional[str] = os.getenv('CHROMA_SERVER_AUTH_TOKEN')
 CHROMA_BATCH_SIZE: int = int(os.getenv('CHROMA_BATCH_SIZE', '100'))
-CHUNKS_DIR: str = '.chunks'
-EMBEDDINGS_DIR: str = '.embeddings'
+CHUNKS_DIR: str = '.contextinator/chunks'
+EMBEDDINGS_DIR: str = '.contextinator/embeddings'
 
 
 def sanitize_collection_name(repo_name: str) -> str:
@@ -208,7 +208,7 @@ def sanitize_collection_name(repo_name: str) -> str:
     return result
 
 
-def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: str) -> Path:
+def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: str, custom_dir: Optional[str] = None) -> Path:
     """
     Get storage path for chunks/embeddings/chromadb with repository isolation.
     
@@ -238,6 +238,11 @@ def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: s
     
     safe_name = sanitize_collection_name(repo_name)
     base_path = Path(base_dir)
+    
+    
+    # If custom directory is provided, use it instead of defaults
+    if custom_dir:
+        return base_path / custom_dir / safe_name
     
     if storage_type == 'chunks':
         return base_path / CHUNKS_DIR / safe_name
