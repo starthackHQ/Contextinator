@@ -8,8 +8,8 @@ for AI-powered workflows using AST parsing and vector embeddings.
 from typing import List
 
 __version__ = "0.1.0"
-__author__ = "Contextinator Team"
-__email__ = "contact@contextinator.dev"
+__author__ = "StartHack Team"
+__email__ = "founders@starthack.io"
 
 # Core functionality exports
 from .chunking import chunk_repository
