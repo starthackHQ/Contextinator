@@ -151,7 +151,7 @@ class ChromaVectorStore:
                 # Collection doesn't exist, create it
                 collection = self.client.create_collection(
                     name=safe_name,
-                    metadata={"description": f"Code chunks for repository: {collection_name}"}
+                    metadata={"description": f"Code chunks for repository: {collection_name}"}, embedding_function=None
                 )
                 logger.info(f"Created new collection: {safe_name}")
                 return collection

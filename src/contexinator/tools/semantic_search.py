@@ -79,9 +79,16 @@ def semantic_search(
         if node_type:
             where["node_type"] = node_type
         
+        # Generate OpenAI embeddings for the query
+        from ..embedding.embedding_service import EmbeddingService
+        embedding_service = EmbeddingService()
+        query_chunk = [{'content': query}]
+        query_result = embedding_service.generate_embeddings(query_chunk)[0]
+        query_embedding = query_result['embedding']
+        
         # ChromaDB uses cosine similarity by default for query
         results = tool.collection.query(
-            query_texts=[query],
+            query_embeddings=[query_embedding],
             n_results=n_results,
             where=where if where else None,
             include=['documents', 'metadatas', 'distances']

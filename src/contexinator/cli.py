@@ -75,7 +75,7 @@ def embed_func(args):
         base_dir = getattr(args, 'output', None) or os.getcwd()
         # Get custom directory arguments
         custom_chunks_dir = getattr(args, 'chunks_dir', None)
-        custom_embeddings_dir = getattr(args, 'embeddings_dir', None)        
+        custom_embeddings_dir = getattr(args, 'embeddings_dir', None)
         logger.info(f"Generating embeddings for repository: {repo_name}")
         
         # Generate embeddings
@@ -120,7 +120,7 @@ def store_embeddings_func(args):
         base_dir = getattr(args, 'output', None) or os.getcwd()
         # Get custom directory arguments
         custom_embeddings_dir = getattr(args, 'embeddings_dir', None)
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
         logger.info(f"Storing embeddings for repository: {repo_name}")
         
         # Load embeddings
@@ -168,7 +168,8 @@ def pipeline_func(args):
         # Get custom directory arguments
         custom_chunks_dir = getattr(args, 'chunks_dir', None)
         custom_embeddings_dir = getattr(args, 'embeddings_dir', None)
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        base_dir = getattr(args, 'output', None) or os.getcwd()
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
+        base_dir = getattr(args, 'output', None) or os.getcwd()
         
         logger.info(f"Starting complete pipeline for repository: {repo_name}")
         
@@ -202,14 +203,12 @@ def pipeline_func(args):
         if args.save:
             chunks_path = get_storage_path(base_dir, 'chunks', repo_name, custom_chunks_dir)
             embeddings_path = get_storage_path(base_dir, 'embeddings', repo_name, custom_embeddings_dir)
-            logger.info("   💾 Artifacts saved in: %s and %s", chunks_path, embeddings_path)        logger.info("   📝 Chunks: %d", len(chunks))
+            logger.info("   💾 Artifacts saved in: %s and %s", chunks_path, embeddings_path)
+            logger.info("   📝 Chunks: %d", len(chunks))
         logger.info("   🧠 Embeddings: %d", len(embedded_chunks))
         logger.info("   📊 Stored: %d", stats["stored_count"])
         logger.info("   📚 Collection: %s", stats["collection_name"])
         logger.info("   🗄️  Database: %s", stats["db_path"])
-        
-        if args.save:
-
         
     except Exception as e:
         logger.error(f"Pipeline failed: {str(e)}")
@@ -228,7 +227,7 @@ def query_func(args):
 def search_func(args):
     """Semantic search using natural language queries."""
     from .tools import semantic_search
-    from .utils.output_formatter import format_search_results, export_json
+    from .utils.output_formatter import format_search_results, export_results_json
     
     try:
         query = ' '.join(args.query_text) if isinstance(args.query_text, list) else args.query_text
@@ -238,12 +237,11 @@ def search_func(args):
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
-            file_path=getattr(args, 'file', None),
-            node_type=getattr(args, 'type', None)
+            language=getattr(args, 'file', None),
         )
         
         if args.json:
-            export_json({
+            export_results_json({
                 'query': query,
                 'collection': args.collection,
                 'total_results': len(results),
@@ -260,19 +258,18 @@ def search_func(args):
 def symbol_func(args):
     """Find symbols (functions/classes) by name."""
     from .tools import symbol_search
-    from .utils.output_formatter import format_search_results, export_json
+    from .utils.output_formatter import format_search_results, export_results_json
     
     try:
         results = symbol_search(
             collection_name=args.collection,
             symbol_name=args.symbol_name,
-            node_type=getattr(args, 'type', None),
-            file_path=getattr(args, 'file', None),
-            limit=args.limit
+            symbol_type=getattr(args, 'type', None),
+            language=getattr(args, 'file', None),
         )
         
         if args.json:
-            export_json({
+            export_results_json({
                 'symbol': args.symbol_name,
                 'collection': args.collection,
                 'total_results': len(results),
@@ -289,20 +286,20 @@ def symbol_func(args):
 def pattern_func(args):
     """Search for code patterns using regex."""
     from .tools import regex_search
-    from .utils.output_formatter import format_search_results, export_json
+    from .utils.output_formatter import format_search_results, export_results_json
     
     try:
         results = regex_search(
             collection_name=args.collection,
             pattern=args.pattern,
             language=getattr(args, 'language', None),
-            file_path=getattr(args, 'file', None),
-            node_type=getattr(args, 'type', None),
-            limit=args.limit
+            language=getattr(args, 'file', None)
+            symbol_type=getattr(args, 'type', None),
+            
         )
         
         if args.json:
-            export_json({
+            export_results_json({
                 'pattern': args.pattern,
                 'collection': args.collection,
                 'total_results': len(results),
@@ -319,7 +316,7 @@ def pattern_func(args):
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
     from .tools import read_file
-    from .utils.output_formatter import format_file_content, export_json
+    from .utils.output_formatter import format_file_content, export_results_json
     
     try:
         file_data = read_file(
@@ -329,7 +326,7 @@ def read_file_func(args):
         )
         
         if args.json:
-            export_json(file_data, args.json)
+            export_results_json(file_data, args.json)
         else:
             format_file_content(file_data)
         
@@ -341,7 +338,7 @@ def read_file_func(args):
 def search_advanced_func(args):
     """Advanced search with multiple criteria."""
     from .tools import hybrid_search, full_text_search
-    from .utils.output_formatter import format_search_results, export_json
+    from .utils.output_formatter import format_search_results, export_results_json
     
     try:
         # Use hybrid search if semantic query provided
@@ -375,12 +372,12 @@ def search_advanced_func(args):
                 collection_name=args.collection,
                 text_pattern=args.pattern,
                 where=where if where else None,
-                limit=args.limit
+                
             )
             query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
         
         if args.json:
-            export_json({
+            export_results_json({
                 'query': query_desc,
                 'collection': args.collection,
                 'total_results': len(results),
@@ -404,7 +401,7 @@ def db_info_func(args):
         # Use output directory if provided, otherwise current directory
         base_dir = getattr(args, 'output', None) or os.getcwd()
         repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
         collections = vector_store.list_collections()
         
@@ -444,7 +441,8 @@ def db_list_func(args):
     try:
         # Use output directory if provided, otherwise current directory
         base_dir = getattr(args, 'output', None) or os.getcwd()
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
         
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
         collections = vector_store.list_collections()
@@ -474,7 +472,8 @@ def db_show_func(args):
     try:
         # Use output directory if provided, otherwise current directory
         base_dir = getattr(args, 'output', None) or os.getcwd()
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
         
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
@@ -531,7 +530,8 @@ def db_clear_func(args):
     try:
         # Use output directory if provided, otherwise current directory
         base_dir = getattr(args, 'output', None) or os.getcwd()
-        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
+        custom_chromadb_dir = getattr(args, 'chromadb_dir', None)
+        repo_name = getattr(args, 'repo_name', None) or Path(base_dir).name
         
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
@@ -571,7 +571,8 @@ def main():
     p_chunk.add_argument('--repo-url', help='GitHub/Git repository URL to clone and chunk')
     p_chunk.add_argument('--path', help='Local path to repository (default: current directory)')
     p_chunk.add_argument('--output', '-o', help='Output directory for chunks (default: current directory)')
-    p_chunk.add_argument('--chunks-dir', help='Custom chunks directory (overrides default .contextinator/chunks)')    p_chunk.set_defaults(func=chunk_func)
+    p_chunk.add_argument('--chunks-dir', help='Custom chunks directory (overrides default .contextinator/chunks)')
+    p_chunk.set_defaults(func=chunk_func)
 
     # embed
     p_embed = sub.add_parser('embed', help='Generate embeddings for existing chunks using OpenAI and (optionally) save them')
@@ -580,7 +581,8 @@ def main():
     p_embed.add_argument('--path', help='Local path to repository (default: current directory)')
     p_embed.add_argument('--output', '-o', help='Base directory containing chunks folder (default: current directory)')
     p_embed.add_argument('--chunks-dir', help='Custom chunks directory (overrides default .contextinator/chunks)')
-    p_embed.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')    p_embed.set_defaults(func=embed_func)
+    p_embed.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
+    p_embed.set_defaults(func=embed_func)
 
     # store-embeddings
     p_store = sub.add_parser('store-embeddings', help='Load embeddings into ChromaDB vector store')
@@ -588,7 +590,8 @@ def main():
     p_store.add_argument('--path', help='Local path to repository (default: current directory)')
     p_store.add_argument('--output', '-o', help='Base directory containing embeddings folder (default: current directory)')
     p_store.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
-    p_store.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    p_store.add_argument('--collection-name', help='Custom collection name (default: repository name)')
+    p_store.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_store.add_argument('--collection-name', help='Custom collection name (default: repository name)')
     p_store.set_defaults(func=store_embeddings_func)
 
     # combined pipeline: chunk-embed-store-embeddings
@@ -599,7 +602,8 @@ def main():
     p_pipeline.add_argument('--output', '-o', help='Base output directory (default: current directory)')
     p_pipeline.add_argument('--chunks-dir', help='Custom chunks directory (overrides default .contextinator/chunks)')
     p_pipeline.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
-    p_pipeline.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    p_pipeline.add_argument('--collection-name', help='Custom collection name (default: repository name)')
+    p_pipeline.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_pipeline.add_argument('--collection-name', help='Custom collection name (default: repository name)')
     p_pipeline.set_defaults(func=pipeline_func)
 
     # query
@@ -611,17 +615,20 @@ def main():
 
     # db-info
     p_db_info = sub.add_parser('db-info', help='Show ChromaDB database information and statistics')
-    p_db_info.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    p_db_info.set_defaults(func=db_info_func)
+    p_db_info.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_db_info.set_defaults(func=db_info_func)
 
     # db-list
     p_db_list = sub.add_parser('db-list', help='List all collections in ChromaDB')
-    p_db_list.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    p_db_list.set_defaults(func=db_list_func)
+    p_db_list.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_db_list.set_defaults(func=db_list_func)
 
     # db-show
     p_db_show = sub.add_parser('db-show', help='Show details of a specific collection')
     p_db_show.add_argument('collection_name', help='Name of the collection to show')
     p_db_show.add_argument('--sample', type=int, default=0, help='Show sample documents (specify number)')
-    p_db_show.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    p_db_show.set_defaults(func=db_show_func)
+    p_db_show.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+    p_db_show.set_defaults(func=db_show_func)
 
     # db-clear
     p_db_clear = sub.add_parser('db-clear', help='Delete a specific collection')
@@ -629,7 +636,9 @@ def main():
     p_db_clear.add_argument('--force', action='store_true', help='Skip confirmation prompt')
     p_db_clear.set_defaults(func=db_clear_func)
 
-    p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')    # ========================================================================
+    p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+
+    # ========================================================================
     # SEARCH TOOL COMMANDS
     # ========================================================================
 

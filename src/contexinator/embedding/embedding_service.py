@@ -383,11 +383,9 @@ def load_chunks(base_dir: Union[str, Path], repo_name: str, custom_chunks_dir: O
         logger.error(f"Error loading chunks from {chunks_file}: {e}")
         raise
 
-
 def save_embeddings(
     embedded_chunks: List[Dict[str, Any]], 
     base_dir: Union[str, Path], 
-    repo_name: str
     repo_name: str,
     custom_embeddings_dir: Optional[str] = None) -> Path:
     """
