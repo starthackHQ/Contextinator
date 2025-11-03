@@ -97,71 +97,70 @@ docker-compose up -d
 this can be used in 2 ways, either via the CLI or programmatically via python code.
 
 ## CLI
-**Production (after installation):** `contextinator <command> [options]`  
-**Development (from source):** `python -m src.contexinator.cli <command> [options]`
+**Usage:** `python -m src.contexinator.cli <command> [options]`
 ### 1. Chunking
 
 ```bash
-contextinator chunk --save --path <repo-path> --output <output-dir>
-contextinator chunk --save --repo-url <github-url>
-contextinator chunk --save-ast  # Save AST trees for debugging
-contextinator chunk --chunks-dir <custom-dir>  # Custom chunks directory
+python -m src.contexinator.cli chunk --save --path <repo-path> --output <output-dir>
+python -m src.contexinator.cli chunk --save --repo-url <github-url>
+python -m src.contexinator.cli chunk --save-ast  # Save AST trees for debugging
+python -m src.contexinator.cli chunk --chunks-dir <custom-dir>  # Custom chunks directory
 ```
 
 ### 2. Embedding
 right now, we're only supporting OpenAI embeddings, so make sure you've got the `.env.example` setup'd correctly.
 
 ```bash
-contextinator embed --save --path <repo-path> --output <output-dir>
-contextinator embed --save --repo-url <github-url>
-contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
+python -m src.contexinator.cli embed --save --path <repo-path> --output <output-dir>
+python -m src.contexinator.cli embed --save --repo-url <github-url>
+python -m src.contexinator.cli embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 ```
 
 ### 3. Storing in Vector Store
 **Note:** Make sure ChromaDB server is running: `docker-compose up -d`
 ```bash
-contextinator store-embeddings --path <repo-path> --output <output-dir>
-contextinator store-embeddings --collection-name <custom-name>
-contextinator store-embeddings --repo-name <repo-name> --collection-name <custom-name>contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
+python -m src.contexinator.cli store-embeddings --path <repo-path> --output <output-dir>
+python -m src.contexinator.cli store-embeddings --collection-name <custom-name>
+python -m src.contexinator.cli store-embeddings --repo-name <repo-name> --collection-name <custom-name>python -m src.contexinator.cli store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
 ### 4. Search Tools
 
 ```bash
 # Semantic search
-contextinator search "your query" --collection <name> -n 5
+python -m src.contexinator.cli search "your query" --collection <name> -n 5
 
 # Symbol search
-contextinator symbol <function/class-name> --collection <name>
+python -m src.contexinator.cli symbol <function/class-name> --collection <name>
 
 # Pattern/regex search
-contextinator pattern "pattern" --collection <name>
+python -m src.contexinator.cli pattern "pattern" --collection <name>
 
 # Read complete file
-contextinator read-file <file-path> --collection <name>
+python -m src.contexinator.cli read-file <file-path> --collection <name>
 
 # Advanced search
-contextinator search-advanced --collection <name> --semantic "query" --language python
+python -m src.contexinator.cli search-advanced --collection <name> --semantic "query" --language python
 ```
 
 ### 5. Combined Pipeline
 
 ```bash
 # Chunk + Embed + Store (all-in-one)
-contextinator chunk-embed-store-embeddings --save --path <repo-path> --output <output-dir>
-contextinator chunk-embed-store-embeddings --save --repo-url <github-url> --collection-name <name>
-contextinator chunk-embed-store-embeddings --chunks-dir <dir> --embeddings-dir <dir> --chromadb-dir <dir>
+python -m src.contexinator.cli chunk-embed-store-embeddings --save --path <repo-path> --output <output-dir>
+python -m src.contexinator.cli chunk-embed-store-embeddings --save --repo-url <github-url> --collection-name <name>
+python -m src.contexinator.cli chunk-embed-store-embeddings --chunks-dir <dir> --embeddings-dir <dir> --chromadb-dir <dir>
 ```
 
 ### Database Management
 
 ```bash
-contextinator db-info           # Show database stats
-contextinator db-list           # List all collections
-contextinator db-show <name>    # Show collection details
-contextinator db-clear <name>   # Delete collection
-contextinator db-info --chromadb-dir <custom-dir>  # Use custom ChromaDB location
-contextinator db-info --repo-name <repo-name>      # Use specific repo database
+python -m src.contexinator.cli db-info           # Show database stats
+python -m src.contexinator.cli db-list           # List all collections
+python -m src.contexinator.cli db-show <name>    # Show collection details
+python -m src.contexinator.cli db-clear <name>   # Delete collection
+python -m src.contexinator.cli db-info --chromadb-dir <custom-dir>  # Use custom ChromaDB location
+python -m src.contexinator.cli db-info --repo-name <repo-name>      # Use specific repo database
 ```
 
 **Default Storage:** Files are saved to `.contextinator/chunks/`, `.contextinator/embeddings/`, and `.contextinator/chromadb/` directories.
@@ -172,16 +171,16 @@ contextinator db-info --repo-name <repo-name>      # Use specific repo database
 
 ```bash
 # 1. Chunk a repository
-contextinator chunk --repo-url https://github.com/user/repo --save
+python -m src.contexinator.cli chunk --repo-url https://github.com/user/repo --save
 
 # 2. Generate embeddings  
-contextinator embed --repo-url https://github.com/user/repo --save
+python -m src.contexinator.cli embed --repo-url https://github.com/user/repo --save
 
 # 3. Store in vector database
-contextinator store-embeddings --repo-name repo --collection-name MyRepo
+python -m src.contexinator.cli store-embeddings --repo-name repo --collection-name MyRepo
 
 # Or do all steps at once
-contextinator chunk-embed-store-embeddings --repo-url https://github.com/user/repo --save --collection-name MyRepo
+python -m src.contexinator.cli chunk-embed-store-embeddings --repo-url https://github.com/user/repo --save --collection-name MyRepo
 ```
 
 
