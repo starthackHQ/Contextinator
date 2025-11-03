@@ -52,11 +52,11 @@ def symbol_search(
         if symbol_type:
             where["node_type"] = symbol_type
         
-        # Search by name in metadata
+        # Search by node_name in metadata
         if exact_match:
-            where["name"] = symbol_name
+            where["node_name"] = symbol_name
         else:
-            where["name"] = {"$contains": symbol_name}
+            where["node_name"] = {"$contains": symbol_name}
         
         results = tool.collection.get(
             where=where,
@@ -64,8 +64,20 @@ def symbol_search(
         )
         
         formatted = tool.format_results(results)
-        logger.debug(f"Found {len(formatted)} symbol matches")
-        return formatted
+        
+        # Deduplicate by hash to avoid duplicate results
+        seen_hashes = set()
+        deduplicated = []
+        for result in formatted:
+            chunk_hash = result['metadata'].get('hash')
+            if chunk_hash and chunk_hash not in seen_hashes:
+                seen_hashes.add(chunk_hash)
+                deduplicated.append(result)
+            elif not chunk_hash:  # Keep results without hash
+                deduplicated.append(result)
+        
+        logger.debug(f"Found {len(formatted)} symbol matches, {len(deduplicated)} after deduplication")
+        return deduplicated
         
     except Exception as e:
         logger.error(f"Symbol search failed: {e}")
@@ -118,7 +130,7 @@ def list_symbols(
         # Extract symbol information
         symbols: Set[tuple] = set()
         for meta in results['metadatas']:
-            name = meta.get('name')
+            name = meta.get('node_name')  # Changed from 'name' to 'node_name'
             node_type = meta.get('node_type')
             file_path = meta.get('file_path')
             language = meta.get('language')

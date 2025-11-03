@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `src/tools/` module provides 5 powerful search tools for querying ChromaDB collections. All tools use **cosine similarity** for semantic search and support flexible metadata filtering.
+The `src/contextinator/tools/` module provides 5 powerful search tools for querying ChromaDB collections. All tools use **cosine similarity** for semantic search and support flexible metadata filtering.
 
 ---
 
@@ -13,17 +13,20 @@ The `src/tools/` module provides 5 powerful search tools for querying ChromaDB c
 Find specific functions, classes, or symbols by name.
 
 **Functions:**
+
 - `symbol_search()` - Find symbols by exact name match
 - `list_symbols()` - List all unique symbol names
 
 **Use Cases:**
+
 - Find class definitions
 - Locate specific functions
 - Search for methods by name
 
 **Example:**
+
 ```python
-from src.tools import symbol_search
+from src.contextinator.tools import symbol_search
 
 # Find UserController class
 results = symbol_search("my-repo", "UserController", node_type="class_declaration")
@@ -42,17 +45,20 @@ results = symbol_search("my-repo", "authenticate", file_path="auth.py")
 Pattern-based search in code content.
 
 **Functions:**
+
 - `regex_search()` - Search for text patterns in code
 - `find_function_calls()` - Find all calls to a specific function
 
 **Use Cases:**
+
 - Find function calls
 - Locate TODO/FIXME comments
 - Search for specific code patterns
 
 **Example:**
+
 ```python
-from src.tools import regex_search, find_function_calls
+from src.contextinator.tools import regex_search, find_function_calls
 
 # Find all authenticate() calls
 results = find_function_calls("my-repo", "authenticate")
@@ -71,17 +77,20 @@ results = regex_search("my-repo", "import", file_path="auth.py")
 Reconstruct complete files from chunks.
 
 **Functions:**
+
 - `read_file()` - Retrieve and reconstruct file contents
 - `list_files()` - List all files in collection
 
 **Use Cases:**
+
 - View complete file from vector DB
 - Export reconstructed source files
 - Verify chunk coverage
 
 **Example:**
+
 ```python
-from src.tools import read_file, list_files
+from src.contextinator.tools import read_file, list_files
 
 # Get complete file
 result = read_file("my-repo", "src/auth.py")
@@ -101,25 +110,28 @@ files = list_files("my-repo", language="python")
 Natural language code search using embeddings and **cosine similarity**.
 
 **Functions:**
+
 - `semantic_search()` - Find semantically similar code
 - `semantic_search_with_context()` - Search with additional context
 
 **Use Cases:**
+
 - "How is authentication handled?"
 - "Find database connection logic"
 - "Show error handling patterns"
 
 **Example:**
+
 ```python
-from src.tools import semantic_search, semantic_search_with_context
+from src.contextinator.tools import semantic_search, semantic_search_with_context
 
 # Find authentication logic
 results = semantic_search("my-repo", "How is authentication handled?")
 
 # Find error handling in Python
 results = semantic_search(
-    "my-repo", 
-    "error handling patterns", 
+    "my-repo",
+    "error handling patterns",
     language="python",
     n_results=10
 )
@@ -134,6 +146,7 @@ print(result['context'])  # Files, languages, node types
 ```
 
 **Cosine Similarity:**
+
 - Returns scores between 0 and 1
 - Higher score = more similar
 - Uses OpenAI embeddings (text-embedding-3-large)
@@ -145,18 +158,21 @@ print(result['context'])  # Files, languages, node types
 Advanced multi-criteria search with complex filters.
 
 **Functions:**
+
 - `full_text_search()` - Flexible metadata filtering
 - `hybrid_search()` - Semantic + metadata filtering
 - `search_by_type()` - Search by node type
 
 **Use Cases:**
+
 - Complex queries with multiple filters
 - Combine semantic and metadata search
 - Find all chunks of specific type
 
 **Example:**
+
 ```python
-from src.tools import full_text_search, hybrid_search, search_by_type
+from src.contextinator.tools import full_text_search, hybrid_search, search_by_type
 
 # Find all imports in auth.ts
 results = full_text_search(
@@ -248,6 +264,7 @@ All tools return results in a consistent format:
 ```
 
 **Available Operators:**
+
 - `$eq` - Equal
 - `$ne` - Not equal
 - `$gt` - Greater than
@@ -266,7 +283,7 @@ All tools return results in a consistent format:
 
 ```python
 # Import tools
-from src.tools import (
+from src.contextinator.tools import (
     symbol_search,
     regex_search,
     read_file,
@@ -308,6 +325,7 @@ results = full_text_search(
 ## 🔗 Integration
 
 All tools connect to ChromaDB using the same pattern as `viewer.py`:
+
 - HTTP server mode (default): `localhost:8000`
 - Local persistence fallback
 - Configurable via `.env` file

@@ -5,8 +5,6 @@ This module provides a simple progress tracker for long-running operations
 like chunking and embedding generation.
 """
 
-from typing import Optional
-
 from .logger import logger
 
 

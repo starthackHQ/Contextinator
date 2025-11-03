@@ -16,7 +16,6 @@ from chromadb.config import Settings
 from ..config import (
     CHROMA_BATCH_SIZE,
     CHROMA_DB_DIR,
-    CHROMA_SERVER_AUTH_TOKEN,
     CHROMA_SERVER_URL,
     USE_CHROMA_SERVER,
     get_storage_path,
@@ -37,7 +36,8 @@ class ChromaVectorStore:
         self, 
         db_path: Optional[str] = None, 
         base_dir: Optional[Union[str, Path]] = None, 
-        repo_name: Optional[str] = None
+        repo_name: Optional[str] = None,
+        custom_chromadb_dir: Optional[str] = None
     ) -> None:
         """
         Initialize ChromaDB vector store.
@@ -53,7 +53,7 @@ class ChromaVectorStore:
         if db_path:
             self.db_path = db_path
         elif base_dir and repo_name:
-            self.db_path = str(get_storage_path(base_dir, 'chromadb', repo_name))
+            self.db_path = str(get_storage_path(base_dir, 'chromadb', repo_name, custom_chromadb_dir))
         else:
             # Fallback to current directory if nothing provided
             self.db_path = str(Path.cwd() / CHROMA_DB_DIR / 'default')
@@ -151,7 +151,7 @@ class ChromaVectorStore:
                 # Collection doesn't exist, create it
                 collection = self.client.create_collection(
                     name=safe_name,
-                    metadata={"description": f"Code chunks for repository: {collection_name}"}
+                    metadata={"description": f"Code chunks for repository: {collection_name}"}, embedding_function=None
                 )
                 logger.info(f"Created new collection: {safe_name}")
                 return collection
@@ -420,7 +420,8 @@ def store_repository_embeddings(
     base_dir: Union[str, Path], 
     repo_name: str, 
     embedded_chunks: List[Dict[str, Any]], 
-    collection_name: Optional[str] = None
+    collection_name: Optional[str] = None,
+    custom_chromadb_dir: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Store embeddings for a repository in ChromaDB.
@@ -446,7 +447,7 @@ def store_repository_embeddings(
     if not collection_name:
         collection_name = repo_name
     
-    vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name)
+    vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
     stats = vector_store.store_embeddings(embedded_chunks, collection_name)
     
     return stats
