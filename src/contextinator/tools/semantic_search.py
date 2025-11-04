@@ -82,7 +82,14 @@ def semantic_search(
         # Generate OpenAI embeddings for the query
         from ..embedding.embedding_service import EmbeddingService
         embedding_service = EmbeddingService()
-        query_chunk = [{'content': query}]
+        
+        # Create enriched query with context for better matching
+        # For queries, we add language context if specified
+        enriched_query = query
+        if language:
+            enriched_query = f"Language: {language}\n\n{query}"
+        
+        query_chunk = [{'content': enriched_query}]
         query_result = embedding_service.generate_embeddings(query_chunk)[0]
         query_embedding = query_result['embedding']
         

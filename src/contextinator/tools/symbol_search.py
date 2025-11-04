@@ -5,10 +5,45 @@ This module provides functionality to search for specific symbols
 like functions, classes, and variables in the codebase.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from . import SearchTool
 from ..utils.logger import logger
+
+
+def _matches_file_path(stored_path: str, search_path: str) -> bool:
+    """
+    Check if a stored file path matches the search criteria.
+    
+    Matches if:
+    - Exact match (case-insensitive)
+    - Search path is the basename and matches the stored basename
+    - Search path is contained at end of stored path
+    
+    Args:
+        stored_path: The file path stored in metadata
+        search_path: The search pattern provided by user
+        
+    Returns:
+        True if paths match, False otherwise
+    """
+    stored_norm = stored_path.replace('\\', '/').lower()
+    search_norm = search_path.replace('\\', '/').lower()
+    
+    if stored_norm == search_norm:
+        return True
+    
+    stored_basename = Path(stored_norm).name
+    search_basename = Path(search_norm).name
+    if search_basename and stored_basename == search_basename:
+        if '/' not in search_norm:
+            return True
+    
+    if stored_norm.endswith('/' + search_norm) or stored_norm.endswith(search_norm):
+        return True
+    
+    return False
 
 
 def symbol_search(
@@ -45,23 +80,35 @@ def symbol_search(
     try:
         tool = SearchTool(collection_name)
         
-        # Build where clause
+        # Build where clause (get() doesn't support $contains)
         where = {}
         if language:
             where["language"] = language
         if symbol_type:
             where["node_type"] = symbol_type
         
-        # Search by node_name in metadata
+        # For exact match, add to where clause; for partial, filter in Python
         if exact_match:
             where["node_name"] = symbol_name
-        else:
-            where["node_name"] = {"$contains": symbol_name}
         
         results = tool.collection.get(
             where=where,
             include=['documents', 'metadatas']
         )
+        
+        # If not exact match, filter by node_name in Python
+        if not exact_match:
+            filtered_results = {
+                'ids': [],
+                'documents': [],
+                'metadatas': []
+            }
+            for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
+                if symbol_name in meta.get('node_name', ''):
+                    filtered_results['ids'].append(id_)
+                    filtered_results['documents'].append(doc)
+                    filtered_results['metadatas'].append(meta)
+            results = filtered_results
         
         formatted = tool.format_results(results)
         
@@ -114,29 +161,33 @@ def list_symbols(
     try:
         tool = SearchTool(collection_name)
         
+        # Build where clause (get() doesn't support $contains)
         where = {}
         if symbol_type:
             where["node_type"] = symbol_type
         if language:
             where["language"] = language
-        if file_path:
-            where["file_path"] = {"$contains": file_path}
+        # file_path filtering will be done in Python
         
         results = tool.collection.get(
             where=where if where else None,
             include=['metadatas']
         )
         
-        # Extract symbol information
+        # Extract symbol information and filter by file_path using smart matching
         symbols: Set[tuple] = set()
         for meta in results['metadatas']:
+            # Apply file_path filter if specified using smart matching
+            if file_path and not _matches_file_path(meta.get('file_path', ''), file_path):
+                continue
+                
             name = meta.get('node_name')  # Changed from 'name' to 'node_name'
             node_type = meta.get('node_type')
-            file_path = meta.get('file_path')
-            language = meta.get('language')
+            file_path_value = meta.get('file_path')
+            language_value = meta.get('language')
             
             if name and node_type:
-                symbols.add((name, node_type, file_path or '', language or ''))
+                symbols.add((name, node_type, file_path_value or '', language_value or ''))
         
         # Convert to list of dictionaries and sort
         symbol_list = [

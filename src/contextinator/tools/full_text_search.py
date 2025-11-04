@@ -5,10 +5,45 @@ This module provides advanced multi-criteria search functionality combining
 text patterns with metadata filters for precise code discovery.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import SearchTool
 from ..utils.logger import logger
+
+
+def _matches_file_path(stored_path: str, search_path: str) -> bool:
+    """
+    Check if a stored file path matches the search criteria.
+    
+    Matches if:
+    - Exact match (case-insensitive)
+    - Search path is the basename and matches the stored basename
+    - Search path is contained at end of stored path
+    
+    Args:
+        stored_path: The file path stored in metadata
+        search_path: The search pattern provided by user
+        
+    Returns:
+        True if paths match, False otherwise
+    """
+    stored_norm = stored_path.replace('\\', '/').lower()
+    search_norm = search_path.replace('\\', '/').lower()
+    
+    if stored_norm == search_norm:
+        return True
+    
+    stored_basename = Path(stored_norm).name
+    search_basename = Path(search_norm).name
+    if search_basename and stored_basename == search_basename:
+        if '/' not in search_norm:
+            return True
+    
+    if stored_norm.endswith('/' + search_norm) or stored_norm.endswith(search_norm):
+        return True
+    
+    return False
 
 
 def full_text_search(
@@ -64,42 +99,60 @@ def full_text_search(
             logger.warning(f"Collection '{collection_name}' not found: {e}")
             return []
         
-        if text_pattern:
-            # Use ChromaDB's get method with where clause for text search
-            results = tool.collection.get(
-                where=where,
-                limit=limit,
-                include=['documents', 'metadatas']
-            )
-
-            # Filter by text pattern, continue with matches
-            filtered_results = {
-                'ids': [],
-                'documents': [],
-                'metadatas': []
-            }
+        # Build where clause for metadata filtering (get() doesn't support $contains)
+        where_for_get = {}
+        if where:
+            # Extract only supported operators for get()
+            for key, value in where.items():
+                # Skip $contains in where clause, we'll filter in Python
+                if isinstance(value, dict) and '$contains' in value:
+                    continue
+                where_for_get[key] = value
+        
+        # Get all documents matching metadata filters
+        results = tool.collection.get(
+            where=where_for_get if where_for_get else None,
+            include=['documents', 'metadatas']
+        )
+        
+        # Apply text_pattern and $contains filters in Python
+        filtered_results = {
+            'ids': [],
+            'documents': [],
+            'metadatas': []
+        }
+        
+        for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
+            # Apply text pattern filter
+            if text_pattern and text_pattern.lower() not in doc.lower():
+                continue
             
-            for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
-                try:
-                    if text_pattern.lower() in doc.lower():
-                        filtered_results['ids'].append(id_)
-                        filtered_results['documents'].append(doc)
-                        filtered_results['metadatas'].append(meta)
-                except Exception as e:
-                    # Skip problematic documents
-                    logger.debug(f"Skipping document {id_}: {e}")
+            # Apply $contains filters from where clause using smart matching
+            if where:
+                skip = False
+                for key, value in where.items():
+                    if isinstance(value, dict) and '$contains' in value:
+                        # Use smart matching for file_path
+                        if key == 'file_path':
+                            if not _matches_file_path(meta.get(key, ''), value['$contains']):
+                                skip = True
+                                break
+                        # Simple substring match for other fields
+                        elif value['$contains'] not in meta.get(key, ''):
+                            skip = True
+                            break
+                if skip:
                     continue
             
-            results = filtered_results
-        else:
-            # Just metadata filtering
-            results = tool.collection.get(
-                where=where,
-                limit=limit,
-                include=['documents', 'metadatas']
-            )
+            filtered_results['ids'].append(id_)
+            filtered_results['documents'].append(doc)
+            filtered_results['metadatas'].append(meta)
+            
+            # Apply limit
+            if len(filtered_results['ids']) >= limit:
+                break
         
-        formatted = tool.format_results(results)
+        formatted = tool.format_results(filtered_results)
         logger.debug(f"Found {len(formatted)} matches")
         return formatted
         
@@ -147,8 +200,24 @@ def hybrid_search(
         # Semantic search if query provided
         if semantic_query:
             from .semantic_search import semantic_search
+            
+            # Extract individual filters from where dict for semantic_search
+            kwargs = {}
+            if where:
+                if 'language' in where:
+                    kwargs['language'] = where['language']
+                if 'file_path' in where:
+                    # Handle both string and dict formats
+                    file_path_filter = where['file_path']
+                    if isinstance(file_path_filter, dict) and '$contains' in file_path_filter:
+                        kwargs['file_path'] = file_path_filter['$contains']
+                    else:
+                        kwargs['file_path'] = file_path_filter
+                if 'node_type' in where:
+                    kwargs['node_type'] = where['node_type']
+            
             semantic_results = semantic_search(
-                collection_name, semantic_query, n_results, **where or {}
+                collection_name, semantic_query, n_results, **kwargs
             )
             for result in semantic_results:
                 if result['id'] not in seen_ids:

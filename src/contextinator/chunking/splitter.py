@@ -110,9 +110,19 @@ def _create_split_chunk(original_chunk: Dict[str, Any], content: str, split_inde
     Returns:
         New chunk dictionary with split metadata
     """
+    from .context_builder import build_enriched_content
+    
+    # Create base metadata for the split
+    chunk_metadata = {k: v for k, v in original_chunk.items() 
+                      if k not in ['content', 'enriched_content', 'is_split', 'split_index', 'original_hash', 'token_count']}
+    
+    # Build enriched content for the split chunk
+    enriched_content = build_enriched_content(chunk_metadata, content)
+    
     return {
         **original_chunk,
         'content': content,
+        'enriched_content': enriched_content,  # Rebuild enriched content for split
         'is_split': True,
         'split_index': split_index,
         'original_hash': original_chunk.get('hash'),

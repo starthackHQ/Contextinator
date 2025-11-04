@@ -5,7 +5,7 @@ This module provides functionality to build contextual information
 for code chunks, adding metadata like file path, language, and location.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 def build_context(chunk: Dict[str, Any]) -> str:
@@ -52,6 +52,10 @@ def build_context(chunk: Dict[str, Any]) -> str:
     if 'node_type' in chunk and chunk['node_type']:
         context_parts.append(f"Type: {chunk['node_type']}")
     
+    # Add symbol name if available
+    if 'node_name' in chunk and chunk['node_name']:
+        context_parts.append(f"Symbol: {chunk['node_name']}")
+    
     # Add line range
     start_line = chunk.get('start_line')
     end_line = chunk.get('end_line')
@@ -61,4 +65,51 @@ def build_context(chunk: Dict[str, Any]) -> str:
     return '\n'.join(context_parts) if context_parts else ''
 
 
-__all__ = ['build_context']
+def build_enriched_content(chunk: Dict[str, Any], content: str) -> str:
+    """
+    Build enriched content by combining context metadata with code content.
+    
+    This creates a semantically rich representation that includes:
+    - File path and location information
+    - Programming language
+    - Node type (class, function, etc.)
+    - Symbol name
+    - The actual code content
+    
+    This enriched content is used for embedding generation to improve
+    semantic search quality by providing contextual information.
+    
+    Args:
+        chunk: Chunk dictionary containing metadata
+        content: The actual code content
+    
+    Returns:
+        Enriched content string combining context and code
+        
+    Examples:
+        >>> chunk = {
+        ...     'file_path': 'src/auth.py',
+        ...     'language': 'python',
+        ...     'node_type': 'function_definition',
+        ...     'node_name': 'authenticate_user',
+        ...     'start_line': 10,
+        ...     'end_line': 25
+        ... }
+        >>> content = "def authenticate_user(username, password):\\n    ..."
+        >>> result = build_enriched_content(chunk, content)
+        >>> 'File: src/auth.py' in result
+        True
+        >>> 'authenticate_user' in result
+        True
+    """
+    context = build_context(chunk)
+    
+    if not context:
+        # No context available, return content as-is
+        return content
+    
+    # Combine context and content with clear separation
+    return f"{context}\n\n{content}"
+
+
+__all__ = ['build_context', 'build_enriched_content']

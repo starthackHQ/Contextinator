@@ -6,10 +6,45 @@ for finding code patterns and specific constructs.
 """
 
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from . import SearchTool
 from ..utils.logger import logger
+
+
+def _matches_file_path(stored_path: str, search_path: str) -> bool:
+    """
+    Check if a stored file path matches the search criteria.
+    
+    Matches if:
+    - Exact match (case-insensitive)
+    - Search path is the basename and matches the stored basename
+    - Search path is contained at end of stored path
+    
+    Args:
+        stored_path: The file path stored in metadata
+        search_path: The search pattern provided by user
+        
+    Returns:
+        True if paths match, False otherwise
+    """
+    stored_norm = stored_path.replace('\\', '/').lower()
+    search_norm = search_path.replace('\\', '/').lower()
+    
+    if stored_norm == search_norm:
+        return True
+    
+    stored_basename = Path(stored_norm).name
+    search_basename = Path(search_norm).name
+    if search_basename and stored_basename == search_basename:
+        if '/' not in search_norm:
+            return True
+    
+    if stored_norm.endswith('/' + search_norm) or stored_norm.endswith(search_norm):
+        return True
+    
+    return False
 
 
 def regex_search(
@@ -54,23 +89,29 @@ def regex_search(
     try:
         tool = SearchTool(collection_name)
         
-        # Build where clause
+        # Build where clause (get() doesn't support $contains)
         where = {}
         if language:
             where["language"] = language
-        if file_path:
-            where["file_path"] = {"$contains": file_path}
+        # file_path filtering will be done in Python since get() doesn't support $contains
         
         # Get all matching documents
         results = tool.collection.get(
             where=where if where else None,
-            limit=limit,
             include=['documents', 'metadatas']
         )
         
-        # Filter by regex pattern
+        # Filter by file_path (if specified) and regex pattern, apply limit
         matches = []
         for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
+            # Stop if we've reached the limit
+            if len(matches) >= limit:
+                break
+            
+            # Apply file_path filter if specified using smart matching
+            if file_path and not _matches_file_path(meta.get('file_path', ''), file_path):
+                continue
+                
             regex_matches = list(compiled_pattern.finditer(doc))
             if regex_matches:
                 matches.append({

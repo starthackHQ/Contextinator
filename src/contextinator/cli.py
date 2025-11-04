@@ -137,7 +137,10 @@ def store_embeddings_func(args):
         logger.info("Storage complete:")
         logger.info("   📊 Stored: %d embeddings", stats["stored_count"])
         logger.info("   📚 Collection: %s", stats["collection_name"])
-        logger.info("   🗄️  Database: %s", stats["db_path"])
+        if "db_path" in stats:  # Only show when using local persistence
+            logger.info("   🗄️  Database: %s", stats["db_path"])
+        else:
+            logger.info("   🌐 Saved in ChromaDB server")
         
     except Exception as e:
         logger.error(f"Embedding storage failed: {str(e)}")
@@ -210,7 +213,10 @@ def pipeline_func(args):
         logger.info("   🧠 Embeddings: %d", len(embedded_chunks))
         logger.info("   📊 Stored: %d", stats["stored_count"])
         logger.info("   📚 Collection: %s", stats["collection_name"])
-        logger.info("   🗄️  Database: %s", stats["db_path"])
+        if "db_path" in stats:  # Only show when using local persistence
+            logger.info("   🗄️  Database: %s", stats["db_path"])
+        else:
+            logger.info("   🌐 Saved in ChromaDB server")
         
     except Exception as e:
         logger.error(f"Pipeline failed: {str(e)}")
@@ -292,7 +298,8 @@ def pattern_func(args):
         results = regex_search(
             collection_name=args.collection,
             pattern=args.pattern,
-            language=getattr(args, 'language', None)
+            language=getattr(args, 'language', None),
+            file_path=getattr(args, 'file', None)
         )
         
         if args.json:
@@ -351,7 +358,8 @@ def search_advanced_func(args):
             results = hybrid_search(
                 collection_name=args.collection,
                 semantic_query=args.semantic,
-                metadata_filters=filters if filters else None,
+                text_pattern=getattr(args, 'pattern', None),
+                where=filters if filters else None,
                 n_results=args.limit
             )
             query_desc = f"Hybrid: {args.semantic}"
@@ -369,7 +377,7 @@ def search_advanced_func(args):
                 collection_name=args.collection,
                 text_pattern=args.pattern,
                 where=where if where else None,
-                
+                limit=args.limit
             )
             query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
         
@@ -533,7 +541,7 @@ def db_clear_func(args):
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
         
-        logger.info("Database path: {vector_store.db_path}")
+        logger.info(f"Database path: {vector_store.db_path}")
         
         # Confirm deletion
         if not args.force:
@@ -546,13 +554,13 @@ def db_clear_func(args):
         safe_name = sanitize_collection_name(collection_name)
         try:
             vector_store.client.delete_collection(name=safe_name)
-            logger.info("Collection '{collection_name}' deleted successfully")
+            logger.info(f"✅ Collection '{collection_name}' deleted successfully")
         except Exception as e:
-            logger.error("Failed to delete collection: {str(e)}")
+            logger.error(f"Failed to delete collection: {str(e)}")
             exit(1)
         
     except Exception as e:
-        logger.error("Failed to clear collection: {str(e)}")
+        logger.error(f"Failed to clear collection: {str(e)}")
         exit(1)
 
 

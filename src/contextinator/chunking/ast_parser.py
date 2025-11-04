@@ -121,14 +121,20 @@ NODE_TYPES: Dict[str, List[str]] = {
 _parser_cache: Dict[str, "Parser"] = {}
 
 
-def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+def parse_file(
+    file_path: Path, 
+    save_ast: bool = False, 
+    chunks_dir: Optional[Path] = None,
+    repo_path: Optional[Path] = None
+) -> Optional[Dict[str, Any]]:
     """
     Parse a file and return its AST representation with extracted nodes.
     
     Args:
-        file_path: Path to the file to parse
+        file_path: Path to the file to parse (absolute path)
         save_ast: Whether to save AST visualization data
         chunks_dir: Repository-specific chunks directory for AST data (required if save_ast=True)
+        repo_path: Repository root path for computing relative paths (optional)
     
     Returns:
         Dictionary containing AST nodes and metadata, or None if parsing fails
@@ -141,6 +147,19 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
     
     if save_ast and chunks_dir is None:
         raise ValidationError("chunks_dir is required when save_ast=True", "chunks_dir", "Path object")
+    
+    # Compute repo-relative path with forward slashes for cross-platform compatibility
+    if repo_path:
+        try:
+            relative_path = file_path.relative_to(repo_path)
+            # Convert to forward slashes for consistency
+            file_path_str = relative_path.as_posix()
+        except ValueError:
+            # If file is not relative to repo_path, use absolute path
+            logger.warning(f"File {file_path} is not within repo {repo_path}, using absolute path")
+            file_path_str = str(file_path)
+    else:
+        file_path_str = str(file_path)
         
     try:
         language = SUPPORTED_EXTENSIONS.get(file_path.suffix)
@@ -158,7 +177,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
         if not TREE_SITTER_AVAILABLE:
             # Fallback when Tree-sitter unavailable
             logger.warning(f"Tree-sitter not available, using fallback for {file_path}")
-            result = _fallback_parse(file_path, language, content)
+            result = _fallback_parse(file_path, file_path_str, language, content)
             
             if save_ast and chunks_dir:
                 _save_ast_safely(file_path, language, None, content, result['nodes'], chunks_dir, result.get('tree_info'))
@@ -170,7 +189,7 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
             parser = get_parser(language)
             if not parser:
                 logger.warning(f"No parser available for {language}, using fallback for {file_path}")
-                return _fallback_parse(file_path, language, content)
+                return _fallback_parse(file_path, file_path_str, language, content)
             
             tree = parser.parse(bytes(content, 'utf-8'))
             nodes = extract_nodes(tree.root_node, content, language)
@@ -180,15 +199,15 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
         except Exception as e:
             # Fallback to file-level chunking on any parsing error
             logger.warning(f"AST parsing failed for {file_path}, using fallback: {e}")
-            return _fallback_parse(file_path, language, content)
+            return _fallback_parse(file_path, file_path_str, language, content)
         
         # If no nodes extracted, fallback to file-level
         if not nodes:
             logger.warning(f"No semantic nodes found in {file_path}, using file-level chunking")
-            result = _fallback_parse(file_path, language, content)
+            result = _fallback_parse(file_path, file_path_str, language, content)
         else:
             result = {
-                'file_path': str(file_path),
+                'file_path': file_path_str,
                 'language': language,
                 'content': content,
                 'nodes': nodes,
@@ -216,12 +235,13 @@ def parse_file(file_path: Path, save_ast: bool = False, chunks_dir: Optional[Pat
         return None
 
 
-def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, Any]:
+def _fallback_parse(file_path: Path, file_path_str: str, language: str, content: str) -> Dict[str, Any]:
     """
     Fallback parsing when tree-sitter is unavailable or fails.
     
     Args:
-        file_path: Path to the file being parsed
+        file_path: Absolute path to the file being parsed (for logging/display)
+        file_path_str: Repo-relative file path string to store in metadata
         language: Programming language identifier
         content: File content
         
@@ -229,7 +249,7 @@ def _fallback_parse(file_path: Path, language: str, content: str) -> Dict[str, A
         Dictionary with file-level chunk information
     """
     return {
-        'file_path': str(file_path),
+        'file_path': file_path_str,
         'language': language,
         'content': content,
         'nodes': [{

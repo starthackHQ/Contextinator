@@ -59,6 +59,7 @@ class ChromaVectorStore:
             self.db_path = str(Path.cwd() / CHROMA_DB_DIR / 'default')
         
         self.client: Optional[chromadb.Client] = None
+        self.using_server = False  # Track if we're using server mode
         self._initialize_client()
     
     def _initialize_client(self) -> None:
@@ -79,6 +80,7 @@ class ChromaVectorStore:
                 # Test connection
                 self.client.heartbeat()
                 logger.info("ChromaDB server connection successful")
+                self.using_server = True  # Mark that we're using server
                 return
                 
             except Exception as e:
@@ -89,6 +91,7 @@ class ChromaVectorStore:
         # Initialize local client (either by choice or as fallback)
         try:
             self._initialize_local_client()
+            self.using_server = False  # Mark that we're using local
         except Exception as e:
             if USE_CHROMA_SERVER:
                 raise VectorStoreError(f"Both server and local ChromaDB initialization failed: {e}", "initialize")
@@ -188,12 +191,14 @@ class ChromaVectorStore:
                 raise ValueError(f"Chunk at index {i} missing embedding")
             embeddings.append(embedding)
             
-            # Prepare metadata (exclude embedding to avoid duplication)
-            metadata = {k: v for k, v in chunk.items() if k != 'embedding'}
+            # Prepare metadata (exclude embedding and enriched_content to avoid duplication)
+            # enriched_content is excluded because it's stored in documents field
+            metadata = {k: v for k, v in chunk.items() if k not in ['embedding', 'enriched_content']}
             metadata = self._sanitize_metadata(metadata)
             metadatas.append(metadata)
             
-            # Extract document content
+            # Store original content in documents field (for display in search results)
+            # The enriched_content was used for embedding, but we display original content
             documents.append(chunk.get('content', ''))
         
         return ids, embeddings, metadatas, documents
@@ -268,13 +273,19 @@ class ChromaVectorStore:
         except Exception as e:
             raise VectorStoreError(f"Failed to get/create collection: {e}", "create_collection", collection_name)
         
-        # Clear existing data in collection
+        # Clear existing data in collection by deleting and recreating it
         try:
-            collection.delete()
-            logger.info("🗑️  Cleared existing data in collection")
+            # Delete the collection if it has data
+            if collection.count() > 0:
+                safe_name = sanitize_collection_name(collection_name)
+                self.client.delete_collection(name=safe_name)
+                logger.info("🗑️  Deleted existing collection with data")
+                # Recreate the collection
+                collection = self._get_or_create_collection(collection_name)
+                logger.info("📦 Created fresh collection")
         except Exception as e:
             logger.warning(f"Could not clear existing collection data: {e}")
-            # Continue anyway - might be empty collection lol
+            # Continue anyway - might be empty collection
         
         # Process in batches, continue on failures
         total_batches = (len(embedded_chunks) + batch_size - 1) // batch_size
@@ -328,10 +339,14 @@ class ChromaVectorStore:
             "stored_count": stored_count,
             "collection_name": sanitize_collection_name(collection_name),
             "collection_count": collection_count,
-            "db_path": self.db_path,
             "failed_batches": len(failed_batches),
-            "success_rate": f"{((total_batches - len(failed_batches)) / total_batches * 100):.1f}%"
+            "success_rate": f"{((total_batches - len(failed_batches)) / total_batches * 100):.1f}%",
+            "using_server": self.using_server
         }
+        
+        # Only include db_path when using local persistence
+        if not self.using_server:
+            stats["db_path"] = self.db_path
         
         logger.info(f"✅ Successfully stored {stored_count} embeddings")
         logger.info(f"📊 Collection now contains {collection_count} items")
