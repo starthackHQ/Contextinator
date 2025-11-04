@@ -107,17 +107,17 @@ INFO -    🗄️  Database: D:\projects\Contextinator\.contextinator\chromadb\t
 
 ### 1. Symbol Search
 ```bash
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli symbol "toggle" --collection Tkreload
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli symbol "toggle" --collection tkreload
 INFO - Tree-sitter imports successful
 INFO - 
 🔍 Search Results: "Symbol: toggle"
-INFO - Collection: Tkreload
+INFO - Collection: tkreload
 INFO - Found: 1 result(s)
 
 INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INFO - Result 1/1
 INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INFO - 📄 File: C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_\tkreload\auto_reload.py
+INFO - 📄 File: tkreload/auto_reload.py
 INFO - 🏷️  Type: function_definition | Symbol: toggle
 INFO - 📍 Lines: 10-14
 
@@ -126,8 +126,7 @@ INFO - def toggle(self):
         self.auto_reload = not self.auto_reload
         status = "Enabled" if self.auto_reload else "Disabled"
         self.console.print(f"[bold yellow]Auto-reload is now {status}.[/bold yellow]")
-INFO -
-(.venv) PS D:\projects\Contextinator> 
+
 ```
 
 ### 2. Pattern/Regex Search
