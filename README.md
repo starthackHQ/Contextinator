@@ -126,7 +126,7 @@ python -m src.contexinator.cli store-embeddings --embeddings-dir <custom-dir> --
 ```
 
 ### 4. Search Tools
-
+z
 ```bash
 # Semantic search
 python -m src.contexinator.cli search "your query" --collection <name> -n 5

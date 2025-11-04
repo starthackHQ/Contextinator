@@ -5,10 +5,50 @@ This module provides functionality to read and list files from
 the ChromaDB collection with filtering capabilities.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from . import SearchTool
 from ..utils.logger import logger
+
+
+def _matches_file_path(stored_path: str, search_path: str) -> bool:
+    """
+    Check if a stored file path matches the search criteria.
+    
+    Matches if:
+    - Exact match (case-insensitive)
+    - Search path is the basename and matches the stored basename
+    - Search path is contained at end of stored path (e.g., 'src/file.py' matches 'project/src/file.py')
+    
+    Args:
+        stored_path: The file path stored in metadata
+        search_path: The search pattern provided by user
+        
+    Returns:
+        True if paths match, False otherwise
+    """
+    # Normalize to forward slashes for comparison
+    stored_norm = stored_path.replace('\\', '/').lower()
+    search_norm = search_path.replace('\\', '/').lower()
+    
+    # Exact match
+    if stored_norm == search_norm:
+        return True
+    
+    # Basename match (e.g., searching "file.py" matches "path/to/file.py")
+    stored_basename = Path(stored_norm).name
+    search_basename = Path(search_norm).name
+    if search_basename and stored_basename == search_basename:
+        # Only match if search is just a filename (no path separators)
+        if '/' not in search_norm:
+            return True
+    
+    # Suffix match (e.g., searching "src/file.py" matches "project/src/file.py")
+    if stored_norm.endswith('/' + search_norm) or stored_norm.endswith(search_norm):
+        return True
+    
+    return False
 
 
 def read_file(
@@ -47,19 +87,19 @@ def read_file(
     try:
         tool = SearchTool(collection_name)
 
-        # Build where clause - ChromaDB get() doesn't support $contains
-        # So we fetch all and filter in Python, or use exact match if possible
-        where = None
+        # Build where clause for filtering
+        # Note: get() doesn't support $contains, so we filter in Python
+        where = {}
         if node_type:
-            where = {"node_type": node_type}
+            where["node_type"] = node_type
 
-        # Get all documents (or filtered by node_type if specified)
+        # Get all documents matching node_type filter (if any)
         results = tool.collection.get(
-            where=where,
+            where=where if where else None,
             include=['documents', 'metadatas']
         )
 
-        # Filter by file_path in Python (since ChromaDB get doesn't support $contains)
+        # Filter by file_path in Python (since get() doesn't support $contains)
         filtered_results = {
             'ids': [],
             'documents': [],
@@ -67,8 +107,8 @@ def read_file(
         }
         
         for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
-            # Check if file_path contains the search term
-            if file_path in meta.get('file_path', ''):
+            # Check if file_path matches using smart matching
+            if _matches_file_path(meta.get('file_path', ''), file_path):
                 filtered_results['ids'].append(id_)
                 filtered_results['documents'].append(doc)
                 filtered_results['metadatas'].append(meta)
@@ -130,25 +170,26 @@ def list_files(
     try:
         tool = SearchTool(collection_name)
         
+        # Build where clause - get() doesn't support $contains
         where = {}
         if language:
             where["language"] = language
-        # Note: pattern filtering will be done in Python since get() doesn't support $contains
         
+        # Get documents with language filter (if any)
         results = tool.collection.get(
             where=where if where else None,
             include=['metadatas']
         )
         
-        # Extract unique file paths
+        # Extract unique file paths and filter by pattern using smart matching
         files: Set[str] = set()
         for meta in results['metadatas']:
-            file_path = meta.get('file_path')
-            if file_path:
-                # Apply pattern filter if specified
-                if pattern and pattern not in file_path:
+            file_path_value = meta.get('file_path')
+            if file_path_value:
+                # Apply pattern filter if specified using smart matching
+                if pattern and not _matches_file_path(file_path_value, pattern):
                     continue
-                files.add(file_path)
+                files.add(file_path_value)
         
         sorted_files = sorted(files)
         logger.debug(f"Found {len(sorted_files)} unique files")

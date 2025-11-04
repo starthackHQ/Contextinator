@@ -94,8 +94,8 @@ def chunk_repository(
     # Process each file, continue on failures
     for file_path in files:
         try:
-            # Parse file with optional AST saving
-            parsed = parse_file(file_path, save_ast=save_ast, chunks_dir=chunks_dir)
+            # Parse file with optional AST saving and repo-relative path computation
+            parsed = parse_file(file_path, save_ast=save_ast, chunks_dir=chunks_dir, repo_path=repo_path)
             if not parsed:
                 logger.debug(f"Skipping unsupported file: {file_path}")
                 progress.update()

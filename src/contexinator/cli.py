@@ -292,7 +292,8 @@ def pattern_func(args):
         results = regex_search(
             collection_name=args.collection,
             pattern=args.pattern,
-            language=getattr(args, 'language', None)
+            language=getattr(args, 'language', None),
+            file_path=getattr(args, 'file', None)
         )
         
         if args.json:
@@ -351,7 +352,8 @@ def search_advanced_func(args):
             results = hybrid_search(
                 collection_name=args.collection,
                 semantic_query=args.semantic,
-                metadata_filters=filters if filters else None,
+                text_pattern=getattr(args, 'pattern', None),
+                where=filters if filters else None,
                 n_results=args.limit
             )
             query_desc = f"Hybrid: {args.semantic}"
@@ -369,7 +371,7 @@ def search_advanced_func(args):
                 collection_name=args.collection,
                 text_pattern=args.pattern,
                 where=where if where else None,
-                
+                limit=args.limit
             )
             query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
         
