@@ -250,3 +250,153 @@ INFO - def __init__(self, app_file):
         self.reload_count = 0
         self.startup_time=0
 ```
+
+
+### 3.  Semantic Search
+```bash
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli search "how does autoreload works?" --collection tkreload -n 5
+INFO - Tree-sitter imports successful
+INFO - 🚀 Starting embedding generation for 1 chunks...
+INFO - 📊 Using model: text-embedding-3-large
+INFO - 📦 Batch size: 250
+INFO - ✅ Processing 1 valid chunks
+INFO - Generating embeddings: 1/1 (100.0%)
+INFO - ✅ Generating embeddings completed: 1/1
+INFO - ✅ Successfully generated embeddings for 1 chunks
+INFO - 
+🔍 Search Results: "how does autoreload works?"
+INFO - Collection: tkreload
+INFO - Found: 5 result(s)
+
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 1/5 | Similarity: -0.172
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: README.md
+INFO - 🏷️  Type: section | Symbol: 🔍 Solution Overview
+INFO - 📍 Lines: 33-45
+
+INFO - ## 🔍 Solution Overview
+
+`tkreload` automates reloading for terminal-based Python applications, designed specifically for **Tkinter**. By eliminating the need for manual restarts, it streamlines the development process, saving developers valuable time and enhancing productivity.
+
+**Without tkreload:**
+![Without tkreload](https://github.com/iamDyeus/tkreload/blob/main/.assets/without.gif?raw=true)
+
+**With tkreload:**
+![With tkreload](https://github.com/iamDyeus/tkreload/blob/main/.assets/with.gif?
+... (truncated)
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 2/5 | Similarity: -0.212
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: README.md
+INFO - 🏷️  Type: section | Symbol: ⏳ Estimated Time Saved with tkreload
+INFO - 📍 Lines: 27-33
+
+INFO - ### ⏳ Estimated Time Saved with tkreload
+
+Imagine restarting your terminal application **15 times daily**, with each reload taking **30 seconds**. That’s approximately **7.5 minutes daily** or about **3 hours per month**. `tkreload` helps avoid this productivity drain.   
+
+---
+
+
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 3/5 | Similarity: -0.216
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/auto_reload.py
+INFO - 🏷️  Type: class_definition | Symbol: AutoReloadManager
+INFO - 📍 Lines: 3-18
+
+INFO - class AutoReloadManager:
+    """Class to manage the auto-reload feature."""
+
+    def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+
+    def toggle(self):
+        """Toggles the auto-reload feature on or off."""
+        self.auto_reload = not self.auto_reload
+        status = "Enabled" if self.auto_reload else "Disabled"
+        self.console.print(f"[bold yellow]Auto-reload is now {status}.[/bold yellow]")
+
+    def get_status(self
+... (truncated)
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 4/5 | Similarity: -0.229
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/auto_reload.py
+INFO - 🏷️  Type: function_definition | Symbol: get_status
+INFO - 📍 Lines: 16-18
+
+INFO - def get_status(self):
+        """Returns the current status of auto-reload."""
+        return self.auto_reload
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 5/5 | Similarity: -0.243
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/auto_reload.py
+INFO - 🏷️  Type: function_definition | Symbol: __init__
+INFO - 📍 Lines: 6-8
+
+INFO - def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+INFO -
+(.venv) PS D:\projects\Contextinator>
+```
+
+> [! NOTE]
+> semantic search needs improvement FR.
+> it gives irrelevant chunks, also need to turn off this "Type" this for this, since its increasing duplication by alot.
+
+### 4. Read Complete File
+```bash
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli read-file "tkreload/auto_reload.py"  --collection tkreload
+INFO - Tree-sitter imports successful
+INFO - 
+📄 File: tkreload/auto_reload.py
+INFO - 📊 Total chunks: 4
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - class AutoReloadManager:
+    """Class to manage the auto-reload feature."""
+
+    def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+
+    def toggle(self):
+        """Toggles the auto-reload feature on or off."""
+        self.auto_reload = not self.auto_reload
+        status = "Enabled" if self.auto_reload else "Disabled"
+        self.console.print(f"[bold yellow]Auto-reload is now {status}.[/bold yellow]")
+
+    def get_status(self):
+        """Returns the current status of auto-reload."""
+        return self.auto_reload
+def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+def toggle(self):
+        """Toggles the auto-reload feature on or off."""
+        self.auto_reload = not self.auto_reload
+        status = "Enabled" if self.auto_reload else "Disabled"
+        self.console.print(f"[bold yellow]Auto-reload is now {status}.[/bold yellow]")
+def get_status(self):
+        """Returns the current status of auto-reload."""
+        return self.auto_reload
+(.venv) PS D:\projects\Contextinator> 
+```
+
+> [! NOTE]
+> This tools works fine.
+> its just that the duplicate chunks (created by breaking same thing into more children(Types) this'll automatically be fixed if we fix the error in the semantic search tool).
+
+### 5. Full Text Search - Advanced Search
+```bash
+
+```
+
