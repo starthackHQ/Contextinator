@@ -268,13 +268,19 @@ class ChromaVectorStore:
         except Exception as e:
             raise VectorStoreError(f"Failed to get/create collection: {e}", "create_collection", collection_name)
         
-        # Clear existing data in collection
+        # Clear existing data in collection by deleting and recreating it
         try:
-            collection.delete()
-            logger.info("🗑️  Cleared existing data in collection")
+            # Delete the collection if it has data
+            if collection.count() > 0:
+                safe_name = sanitize_collection_name(collection_name)
+                self.client.delete_collection(name=safe_name)
+                logger.info("🗑️  Deleted existing collection with data")
+                # Recreate the collection
+                collection = self._get_or_create_collection(collection_name)
+                logger.info("📦 Created fresh collection")
         except Exception as e:
             logger.warning(f"Could not clear existing collection data: {e}")
-            # Continue anyway - might be empty collection lol
+            # Continue anyway - might be empty collection
         
         # Process in batches, continue on failures
         total_batches = (len(embedded_chunks) + batch_size - 1) // batch_size
