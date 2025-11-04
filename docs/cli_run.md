@@ -131,35 +131,122 @@ INFO - def toggle(self):
 
 ### 2. Pattern/Regex Search
 ```bash
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli pattern "\brich\b" --collection Tkreload
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli pattern  "\b__init__\b" --collection tkreload
+
 INFO - Tree-sitter imports successful
 INFO - 
-🔍 Search Results: "Pattern: \brich\b"
-INFO - Collection: Tkreload
-INFO - Found: 3 result(s)
+🔍 Search Results: "Pattern: \b__init__\b"
+INFO - Collection: tkreload
+INFO - Found: 6 result(s)
 
 INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INFO - Result 1/3
+INFO - Result 1/6
 INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INFO - 📄 File: C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_\pyproject.toml
-INFO - 🏷️  Type: table | Symbol: anonymous_table_line_8
-INFO - 📍 Lines: 8-28
+INFO - 📄 File: tkreload/app_event_handler.py
+INFO - 🏷️  Type: class_definition | Symbol: AppFileEventHandler
+INFO - 📍 Lines: 3-42
 
-INFO - [project]
-name = "tkreload"
-description = "A library that auto reloads your tkinter app whenever file changes are detected."
-readme = "README.md"
-authors = [{name = "iamDyeus", email = "dyeusyt@gmail.com"}]
-license = {text = "Apache License 2.0"}
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Topic :: Software Development :: Build Tools",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :
+INFO - class AppFileEventHandler(FileSystemEventHandler):
+    """Handles file changes to trigger app reload."""
+    def __init__(self, callback, app_file, auto_reload_manager):
+        self.callback = callback
+        self.app_file = app_file
+        self.auto_reload_manager = auto_reload_manager
+        self.last_content = None
+
+    def on_modified(self, event):
+        """
+        Called when a file is modified.
+
+        This method checks if the modified file is the one being monitored
+        and i
 ... (truncated)
-.
-.
-.
-.
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 2/6
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/app_event_handler.py
+INFO - 🏷️  Type: function_definition | Symbol: __init__
+INFO - 📍 Lines: 5-9
+
+INFO - def __init__(self, callback, app_file, auto_reload_manager):
+        self.callback = callback
+        self.app_file = app_file
+        self.auto_reload_manager = auto_reload_manager
+        self.last_content = None
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 3/6
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/auto_reload.py
+INFO - 🏷️  Type: class_definition | Symbol: AutoReloadManager
+INFO - 📍 Lines: 3-18
+
+INFO - class AutoReloadManager:
+    """Class to manage the auto-reload feature."""
+
+    def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+
+    def toggle(self):
+        """Toggles the auto-reload feature on or off."""
+        self.auto_reload = not self.auto_reload
+        status = "Enabled" if self.auto_reload else "Disabled"
+        self.console.print(f"[bold yellow]Auto-reload is now {status}.[/bold yellow]")
+
+    def get_status(self
+... (truncated)
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 4/6
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/auto_reload.py
+INFO - 🏷️  Type: function_definition | Symbol: __init__
+INFO - 📍 Lines: 6-8
+
+INFO - def __init__(self, console):
+        self.console = console
+        self.auto_reload = True  # Initially set to True
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 5/6
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/main.py
+INFO - 🏷️  Type: class_definition | Symbol: TkreloadApp
+INFO - 📍 Lines: 21-124
+
+INFO - class TkreloadApp:
+    """Main application class for managing the Tkinter app."""
+
+    def __init__(self, app_file):
+        self.console = Console()
+        self.auto_reload_manager = AutoReloadManager(console=self.console)
+        self.app_file = app_file
+        self.process = None
+        self.observer = None
+        self.reload_count = 0
+        self.startup_time=0
+
+    def run_tkinter_app(self):
+        """Run the given Tkinter app."""
+        show_progress()
+        self.process = subproc
+... (truncated)
+INFO -
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - Result 6/6
+INFO - ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INFO - 📄 File: tkreload/main.py
+INFO - 🏷️  Type: function_definition | Symbol: __init__
+INFO - 📍 Lines: 24-31
+
+INFO - def __init__(self, app_file):
+        self.console = Console()
+        self.auto_reload_manager = AutoReloadManager(console=self.console)
+        self.app_file = app_file
+        self.process = None
+        self.observer = None
+        self.reload_count = 0
+        self.startup_time=0
 ```
