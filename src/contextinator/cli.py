@@ -137,7 +137,10 @@ def store_embeddings_func(args):
         logger.info("Storage complete:")
         logger.info("   📊 Stored: %d embeddings", stats["stored_count"])
         logger.info("   📚 Collection: %s", stats["collection_name"])
-        logger.info("   🗄️  Database: %s", stats["db_path"])
+        if "db_path" in stats:  # Only show when using local persistence
+            logger.info("   🗄️  Database: %s", stats["db_path"])
+        else:
+            logger.info("   🌐 Saved in ChromaDB server")
         
     except Exception as e:
         logger.error(f"Embedding storage failed: {str(e)}")
@@ -210,7 +213,10 @@ def pipeline_func(args):
         logger.info("   🧠 Embeddings: %d", len(embedded_chunks))
         logger.info("   📊 Stored: %d", stats["stored_count"])
         logger.info("   📚 Collection: %s", stats["collection_name"])
-        logger.info("   🗄️  Database: %s", stats["db_path"])
+        if "db_path" in stats:  # Only show when using local persistence
+            logger.info("   🗄️  Database: %s", stats["db_path"])
+        else:
+            logger.info("   🌐 Saved in ChromaDB server")
         
     except Exception as e:
         logger.error(f"Pipeline failed: {str(e)}")

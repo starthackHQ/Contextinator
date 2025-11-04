@@ -59,6 +59,7 @@ class ChromaVectorStore:
             self.db_path = str(Path.cwd() / CHROMA_DB_DIR / 'default')
         
         self.client: Optional[chromadb.Client] = None
+        self.using_server = False  # Track if we're using server mode
         self._initialize_client()
     
     def _initialize_client(self) -> None:
@@ -79,6 +80,7 @@ class ChromaVectorStore:
                 # Test connection
                 self.client.heartbeat()
                 logger.info("ChromaDB server connection successful")
+                self.using_server = True  # Mark that we're using server
                 return
                 
             except Exception as e:
@@ -89,6 +91,7 @@ class ChromaVectorStore:
         # Initialize local client (either by choice or as fallback)
         try:
             self._initialize_local_client()
+            self.using_server = False  # Mark that we're using local
         except Exception as e:
             if USE_CHROMA_SERVER:
                 raise VectorStoreError(f"Both server and local ChromaDB initialization failed: {e}", "initialize")
@@ -336,10 +339,14 @@ class ChromaVectorStore:
             "stored_count": stored_count,
             "collection_name": sanitize_collection_name(collection_name),
             "collection_count": collection_count,
-            "db_path": self.db_path,
             "failed_batches": len(failed_batches),
-            "success_rate": f"{((total_batches - len(failed_batches)) / total_batches * 100):.1f}%"
+            "success_rate": f"{((total_batches - len(failed_batches)) / total_batches * 100):.1f}%",
+            "using_server": self.using_server
         }
+        
+        # Only include db_path when using local persistence
+        if not self.using_server:
+            stats["db_path"] = self.db_path
         
         logger.info(f"✅ Successfully stored {stored_count} embeddings")
         logger.info(f"📊 Collection now contains {collection_count} items")
