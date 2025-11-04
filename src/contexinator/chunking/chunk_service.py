@@ -132,9 +132,14 @@ def chunk_repository(
     
     logger.info("\n📊 Chunking Statistics:")
     logger.info(f"  Files processed: {len(files) - len(failed_files)}/{len(files)}")
-    logger.info(f"  Total chunks: {len(all_chunks)}")
-    logger.info(f"  Unique chunks: {stats['unique_hashes']}")
+    logger.info(f"  Unique chunks (before splitting): {stats['unique_hashes']}")
+    logger.info(f"  Total chunks (after splitting): {len(all_chunks)}")
     logger.info(f"  Duplicates found: {stats['duplicates_found']}")
+    
+    # Calculate split statistics
+    split_count = len(all_chunks) - stats['unique_hashes']
+    if split_count > 0:
+        logger.info(f"  Chunks split due to size: {split_count} additional chunks created")
     
     # Save chunks if requested
     if save:

@@ -7,6 +7,7 @@ from parsed files, tracking duplicate code across the codebase.
 
 from typing import Any, Dict, List, Optional, Set
 
+from .context_builder import build_enriched_content
 from ..utils import hash_content
 from ..utils.logger import logger
 
@@ -58,9 +59,8 @@ class NodeCollector:
                 content = node['content']
                 content_hash = hash_content(content)
                 
-                # Create chunk metadata
-                chunk = {
-                    'content': content,
+                # Create chunk metadata first (needed for building enriched content)
+                chunk_metadata = {
                     'file_path': file_path,
                     'language': language,
                     'hash': content_hash,
@@ -70,6 +70,17 @@ class NodeCollector:
                     'end_line': node['end_line'],
                     'start_byte': node['start_byte'],
                     'end_byte': node['end_byte']
+                }
+                
+                # Build enriched content for better semantic search
+                # This combines context metadata with code for embedding
+                enriched_content = build_enriched_content(chunk_metadata, content)
+                
+                # Create final chunk with both original and enriched content
+                chunk = {
+                    'content': content,  # Original code (for display)
+                    'enriched_content': enriched_content,  # Context + code (for embedding)
+                    **chunk_metadata
                 }
                 
                 # Track location for duplicate analysis

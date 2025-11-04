@@ -533,7 +533,7 @@ def db_clear_func(args):
         collection_name = args.collection_name
         vector_store = ChromaVectorStore(base_dir=base_dir, repo_name=repo_name, custom_chromadb_dir=custom_chromadb_dir)
         
-        logger.info("Database path: {vector_store.db_path}")
+        logger.info(f"Database path: {vector_store.db_path}")
         
         # Confirm deletion
         if not args.force:
@@ -546,13 +546,13 @@ def db_clear_func(args):
         safe_name = sanitize_collection_name(collection_name)
         try:
             vector_store.client.delete_collection(name=safe_name)
-            logger.info("Collection '{collection_name}' deleted successfully")
+            logger.info(f"✅ Collection '{collection_name}' deleted successfully")
         except Exception as e:
-            logger.error("Failed to delete collection: {str(e)}")
+            logger.error(f"Failed to delete collection: {str(e)}")
             exit(1)
         
     except Exception as e:
-        logger.error("Failed to clear collection: {str(e)}")
+        logger.error(f"Failed to clear collection: {str(e)}")
         exit(1)
 
 

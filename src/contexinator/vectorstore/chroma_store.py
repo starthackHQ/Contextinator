@@ -188,12 +188,14 @@ class ChromaVectorStore:
                 raise ValueError(f"Chunk at index {i} missing embedding")
             embeddings.append(embedding)
             
-            # Prepare metadata (exclude embedding to avoid duplication)
-            metadata = {k: v for k, v in chunk.items() if k != 'embedding'}
+            # Prepare metadata (exclude embedding and enriched_content to avoid duplication)
+            # enriched_content is excluded because it's stored in documents field
+            metadata = {k: v for k, v in chunk.items() if k not in ['embedding', 'enriched_content']}
             metadata = self._sanitize_metadata(metadata)
             metadatas.append(metadata)
             
-            # Extract document content
+            # Store original content in documents field (for display in search results)
+            # The enriched_content was used for embedding, but we display original content
             documents.append(chunk.get('content', ''))
         
         return ids, embeddings, metadatas, documents

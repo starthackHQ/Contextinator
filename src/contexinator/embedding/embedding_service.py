@@ -112,6 +112,22 @@ class EmbeddingService:
         
         return True, content
     
+    def _get_embedding_content(self, chunk: Dict[str, Any]) -> str:
+        """
+        Get the appropriate content for embedding generation.
+        
+        Prefers enriched_content (with context metadata) for better semantic search,
+        falls back to regular content if enriched_content is not available.
+        
+        Args:
+            chunk: Chunk dictionary
+            
+        Returns:
+            Content string to use for embedding
+        """
+        # Prefer enriched content for semantic search quality
+        return chunk.get('enriched_content', chunk.get('content', ''))
+    
     def generate_embeddings(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Generate embeddings for a list of chunks with batch processing and error recovery.
@@ -140,14 +156,19 @@ class EmbeddingService:
         fixed_chunks = 0
         
         for i, chunk in enumerate(chunks):
-            content = chunk.get('content', '')
+            # Use enriched content if available, fall back to regular content
+            content = self._get_embedding_content(chunk)
             is_valid, processed_content = self._validate_chunk_content(content)
             
             if is_valid:
                 # Update chunk with processed content if it was modified
                 if processed_content != content:
                     chunk = chunk.copy()
-                    chunk['content'] = processed_content
+                    # Update the enriched_content field (or content if no enriched version)
+                    if 'enriched_content' in chunk:
+                        chunk['enriched_content'] = processed_content
+                    else:
+                        chunk['content'] = processed_content
                     fixed_chunks += 1
                     
                 valid_chunks.append((i, chunk))
@@ -203,6 +224,8 @@ class EmbeddingService:
         """
         Generate embeddings for a batch of chunks with retry logic.
         
+        Uses enriched_content field for embedding if available, otherwise falls back to content.
+        
         Args:
             batch_chunks: List of (index, chunk) tuples
             
@@ -218,7 +241,8 @@ class EmbeddingService:
         if not self.client:
             raise EmbeddingError("OpenAI client not initialized")
             
-        batch_content = [chunk[1]['content'] for chunk in batch_chunks]
+        # Use enriched content for embeddings (better semantic search)
+        batch_content = [self._get_embedding_content(chunk[1]) for chunk in batch_chunks]
         max_retries = 3
 
         # Retry with exponential backoff

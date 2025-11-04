@@ -121,7 +121,8 @@ python -m src.contexinator.cli embed --chunks-dir <custom-dir> --embeddings-dir 
 ```bash
 python -m src.contexinator.cli store-embeddings --path <repo-path> --output <output-dir>
 python -m src.contexinator.cli store-embeddings --collection-name <custom-name>
-python -m src.contexinator.cli store-embeddings --repo-name <repo-name> --collection-name <custom-name>python -m src.contexinator.cli store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
+python -m src.contexinator.cli store-embeddings --repo-name <repo-name> --collection-name <custom-name>
+python -m src.contexinator.cli store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
 ### 4. Search Tools
