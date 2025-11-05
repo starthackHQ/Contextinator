@@ -235,7 +235,7 @@ def query_func(args):
 def search_func(args):
     """Semantic search using natural language queries."""
     from .tools import semantic_search
-    from .utils.output_formatter import format_search_results, export_results_json
+    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         query = ' '.join(args.query_text) if isinstance(args.query_text, list) else args.query_text
@@ -247,14 +247,20 @@ def search_func(args):
             language=getattr(args, 'language', None),
         )
         
+        result_data = {
+            'query': query,
+            'collection': args.collection,
+            'total_results': len(results),
+            'results': results
+        }
+        
         if args.json:
-            export_results_json({
-                'query': query,
-                'collection': args.collection,
-                'total_results': len(results),
-                'results': results
-            }, args.json)
-        else:
+            export_results_json(result_data, args.json)
+        
+        if getattr(args, 'toon', None):
+            export_results_toon(result_data, args.toon)
+        
+        if not args.json and not getattr(args, 'toon', None):
             format_search_results(results, query=query, collection=args.collection)
         
     except Exception as e:
@@ -265,7 +271,7 @@ def search_func(args):
 def symbol_func(args):
     """Find symbols (functions/classes) by name."""
     from .tools import symbol_search
-    from .utils.output_formatter import format_search_results, export_results_json
+    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         results = symbol_search(
@@ -274,14 +280,20 @@ def symbol_func(args):
             symbol_type=getattr(args, 'type', None),
         )
         
+        result_data = {
+            'symbol': args.symbol_name,
+            'collection': args.collection,
+            'total_results': len(results),
+            'results': results
+        }
+        
         if args.json:
-            export_results_json({
-                'symbol': args.symbol_name,
-                'collection': args.collection,
-                'total_results': len(results),
-                'results': results
-            }, args.json)
-        else:
+            export_results_json(result_data, args.json)
+        
+        if getattr(args, 'toon', None):
+            export_results_toon(result_data, args.toon)
+        
+        if not args.json and not getattr(args, 'toon', None):
             format_search_results(results, query=f"Symbol: {args.symbol_name}", collection=args.collection)
         
     except Exception as e:
@@ -292,7 +304,7 @@ def symbol_func(args):
 def pattern_func(args):
     """Search for code patterns using regex."""
     from .tools import regex_search
-    from .utils.output_formatter import format_search_results, export_results_json
+    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         results = regex_search(
@@ -302,14 +314,20 @@ def pattern_func(args):
             file_path=getattr(args, 'file', None)
         )
         
+        result_data = {
+            'pattern': args.pattern,
+            'collection': args.collection,
+            'total_results': len(results),
+            'results': results
+        }
+        
         if args.json:
-            export_results_json({
-                'pattern': args.pattern,
-                'collection': args.collection,
-                'total_results': len(results),
-                'results': results
-            }, args.json)
-        else:
+            export_results_json(result_data, args.json)
+        
+        if getattr(args, 'toon', None):
+            export_results_toon(result_data, args.toon)
+        
+        if not args.json and not getattr(args, 'toon', None):
             format_search_results(results, query=f"Pattern: {args.pattern}", collection=args.collection)
         
     except Exception as e:
@@ -320,7 +338,7 @@ def pattern_func(args):
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
     from .tools import read_file
-    from .utils.output_formatter import format_file_content, export_results_json
+    from .utils.output_formatter import format_file_content, export_results_json, export_results_toon
     
     try:
         file_data = read_file(
@@ -331,7 +349,11 @@ def read_file_func(args):
         
         if args.json:
             export_results_json(file_data, args.json)
-        else:
+        
+        if getattr(args, 'toon', None):
+            export_results_toon(file_data, args.toon)
+        
+        if not args.json and not getattr(args, 'toon', None):
             format_file_content(file_data)
         
     except Exception as e:
@@ -342,7 +364,7 @@ def read_file_func(args):
 def search_advanced_func(args):
     """Advanced search with multiple criteria."""
     from .tools import hybrid_search, full_text_search
-    from .utils.output_formatter import format_search_results, export_results_json
+    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         # Use hybrid search if semantic query provided
@@ -381,14 +403,20 @@ def search_advanced_func(args):
             )
             query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
         
+        result_data = {
+            'query': query_desc,
+            'collection': args.collection,
+            'total_results': len(results),
+            'results': results
+        }
+        
         if args.json:
-            export_results_json({
-                'query': query_desc,
-                'collection': args.collection,
-                'total_results': len(results),
-                'results': results
-            }, args.json)
-        else:
+            export_results_json(result_data, args.json)
+        
+        if getattr(args, 'toon', None):
+            export_results_toon(result_data, args.toon)
+        
+        if not args.json and not getattr(args, 'toon', None):
             format_search_results(results, query=query_desc, collection=args.collection)
         
     except Exception as e:
@@ -661,6 +689,7 @@ def main():
     p_search.add_argument('--file', '-f', help='Filter by file path (partial match)')
     p_search.add_argument('--type', '-t', help='Filter by node type')
     p_search.add_argument('--json', help='Export results to JSON file')
+    p_search.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_search.set_defaults(func=search_func)
 
     # symbol (symbol search)
@@ -671,6 +700,7 @@ def main():
     p_symbol.add_argument('--file', '-f', help='Filter by file path (partial match)')
     p_symbol.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_symbol.add_argument('--json', help='Export results to JSON file')
+    p_symbol.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_symbol.set_defaults(func=symbol_func)
 
     # pattern (regex search)
@@ -682,6 +712,7 @@ def main():
     p_pattern.add_argument('--type', '-t', help='Filter by node type')
     p_pattern.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_pattern.add_argument('--json', help='Export results to JSON file')
+    p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_pattern.set_defaults(func=pattern_func)
 
     # read-file (file reconstruction)
@@ -690,6 +721,7 @@ def main():
     p_read_file.add_argument('--collection', '-c', required=True, help='Collection name')
     p_read_file.add_argument('--no-join', action='store_true', help='Show chunks separately (don\'t join)')
     p_read_file.add_argument('--json', help='Export to JSON file')
+    p_read_file.add_argument('--toon', help='Export to TOON file (compact format)')
     p_read_file.set_defaults(func=read_file_func)
 
     # search-advanced (advanced/hybrid search)
@@ -702,6 +734,7 @@ def main():
     p_search_adv.add_argument('--type', '-t', help='Filter by node type')
     p_search_adv.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_search_adv.add_argument('--json', help='Export results to JSON file')
+    p_search_adv.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_search_adv.set_defaults(func=search_advanced_func)
 
     args = parser.parse_args()
