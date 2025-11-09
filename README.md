@@ -20,6 +20,7 @@ Turn any codebase into semantically-aware, searchable knowledge for AI-powered w
 - 🚀 **Full Pipeline Automation** - One command to chunk, embed, and store
 - 🎯 **Smart Deduplication** - Hash-based detection of duplicate code
 - 📊 **Visual AST Explorer** - Debug and visualize code structure
+- 📦 **TOON Format Export** - Token-efficient output format for LLM prompts (40-60% savings)
 
 - 🐳 **Docker-Ready** - ChromaDB server included
 
@@ -141,6 +142,10 @@ python -m src.contextinator.cli pattern "pattern" --collection <name>
 python -m src.contextinator.cli read-file <file-path> --collection <name>
 
 # Advanced search
+
+# Export results in TOON format (40-60% token savings for LLMs)
+python -m src.contextinator.cli search "query" --collection <name> --toon results.json
+python -m src.contextinator.cli symbol <name> --collection <name> --toon symbols.json
 python -m src.contextinator.cli search-advanced --collection <name> --semantic "query" --language python
 ```
 

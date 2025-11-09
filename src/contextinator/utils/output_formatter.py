@@ -152,8 +152,32 @@ def export_results_json(results: List[Dict[str, Any]], filepath: str) -> None:
 
 __all__ = [
     'export_results_json',
+    'export_results_toon',
     'format_file_content',
     'format_file_list',
     'format_search_results',
     'format_symbol_list',
 ]
+
+
+def export_results_toon(results: List[Dict[str, Any]], filepath: str) -> None:
+    """
+    Export search results to TOON format file.
+    
+    Args:
+        results: List of search results
+        filepath: Path to output TOON file
+        
+    Raises:
+        FileSystemError: If unable to write file
+    """
+    from .exceptions import FileSystemError
+    from .toon_encoder import toon_encode
+    
+    try:
+        toon_output = toon_encode(results)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(toon_output)
+        logger.info(f"✅ Results exported to TOON format: {filepath}")
+    except Exception as e:
+        raise FileSystemError(f"Failed to export TOON: {e}", filepath, "write")
