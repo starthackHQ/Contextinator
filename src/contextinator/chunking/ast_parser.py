@@ -85,26 +85,25 @@ except ImportError as e:
     if TYPE_CHECKING:
         from tree_sitter import Parser
 
-
 # Node types to extract per language for semantic chunking
 NODE_TYPES: Dict[str, List[str]] = {
-    'python': ['function_definition', 'class_definition', 'decorated_definition'],
-    'javascript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition'],
-    'typescript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration'],
-    'tsx': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration'],
-    'java': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration'],
-    'go': ['function_declaration', 'method_declaration', 'type_declaration'],
-    'rust': ['function_item', 'impl_item', 'struct_item', 'enum_item', 'trait_item'],
-    'cpp': ['function_definition', 'class_specifier', 'struct_specifier'],
-    'c': ['function_definition', 'struct_specifier'],
-    'csharp': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration'],
-    'cs': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration'],
-    'php': ['function_definition', 'class_declaration', 'method_declaration'],
+    'python': ['function_definition', 'class_definition', 'decorated_definition', 'import_statement', 'import_from_statement'],
+    'javascript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'import_statement'],
+    'typescript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement'],
+    'tsx': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement'],
+    'java': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'import_declaration'],
+    'go': ['function_declaration', 'method_declaration', 'type_declaration', 'import_declaration'],
+    'rust': ['function_item', 'impl_item', 'struct_item', 'enum_item', 'trait_item', 'use_declaration'],
+    'cpp': ['function_definition', 'class_specifier', 'struct_specifier', 'preproc_include'],
+    'c': ['function_definition', 'struct_specifier', 'preproc_include'],
+    'csharp': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration', 'using_directive'],
+    'cs': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'property_declaration', 'using_directive'],
+    'php': ['function_definition', 'class_declaration', 'method_declaration', 'namespace_use_declaration'],
     'bash': ['function_definition', 'command'],
     'sh': ['function_definition', 'command'],
     'sql': ['create_table_statement', 'create_view_statement', 'create_function_statement', 'create_procedure_statement'],
-    'kotlin': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration'],
-    'kt': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration'],
+    'kotlin': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration', 'import_header'],
+    'kt': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration', 'import_header'],
     'yaml': ['block_mapping', 'block_sequence'],
     'yml': ['block_mapping', 'block_sequence'],
     'markdown': ['section', 'heading', 'code_block'],
@@ -112,11 +111,12 @@ NODE_TYPES: Dict[str, List[str]] = {
     'dockerfile': ['instruction'],
     'json': ['object', 'array'],
     'toml': ['table', 'key_value'],
-    'swift': ['class_declaration', 'function_declaration', 'protocol_declaration', 'struct_declaration'],
+    'swift': ['class_declaration', 'function_declaration', 'protocol_declaration', 'struct_declaration', 'import_declaration'],
     'solidity': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'sol': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'lua': ['function_definition', 'local_function', 'table_constructor'],
 }
+
 
 PARENT_NODE_TYPES: Dict[str, List[str]] = {
     'python': ['class_definition'],
