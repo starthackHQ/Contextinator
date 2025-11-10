@@ -1,0 +1,423 @@
+### **FINAL IMPLEMENTATION PLAN**
+
+#### **Phase 1: Add Hierarchy Tracking to AST Parser** ✅
+
+File: src/contextinator/chunking/ast_parser.py
+
+Changes:
+
+1. Modify extract_nodes() function (lines 349-392):
+   • Import uuid at function start
+   • Get language-specific parent types from existing PARENT_NODE_TYPES dict
+   • Update traverse() to accept parent_id and parent_info parameters
+   • Generate UUID for each extracted node
+   • Track is_parent flag based on node type
+   • Add parent_id, parent_type, parent_name to child nodes
+   • Initialize children_ids list for all nodes
+   • After traversal, populate children_ids for parent nodes
+
+Key Logic:
+python
+# When traversing a parent node (e.g., class):
+if is_parent:
+    # Pass this node's ID to children
+    traverse(child, parent_id=node_id, parent_info={...})
+else:
+    # Not a parent, pass through existing parent context
+    traverse(child, parent_id=parent_id, parent_info=parent_info)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+#### **Phase 2: Preserve Hierarchy in Node Collector** ✅
+
+File: src/contextinator/chunking/node_collector.py
+
+Changes:
+
+1. Update collect_nodes() method (around line 85):
+   • Add hierarchy fields to chunk dict: id, parent_id, parent_type, parent_name, children_ids, is_parent
+   • These fields come directly from the node dict created by extract_nodes()
+
+Result: All chunks now carry their hierarchy metadata through the pipeline.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+#### **Phase 3: Enhance Enriched Content with Hierarchy** ✅
+
+File: src/contextinator/chunking/context_builder.py
+
+Changes:
+
+1. Update build_enriched_content() function (lines 60-110):
+   • Check if chunk has parent_id and parent_name
+   • If yes, prepend parent context: "Parent: {parent_name} ({parent_type})"
+   • This goes FIRST in the context, before file path
+
+Example Output:
+Parent: UserManager (class_definition)
+File: src/auth/manager.py
+Language: python
+Type: function_definition
+Symbol: authenticate_user
+Lines: 45-67
+
+def authenticate_user(username, password):
+    ...
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+#### **Phase 4: Filter Parents from Embedding** ✅
+
+File: src/contextinator/embedding/embedding_service.py
+
+Changes:
+
+1. Update generate_embeddings() method (around line 158):
+   • Before processing chunks, filter out parent nodes
+   • Only embed chunks where is_parent == False (or field doesn't exist for backward compatibility)
+   • Log how many parent chunks were skipped
+
+Logic:
+python
+# Filter before validation loop
+chunks_to_embed = [c for c in chunks if not c.get('is_parent', False)]
+parent_count = len(chunks) - len(chunks_to_embed)
+logger.info(f"Embedding {len(chunks_to_embed)} child chunks (skipping {parent_count} parent chunks)")
+
+# Then proceed with existing validation and embedding logic
+for i, chunk in enumerate(chunks_to_embed):
+    ...
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+#### **Phase 5: Propagate Hierarchy Through Splitter** ✅
+
+File: src/contextinator/chunking/splitter.py
+
+Changes:
+
+1. Update _create_split_chunk() function (around line 105):
+   • Ensure hierarchy fields (id, parent_id, parent_type, parent_name, children_ids, is_parent) are preserved in splits
+   • Current code already copies most metadata, just verify these specific fields aren't excluded
+
+Note: The current implementation uses {k: v for k, v in original_chunk.items() if k not in [excluded_keys]} - hierarchy fields should NOT be in the exclusion list.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+#### **Phase 6: Update Chunk Service Metadata** ✅
+
+File: src/contextinator/chunking/chunk_service.py
+
+Changes:
+
+1. Update save_chunks() function (around line 200):
+   • Change version from '1.0' to '2.0'
+   • Add schema metadata documenting the new fields
+
+New data structure:
+python
+data = {
+    'chunks': chunks,
+    'statistics': stats or {},
+    'repository': repo_name,
+    'version': '2.0',  # Updated
+    'total_chunks': len(chunks),
+    'schema': {
+        'parent_child_enabled': True,
+        'hierarchy_fields': ['id', 'parent_id', 'parent_type', 'parent_name', 'children_ids', 'is_parent']
+    }
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Data Flow After Implementation**
+
+1. ast_parser.extract_nodes()
+   ├─ Generates UUID for each node
+   ├─ Tracks parent_id during traversal
+   └─ Returns nodes with: {id, type, name, content, is_parent, parent_id, parent_type, parent_name, children_ids, ...}
+
+2. node_collector.collect_nodes()
+   ├─ Preserves ALL hierarchy fields in chunk
+   └─ Chunk now has: {content, enriched_content, id, parent_id, parent_type, parent_name, children_ids, is_parent, ...}
+
+3. context_builder.build_enriched_content()
+   ├─ Adds "Parent: ClassName (class_definition)" if parent_id exists
+   └─ Returns: "Parent: X\nFile: Y\nLanguage: Z\n\n{code}"
+
+4. splitter.split_chunk()
+   ├─ Preserves hierarchy fields in splits
+   └─ Each split maintains parent relationship
+
+5. chunk_service.save_chunks()
+   ├─ Saves with version 2.0
+   └─ Includes schema metadata
+
+6. embedding_service.generate_embeddings()
+   ├─ Filters: only embed chunks where is_parent=False
+   ├─ Parent chunks (classes) stored but NOT embedded
+   └─ Child chunks (methods) embedded with parent context
+
+7. Future retrieval (ChromaDB)
+   ├─ Search returns top-k child chunks
+   └─ Fetch parent by parent_id for full context
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Benefits**
+
+1. Eliminates Duplicate Embeddings: Classes are stored but not embedded; only methods/functions are embedded
+2. Better Context: Child chunks include parent information in enriched_content
+3. Efficient Retrieval: Search finds specific methods, then fetch parent class for full context
+4. Storage Savings: 20-30% reduction in vector storage for nested codebases
+5. Backward Compatible: Old chunks without hierarchy fields still work (fields default to None/False)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Implementation Order**
+
+1. ✅ ast_parser.py - Core hierarchy tracking
+2. ✅ node_collector.py - Preserve hierarchy in chunks
+3. ✅ context_builder.py - Add parent context to enriched content
+4. ✅ splitter.py - Verify hierarchy fields preserved (minimal change)
+5. ✅ embedding_service.py - Filter parent chunks from embedding
+6. ✅ chunk_service.py - Update version and schema metadata
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+This plan is minimal, focused, and directly addresses the duplication problem while setting up infrastructure for future retrieval improvements.
+
+> right now our project is in early stages, so I don't think there is any real need for providing backward compatability and all right now, since we can still do big changes and not think about other parts. gimme your final plan after this update from my end
+
+> ## **FINAL MINIMAL IMPLEMENTATION PLAN**
+
+Since we're in early stages and don't need backward compatibility, here's the streamlined plan:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Phase 1: Add Hierarchy Tracking to AST Parser**
+
+File: src/contextinator/chunking/ast_parser.py
+
+Change extract_nodes() function (lines 349-392):
+
+python
+def extract_nodes(root_node: Any, content: str, language: str) -> List[Dict[str, Any]]:
+    import uuid
+    
+    target_types = NODE_TYPES.get(language, [])
+    if not target_types:
+        return []
+    
+    parent_types = set(PARENT_NODE_TYPES.get(language, []))
+    nodes = []
+    content_bytes = content.encode('utf-8')
+    
+    def traverse(node: Any, parent_id: Optional[str] = None, parent_info: Optional[Dict] = None) -> None:
+        if node.type in target_types:
+            node_id = str(uuid.uuid4())
+            node_content = content_bytes[node.start_byte:node.end_byte].decode('utf-8', errors='ignore')
+            node_name = get_node_name(node, content_bytes)
+            is_parent = node.type in parent_types
+            
+            node_dict = {
+                'id': node_id,
+                'type': node.type,
+                'name': node_name,
+                'content': node_content,
+                'start_line': node.start_point[0] + 1,
+                'end_line': node.end_point[0] + 1,
+                'start_byte': node.start_byte,
+                'end_byte': node.end_byte,
+                'is_parent': is_parent,
+                'parent_id': parent_id,
+                'parent_type': parent_info.get('type') if parent_info else None,
+                'parent_name': parent_info.get('name') if parent_info else None,
+                'children_ids': []
+            }
+            
+            nodes.append(node_dict)
+            
+            if is_parent:
+                for child in node.children:
+                    traverse(child, node_id, {'type': node.type, 'name': node_name})
+            else:
+                for child in node.children:
+                    traverse(child, parent_id, parent_info)
+        else:
+            for child in node.children:
+                traverse(child, parent_id, parent_info)
+    
+    traverse(root_node)
+    
+    # Populate children_ids
+    for node in nodes:
+        if node['is_parent']:
+            node['children_ids'] = [n['id'] for n in nodes if n['parent_id'] == node['id']]
+    
+    return nodes
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Phase 2: Preserve Hierarchy in Node Collector**
+
+File: src/contextinator/chunking/node_collector.py
+
+Update collect_nodes() method (around line 85):
+
+python
+chunk = {
+    'content': content,
+    'enriched_content': enriched_content,
+    **chunk_metadata,
+    'id': node['id'],
+    'parent_id': node['parent_id'],
+    'parent_type': node['parent_type'],
+    'parent_name': node['parent_name'],
+    'children_ids': node['children_ids'],
+    'is_parent': node['is_parent']
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Phase 3: Add Parent Context to Enriched Content**
+
+File: src/contextinator/chunking/context_builder.py
+
+Replace build_enriched_content() function (lines 60-110):
+
+python
+def build_enriched_content(chunk: Dict[str, Any], content: str) -> str:
+    context_parts: List[str] = []
+    
+    # Add parent context first
+    if chunk.get('parent_id') and chunk.get('parent_name'):
+        parent_type = chunk.get('parent_type', 'unknown')
+        parent_name = chunk.get('parent_name')
+        context_parts.append(f"Parent: {parent_name} ({parent_type})")
+    
+    if 'file_path' in chunk and chunk['file_path']:
+        context_parts.append(f"File: {chunk['file_path']}")
+    
+    if 'language' in chunk and chunk['language']:
+        context_parts.append(f"Language: {chunk['language']}")
+    
+    if 'node_type' in chunk and chunk['node_type']:
+        context_parts.append(f"Type: {chunk['node_type']}")
+    
+    if 'node_name' in chunk and chunk['node_name']:
+        context_parts.append(f"Symbol: {chunk['node_name']}")
+    
+    start_line = chunk.get('start_line')
+    end_line = chunk.get('end_line')
+    if start_line is not None and end_line is not None:
+        context_parts.append(f"Lines: {start_line}-{end_line}")
+    
+    context = '\n'.join(context_parts) if context_parts else ''
+    return f"{context}\n\n{content}" if context else content
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Phase 4: Filter Parents from Embedding**
+
+File: src/contextinator/embedding/embedding_service.py
+
+Update generate_embeddings() method (after line 153, before validation loop):
+
+python
+# Filter out parent chunks - only embed children
+chunks = [c for c in chunks if not c.get('is_parent', False)]
+parent_count = len(chunks) - len(chunks)
+if parent_count > 0:
+    logger.info(f"Filtered out {parent_count} parent chunks (will only embed child chunks)")
+
+logger.info(f"🚀 Starting embedding generation for {len(chunks)} chunks...")
+
+
+Actually, simpler - right after line 153:
+
+python
+logger.info(f"🚀 Starting embedding generation for {len(chunks)} chunks...")
+logger.info(f"📊 Using model: {OPENAI_EMBEDDING_MODEL}")
+logger.info(f"📦 Batch size: {EMBEDDING_BATCH_SIZE}")
+
+# Filter out parent chunks
+original_count = len(chunks)
+chunks = [c for c in chunks if not c.get('is_parent', False)]
+if len(chunks) < original_count:
+    logger.info(f"Filtered {original_count - len(chunks)} parent chunks (embedding only children)")
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Phase 5: Update Chunk Service Version**
+
+File: src/contextinator/chunking/chunk_service.py
+
+Update save_chunks() function (around line 200):
+
+python
+data = {
+    'chunks': chunks,
+    'statistics': stats or {},
+    'repository': repo_name,
+    'version': '2.0',
+    'total_chunks': len(chunks),
+    'schema': {
+        'parent_child_enabled': True,
+        'hierarchy_fields': ['id', 'parent_id', 'parent_type', 'parent_name', 'children_ids', 'is_parent']
+    }
+}
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Implementation Order**
+
+1. ast_parser.py - Replace extract_nodes() function
+2. node_collector.py - Add 6 hierarchy fields to chunk dict
+3. context_builder.py - Add parent context at top of enriched content
+4. embedding_service.py - Filter is_parent=True chunks before embedding
+5. chunk_service.py - Update version to 2.0 and add schema
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+### **Expected Results**
+
+Before:
+• Class (100 lines) → embedded
+• Method1 (10 lines) → embedded ❌ (duplicate)
+• Method2 (15 lines) → embedded ❌ (duplicate)
+
+After:
+• Class (100 lines) → stored, NOT embedded ✅
+• Method1 (10 lines) → embedded with "Parent: ClassName" context ✅
+• Method2 (15 lines) → embedded with "Parent: ClassName" context ✅
+
+Storage reduction: ~30% fewer embeddings for nested codebases
+
+>

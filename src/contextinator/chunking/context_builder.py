@@ -7,7 +7,6 @@ for code chunks, adding metadata like file path, language, and location.
 
 from typing import Any, Dict, List, Optional
 
-
 def build_context(chunk: Dict[str, Any]) -> str:
     """
     Build contextual information for a chunk.
@@ -39,6 +38,12 @@ def build_context(chunk: Dict[str, Any]) -> str:
         raise TypeError("Chunk must be a dictionary")
         
     context_parts: List[str] = []
+    
+    # Add parent context first if available
+    if chunk.get('parent_id') and chunk.get('parent_name'):
+        parent_type = chunk.get('parent_type', 'unknown')
+        parent_name = chunk.get('parent_name')
+        context_parts.append(f"Parent: {parent_name} ({parent_type})")
     
     # Add file path
     if 'file_path' in chunk and chunk['file_path']:

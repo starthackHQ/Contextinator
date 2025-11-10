@@ -80,7 +80,13 @@ class NodeCollector:
                 chunk = {
                     'content': content,  # Original code (for display)
                     'enriched_content': enriched_content,  # Context + code (for embedding)
-                    **chunk_metadata
+                    **chunk_metadata,
+                    'id': node['id'],
+                    'parent_id': node['parent_id'],
+                    'parent_type': node['parent_type'],
+                    'parent_name': node['parent_name'],
+                    'children_ids': node['children_ids'],
+                    'is_parent': node['is_parent']
                 }
                 
                 # Track location for duplicate analysis

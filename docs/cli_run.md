@@ -1,10 +1,10 @@
 # Creating Chunks
 ```bash
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli chunk --repo-url https://github.com/iamDyeus/tkreload --save
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli chunk --repo-url https://github.com/iamDyeus/tkreload --save
 INFO - Tree-sitter imports successful
 INFO - 📥 Cloning https://github.com/iamDyeus/tkreload...
-INFO - Repository cloned to C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_
-INFO - Discovering files in C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_...
+INFO - Repository cloned to C:\Users\Arsh\AppData\Local\Temp\contextinator_r2dzatn5
+INFO - Discovering files in C:\Users\Arsh\AppData\Local\Temp\contextinator_r2dzatn5...
 INFO - File discovery complete: 17 files found, 0 files ignored
 INFO - Found 17 files to process
 INFO - Chunking files: 1/17 (5.9%)
@@ -16,7 +16,8 @@ INFO - Chunking files: 6/17 (35.3%)
 INFO - Chunking files: 7/17 (41.2%)
 INFO - Chunking files: 8/17 (47.1%)
 INFO - Chunking files: 9/17 (52.9%)
-WARNING - No semantic nodes found in C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_\tests\__init__.py, using file-level chunking
+WARNING - No semantic nodes found in C:\Users\Arsh\AppData\Local\Temp\contextinator_r2dzatn5\tests\__init__.py, using file-level chunking
+WARNING - Skipping malformed node in tests/__init__.py: 'id'
 INFO - Chunking files: 10/17 (58.8%)
 INFO - Chunking files: 11/17 (64.7%)
 INFO - Chunking files: 12/17 (70.6%)
@@ -24,82 +25,67 @@ INFO - Chunking files: 13/17 (76.5%)
 INFO - Chunking files: 14/17 (82.4%)
 INFO - Chunking files: 15/17 (88.2%)
 INFO - Chunking files: 16/17 (94.1%)
-WARNING - No semantic nodes found in C:\Users\Arsh\AppData\Local\Temp\contextinator_mkqo91y_\tkreload\__init__.py, using file-level chunking
+WARNING - No semantic nodes found in C:\Users\Arsh\AppData\Local\Temp\contextinator_r2dzatn5\tkreload\__init__.py, using file-level chunking
+WARNING - Skipping malformed node in tkreload/__init__.py: 'id'
 INFO - Chunking files: 17/17 (100.0%)
 INFO - ✅ Chunking files completed: 17/17
-INFO -
+INFO - 
 📊 Chunking Statistics:
 INFO -   Files processed: 17/17
-INFO -   Total chunks: 93
-INFO -   Unique chunks: 89
+INFO -   Unique chunks (before splitting): 87
+INFO -   Total chunks (after splitting): 91
 INFO -   Duplicates found: 0
-INFO -
+INFO -   Chunks split due to size: 4 additional chunks created
+INFO - 
 ✅ Chunks saved to D:\projects\Contextinator\.contextinator\chunks\tkreload\chunks.json
-INFO - ✅ Chunking complete: 93 chunks created
+INFO - ✅ Chunking complete: 91 chunks created
 INFO - Chunks saved in: D:\projects\Contextinator\.contextinator\chunks\tkreload/
-(.venv) PS D:\projects\Contextinator>      
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli embed --repo-url https://github.com/iamDyeus/tkreload --save 
-INFO - Tree-sitter imports successful
-INFO - 📥 Cloning https://github.com/iamDyeus/tkreload...
-INFO - Repository cloned to C:\Users\Arsh\AppData\Local\Temp\contextinator_d_d5dlbj
-INFO - Generating embeddings for repository: tkreload
-INFO - 📂 Loading chunks from D:\projects\Contextinator\.contextinator\chunks\tkreload\chunks.json
-INFO - 📊 Loaded 93 chunks
-INFO - 🚀 Starting embedding generation for 93 chunks...
-INFO - 📊 Using model: text-embedding-3-large
-INFO - 📦 Batch size: 250
-INFO - ✅ Processing 92 valid chunks
-INFO - Generating embeddings: 1/1 (100.0%)
-INFO - ✅ Generating embeddings completed: 1/1
-INFO - ✅ Successfully generated embeddings for 92 chunks
-INFO - 💾 Embeddings saved to D:\projects\Contextinator\.contextinator\embeddings\tkreload\embeddings.json
-INFO - Embedding generation complete: 92 chunks embedded
-INFO - Embeddings saved to D:\projects\Contextinator\.contextinator\embeddings\tkreload/
 ```
 
 # Creating Embeddings
 ```bash
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli embed --repo-url https://github.com/iamDyeus/tkreload --save 
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli embed --repo-url https://github.com/iamDyeus/tkreload --save 
 INFO - Tree-sitter imports successful
 INFO - 📥 Cloning https://github.com/iamDyeus/tkreload...
-INFO - Repository cloned to C:\Users\Arsh\AppData\Local\Temp\contextinator_d_d5dlbj
+INFO - Repository cloned to C:\Users\Arsh\AppData\Local\Temp\contextinator_wgugsqe9
 INFO - Generating embeddings for repository: tkreload
 INFO - 📂 Loading chunks from D:\projects\Contextinator\.contextinator\chunks\tkreload\chunks.json
-INFO - 📊 Loaded 93 chunks
-INFO - 🚀 Starting embedding generation for 93 chunks...
+INFO - 📊 Loaded 91 chunks
+INFO - 🚀 Starting embedding generation for 91 chunks...
 INFO - 📊 Using model: text-embedding-3-large
 INFO - 📦 Batch size: 250
-INFO - ✅ Processing 92 valid chunks
+INFO - 🔍 Filtered 9 parent chunks (embedding only 82 child chunks)
+INFO - ✅ Processing 82 valid chunks
 INFO - Generating embeddings: 1/1 (100.0%)
 INFO - ✅ Generating embeddings completed: 1/1
-INFO - ✅ Successfully generated embeddings for 92 chunks
+INFO - ✅ Successfully generated embeddings for 82 chunks
 INFO - 💾 Embeddings saved to D:\projects\Contextinator\.contextinator\embeddings\tkreload\embeddings.json
-INFO - Embedding generation complete: 92 chunks embedded
+INFO - Embedding generation complete: 82 chunks embedded
 INFO - Embeddings saved to D:\projects\Contextinator\.contextinator\embeddings\tkreload/
+
 ```
 
 
 # Storing the Embeddings
 ```bash
-(.venv) PS D:\projects\Contextinator> python -m src.contexinator.cli store-embeddings --repo-name tkreload --collection-name Tkreload
+(.venv) PS D:\projects\Contextinator> python -m src.contextinator.cli store-embeddings --repo-name tkreload --collection-name Tkreload
 INFO - Tree-sitter imports successful
 INFO - Storing embeddings for repository: tkreload
 INFO - 📂 Loading embeddings from D:\projects\Contextinator\.contextinator\embeddings\tkreload\embeddings.json
 INFO - Connecting to ChromaDB server at: http://localhost:8000
 INFO - ChromaDB server connection successful
-INFO - 🚀 Storing 92 embeddings in ChromaDB...
+INFO - 🚀 Storing 82 embeddings in ChromaDB...
 INFO - 📦 Collection: Tkreload
 INFO - 📊 Batch size: 100
-INFO - Using existing collection: Tkreload
-WARNING - Could not clear existing collection data: At least one of ids, where, or where_document must be provided in delete.
+INFO - Created new collection: Tkreload
 INFO - Storing embeddings: 1/1 (100.0%)
 INFO - ✅ Storing embeddings completed: 1/1
-INFO - ✅ Successfully stored 92 embeddings
-INFO - 📊 Collection now contains 184 items
+INFO - ✅ Successfully stored 82 embeddings
+INFO - 📊 Collection now contains 82 items
 INFO - Storage complete:
-INFO -    📊 Stored: 92 embeddings
+INFO -    📊 Stored: 82 embeddings
 INFO -    📚 Collection: Tkreload
-INFO -    🗄️  Database: D:\projects\Contextinator\.contextinator\chromadb\tkreload
+INFO -    🌐 Saved in ChromaDB server
 ```
 *Note :* here we used the `--repo-name` flag to specify which repository's embeddings to load, and `--collection-name` to name the ChromaDB collection, and also we were using `USE_CHROMA_SERVER=true` and `CHROMA_SERVER_URL=http://localhost:8000` in our `.env` file to connect to the ChromaDB server. the logs here say "🗄️  Database: D:\projects\Contextinator\.contextinator\chromadb\tkreload" ignore that ; )
 

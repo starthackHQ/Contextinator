@@ -151,6 +151,13 @@ class EmbeddingService:
         logger.info(f"📊 Using model: {OPENAI_EMBEDDING_MODEL}")
         logger.info(f"📦 Batch size: {EMBEDDING_BATCH_SIZE}")
         
+        # Filter out parent chunks - only embed children
+        original_count = len(chunks)
+        chunks = [c for c in chunks if not c.get('is_parent', False)]
+        parent_count = original_count - len(chunks)
+        if parent_count > 0:
+            logger.info(f"🔍 Filtered {parent_count} parent chunks (embedding only {len(chunks)} child chunks)")
+        
         # Validate and filter chunks with content fixing
         valid_chunks: List[Tuple[int, Dict[str, Any]]] = []
         fixed_chunks = 0

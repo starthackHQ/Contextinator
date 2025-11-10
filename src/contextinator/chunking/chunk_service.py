@@ -197,8 +197,12 @@ def save_chunks(
         'chunks': chunks,
         'statistics': stats or {},
         'repository': repo_name,
-        'version': '1.0',  # For future compatibility
-        'total_chunks': len(chunks)
+        'version': '2.0',  # Updated for parent-child hierarchy support
+        'total_chunks': len(chunks),
+        'schema': {
+            'parent_child_enabled': True,
+            'hierarchy_fields': ['id', 'parent_id', 'parent_type', 'parent_name', 'children_ids', 'is_parent']
+        }
     }
     
     try:

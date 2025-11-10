@@ -6,6 +6,7 @@ parsers and extract semantic code chunks like functions, classes, and methods.
 """
 
 from pathlib import Path
+import uuid
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from ..config import SUPPORTED_EXTENSIONS
@@ -115,6 +116,37 @@ NODE_TYPES: Dict[str, List[str]] = {
     'solidity': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'sol': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'lua': ['function_definition', 'local_function', 'table_constructor'],
+}
+
+PARENT_NODE_TYPES: Dict[str, List[str]] = {
+    'python': ['class_definition'],
+    'javascript': ['class_declaration'],
+    'typescript': ['class_declaration', 'interface_declaration'],
+    'tsx': ['class_declaration', 'interface_declaration'],
+    'java': ['class_declaration', 'interface_declaration'],
+    'go': ['type_declaration'],
+    'rust': ['impl_item', 'struct_item', 'enum_item', 'trait_item'],
+    'cpp': ['class_specifier', 'struct_specifier'],
+    'c': ['struct_specifier'],
+    'csharp': ['class_declaration', 'interface_declaration'],
+    'cs': ['class_declaration', 'interface_declaration'],
+    'php': ['class_declaration'],
+    'bash': [],
+    'sh': [],
+    'sql': [],
+    'kotlin': ['class_declaration', 'object_declaration'],
+    'kt': ['class_declaration', 'object_declaration'],
+    'yaml': [],
+    'yml': [],
+    'markdown': [],
+    'md': [],
+    'dockerfile': [],
+    'json': [],
+    'toml': [],
+    'swift': ['class_declaration', 'struct_declaration', 'protocol_declaration'],
+    'solidity': ['contract_declaration', 'struct_definition'],
+    'sol': ['contract_declaration', 'struct_definition'],
+    'lua': ['table_constructor'],
 }
 
 # Cache for parsers to avoid recreation
@@ -313,7 +345,6 @@ def get_parser(language: str) -> Optional["Parser"]:
         logger.warning(f"Error creating parser for {language}: {e}")
         return None
 
-
 def extract_nodes(root_node: Any, content: str, language: str) -> List[Dict[str, Any]]:
     """
     Extract relevant nodes from AST based on language-specific node types.
@@ -324,39 +355,59 @@ def extract_nodes(root_node: Any, content: str, language: str) -> List[Dict[str,
         language: Programming language
     
     Returns:
-        List of extracted nodes with metadata
+        List of extracted nodes with metadata including hierarchy
     """
     target_types = NODE_TYPES.get(language, [])
     if not target_types:
         return []
     
+    parent_types = set(PARENT_NODE_TYPES.get(language, []))
     nodes = []
     content_bytes = content.encode('utf-8')
     
-    def traverse(node: Any) -> None:
-        """Recursively traverse AST and extract target nodes."""
+    def traverse(node: Any, parent_id: Optional[str] = None, parent_info: Optional[Dict] = None) -> None:
+        """Recursively traverse AST and extract target nodes with hierarchy tracking."""
         if node.type in target_types:
-            # Extract node content
+            node_id = str(uuid.uuid4())
             node_content = content_bytes[node.start_byte:node.end_byte].decode('utf-8', errors='ignore')
-            
-            # Get node name if available
             node_name = get_node_name(node, content_bytes)
+            is_parent = node.type in parent_types
             
-            nodes.append({
+            node_dict = {
+                'id': node_id,
                 'type': node.type,
                 'name': node_name,
                 'content': node_content,
                 'start_line': node.start_point[0] + 1,
                 'end_line': node.end_point[0] + 1,
                 'start_byte': node.start_byte,
-                'end_byte': node.end_byte
-            })
-        
-        # Continue traversing children
-        for child in node.children:
-            traverse(child)
+                'end_byte': node.end_byte,
+                'is_parent': is_parent,
+                'parent_id': parent_id,
+                'parent_type': parent_info.get('type') if parent_info else None,
+                'parent_name': parent_info.get('name') if parent_info else None,
+                'children_ids': []
+            }
+            
+            nodes.append(node_dict)
+            
+            if is_parent:
+                for child in node.children:
+                    traverse(child, node_id, {'type': node.type, 'name': node_name})
+            else:
+                for child in node.children:
+                    traverse(child, parent_id, parent_info)
+        else:
+            for child in node.children:
+                traverse(child, parent_id, parent_info)
     
     traverse(root_node)
+    
+    # Populate children_ids
+    for node in nodes:
+        if node['is_parent']:
+            node['children_ids'] = [n['id'] for n in nodes if n['parent_id'] == node['id']]
+    
     return nodes
 
 
