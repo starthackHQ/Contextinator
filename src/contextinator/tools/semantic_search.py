@@ -17,7 +17,8 @@ def semantic_search(
     n_results: int = 5,
     language: Optional[str] = None,
     file_path: Optional[str] = None,
-    node_type: Optional[str] = None
+    node_type: Optional[str] = None,
+    include_parents: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Search for semantically similar code using natural language queries.
@@ -32,6 +33,7 @@ def semantic_search(
         language: Optional filter by programming language
         file_path: Optional filter by file path (partial match)
         node_type: Optional filter by node type (function, class, etc.)
+        include_parents: Include parent chunks (classes/modules) in results (default: False)
     
     Returns:
         List of most relevant chunks with cosine similarity scores
@@ -78,6 +80,10 @@ def semantic_search(
             where["file_path"] = {"$contains": file_path}
         if node_type:
             where["node_type"] = node_type
+        
+        # Filter parents by default (unless explicitly included)
+        if not include_parents:
+            where["is_parent"] = False
         
         # Generate OpenAI embeddings for the query
         from ..embedding.embedding_service import EmbeddingService

@@ -20,6 +20,7 @@ Turn any codebase into semantically-aware, searchable knowledge for AI-powered w
 - 🚀 **Full Pipeline Automation** - One command to chunk, embed, and store
 - 🎯 **Smart Deduplication** - Hash-based detection of duplicate code
 - 📊 **Visual AST Explorer** - Debug and visualize code structure
+- 📦 **TOON Format Export** - Token-efficient output format for LLM prompts (40-60% savings)
 
 - 🐳 **Docker-Ready** - ChromaDB server included
 
@@ -125,63 +126,283 @@ python -m src.contextinator.cli store-embeddings --repo-name <repo-name> --colle
 python -m src.contextinator.cli store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
-### 4. Search Tools
-z
+### 4. Search Commands
+
+Contextinator provides multiple search methods for different use cases:
+
+#### **4.1 Semantic Search** (Natural Language)
+Find code using natural language queries. Uses AI embeddings for semantic similarity.
+
 ```bash
-# Semantic search
-python -m src.contextinator.cli search "your query" --collection <name> -n 5
+# Basic semantic search
+python -m src.contextinator.cli search "authentication logic" --collection MyRepo
 
-# Symbol search
-python -m src.contextinator.cli symbol <function/class-name> --collection <name>
+# With filters
+python -m src.contextinator.cli search "error handling" -c MyRepo --language python -n 10
 
-# Pattern/regex search
-python -m src.contextinator.cli pattern "pattern" --collection <name>
+# Include parent chunks (classes/modules) in results
+python -m src.contextinator.cli search "database queries" -c MyRepo --include-parents
 
+# Filter by file path
+python -m src.contextinator.cli search "API endpoints" -c MyRepo --file "src/api/"
+
+# Filter by node type
+python -m src.contextinator.cli search "validation logic" -c MyRepo --type function_definition
+
+# Export to JSON
+python -m src.contextinator.cli search "authentication" -c MyRepo --json results.json
+
+# Export to TOON format (40-60% token savings for LLMs)
+python -m src.contextinator.cli search "authentication" -c MyRepo --toon results.json
+
+**Options:**
+- `-c, --collection` (required): Collection name
+- `-n, --n-results`: Number of results (default: 5)
+- `-l, --language`: Filter by programming language (e.g., python, javascript)
+- `-f, --file`: Filter by file path (partial match)
+- `-t, --type`: Filter by node type (e.g., function_definition, class_definition)
+- `--include-parents`: Include parent chunks (classes/modules) in results
+- `--json`: Export results to JSON file
+- `--toon`: Export results to TOON file (compact format for LLMs)
+```
+---
+
+#### **4.2 Symbol Search** (Exact Name Match)
+Find specific functions or classes by name.
+
+```bash
+# Find function by name
+python -m src.contextinator.cli symbol authenticate_user --collection MyRepo
+
+# Find class by name
+python -m src.contextinator.cli symbol UserManager -c MyRepo --type class_definition
+
+# Search in specific file
+python -m src.contextinator.cli symbol get_user -c MyRepo --file "api/"
+
+# Export results
+python -m src.contextinator.cli symbol main -c MyRepo --json main_functions.json
+
+**Options:**
+- `-c, --collection` (required): Collection name
+- `-t, --type`: Filter by node type
+- `-f, --file`: Filter by file path
+- `--limit`: Maximum results (default: 50)
+- `--json`: Export to JSON
+- `--toon`: Export to TOON format
+```
+---
+
+#### **4.3 Pattern Search** (Text/Regex)
+Search for specific text patterns in code.
+
+```bash
+# Find TODOs
+python -m src.contextinator.cli pattern "TODO" --collection MyRepo
+
+# Find import statements
+python -m src.contextinator.cli pattern "import requests" -c MyRepo --language python
+
+# Find async functions
+python -m src.contextinator.cli pattern "async def" -c MyRepo --file "api/"
+
+# Find FIXMEs and export
+python -m src.contextinator.cli pattern "FIXME" -c MyRepo --toon fixmes.json
+
+**Options:**
+- `-c, --collection` (required): Collection name
+- `-l, --language`: Filter by programming language
+- `-f, --file`: Filter by file path
+- `-t, --type`: Filter by node type
+- `--limit`: Maximum results (default: 50)
+- `--json`: Export to JSON
+- `--toon`: Export to TOON format
+```
+---
+
+#### **4.4 Advanced Search** (Hybrid)
+Combine semantic search, pattern matching, and filters for precise results.
+
+```bash
+# Semantic search with language filter
+python -m src.contextinator.cli search-advanced -c MyRepo \
+ --semantic "authentication" --language python
+
+# Pattern search with file filter
+python -m src.contextinator.cli search-advanced -c MyRepo \
+ --pattern "TODO" --file "src/"
+
+# Hybrid: semantic + pattern + type filter
+python -m src.contextinator.cli search-advanced -c MyRepo \
+ --semantic "error handling" --pattern "try" --type function_definition
+
+# Multiple filters with export
+python -m src.contextinator.cli search-advanced -c MyRepo \
+ --semantic "API routes" --language python --file "api/" --toon api_routes.json
+
+**Options:**
+- `-c, --collection` (required): Collection name
+- `-s, --semantic`: Semantic query (natural language)
+- `-p, --pattern`: Text pattern to search for
+- `-l, --language`: Filter by programming language
+- `-f, --file`: Filter by file path
+- `-t, --type`: Filter by node type
+- `--limit`: Maximum results (default: 50)
+- `--json`: Export to JSON
+- `--toon`: Export to TOON format
+```
+---
+
+#### **4.5 Read File** (Reconstruct from Chunks)
+Reconstruct and display a complete file from its chunks.
+
+```bash
 # Read complete file
-python -m src.contextinator.cli read-file <file-path> --collection <name>
+python -m src.contextinator.cli read-file "src/auth.py" --collection MyRepo
 
-# Advanced search
-python -m src.contextinator.cli search-advanced --collection <name> --semantic "query" --language python
+# Show chunks separately (don't join)
+python -m src.contextinator.cli read-file "src/api/routes.py" -c MyRepo --no-join
+
+# Export to JSON
+python -m src.contextinator.cli read-file "src/main.py" -c MyRepo --json main.json
+
+**Options:**
+- `-c, --collection` (required): Collection name
+- `--no-join`: Show chunks separately instead of joining them
+- `--json`: Export to JSON
+- `--toon`: Export to TOON format
 ```
 
-### 5. Combined Pipeline
+---
+
+### 5. Export Formats
+
+All search commands support two export formats:
+
+#### **JSON Format** (Standard)
+```bash
+python -m src.contextinator.cli search "authentication" -c MyRepo --json results.json
+
+Output structure:
+json
+{
+ "query": "authentication",
+ "collection": "MyRepo",
+ "total_results": 5,
+ "results": [
+   {
+     "id": "chunk_0_12345",
+     "content": "def authenticate_user(username, password):\n    ...",
+     "metadata": {
+       "file_path": "src/auth.py",
+       "language": "python",
+       "node_type": "function_definition",
+       "node_name": "authenticate_user",
+       "start_line": 10,
+       "end_line": 25
+     },
+     "cosine_similarity": 0.89
+   }
+ ]
+}
+```
+#### **TOON Format** (Token-Optimized)
+Compact format designed for LLM prompts. Saves 40-60% tokens compared to JSON.
 
 ```bash
-# Chunk + Embed + Store (all-in-one)
-python -m src.contextinator.cli chunk-embed-store-embeddings --save --path <repo-path> --output <output-dir>
-python -m src.contextinator.cli chunk-embed-store-embeddings --save --repo-url <github-url> --collection-name <name>
-python -m src.contextinator.cli chunk-embed-store-embeddings --chunks-dir <dir> --embeddings-dir <dir> --chromadb-dir <dir>
+python -m src.contextinator.cli search "authentication" -c MyRepo --toon results.json
+
+Perfect for:
+- Feeding search results to LLMs
+- Building RAG (Retrieval-Augmented Generation) systems
+- Minimizing token usage in AI workflows
 ```
 
-### Database Management
+---
+
+### ### 6. Database Management
 
 ```bash
-python -m src.contextinator.cli db-info           # Show database stats
-python -m src.contextinator.cli db-list           # List all collections
-python -m src.contextinator.cli db-show <name>    # Show collection details
-python -m src.contextinator.cli db-clear <name>   # Delete collection
-python -m src.contextinator.cli db-info --chromadb-dir <custom-dir>  # Use custom ChromaDB location
-python -m src.contextinator.cli db-info --repo-name <repo-name>      # Use specific repo database
+# Show database statistics
+python -m src.contextinator.cli db-info
+
+# List all collections
+python -m src.contextinator.cli db-list
+
+# Show collection details with sample documents
+python -m src.contextinator.cli db-show MyRepo --sample 3
+
+# Delete a collection
+python -m src.contextinator.cli db-clear MyRepo
+
+# Use custom ChromaDB location
+python -m src.contextinator.cli db-info --chromadb-dir <custom-dir>
+
+# Use specific repo database
+python -m src.contextinator.cli db-info --repo-name MyRepo
 ```
 
-**Default Storage:** Files are saved to `.contextinator/chunks/`, `.contextinator/embeddings/`, and `.contextinator/chromadb/` directories.
+---
 
-**Custom Directories:** Use `--chunks-dir`, `--embeddings-dir`, or `--chromadb-dir` to override default locations.
 
-## Typical Workflow
+## 📚 Quick Reference
 
+### Common Workflows
+
+**1. Index a GitHub repository:**
 ```bash
-# 1. Chunk a repository
-python -m src.contextinator.cli chunk --repo-url https://github.com/user/repo --save
-
-# 2. Generate embeddings  
-python -m src.contextinator.cli embed --repo-url https://github.com/user/repo --save
-
-# 3. Store in vector database
-python -m src.contextinator.cli store-embeddings --repo-name repo --collection-name MyRepo
-
-# Or do all steps at once
-python -m src.contextinator.cli chunk-embed-store-embeddings --repo-url https://github.com/user/repo --save --collection-name MyRepo
+python -m src.contextinator.cli chunk-embed-store-embeddings \
+ --repo-url https://github.com/user/repo \
+ --save \
+ --collection-name MyRepo
 ```
+
+**2. Search for specific functionality:**
+```bash
+# Natural language search
+python -m src.contextinator.cli search "how is authentication handled" -c MyRepo
+
+# Find specific function
+python -m src.contextinator.cli symbol authenticate_user -c MyRepo
+
+# Find TODOs
+python -m src.contextinator.cli pattern "TODO" -c MyRepo
+```
+
+**3. Advanced filtered search:**
+```bash
+python -m src.contextinator.cli search-advanced -c MyRepo \
+ --semantic "error handling" \
+ --language python \
+ --file "src/" \
+ --toon error_handling.json
+```
+
+**4. Export for LLM context:**
+```bash
+# Get authentication-related code in token-efficient format
+python -m src.contextinator.cli search "authentication and authorization" \
+ -c MyRepo \
+ --include-parents \
+ --toon auth_context.json
+```
+
+### All Commands
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `chunk` | Extract semantic chunks from code | `chunk --repo-url <url> --save` |
+| `embed` | Generate embeddings for chunks | `embed --repo-url <url> --save` |
+| `store-embeddings` | Store embeddings in ChromaDB | `store-embeddings --repo-name MyRepo` |
+| `chunk-embed-store-embeddings` | Full pipeline (all-in-one) | `chunk-embed-store-embeddings --repo-url <url> --save` |
+| `search` | Semantic search (natural language) | `search "query" -c MyRepo` |
+| `symbol` | Find functions/classes by name | `symbol function_name -c MyRepo` |
+| `pattern` | Text/regex search | `pattern "TODO" -c MyRepo` |
+| `search-advanced` | Hybrid search with filters | `search-advanced -c MyRepo --semantic "query" --language python` |
+| `read-file` | Reconstruct file from chunks | `read-file "path/to/file.py" -c MyRepo` |
+| `db-info` | Show database statistics | `db-info` |
+| `db-list` | List all collections | `db-list` |
+| `db-show` | Show collection details | `db-show MyRepo --sample 3` |
+| `db-clear` | Delete a collection | `db-clear MyRepo` |
 
 
