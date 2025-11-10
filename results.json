@@ -1,0 +1,74 @@
+{
+  "query": "authentication",
+  "collection": "flash",
+  "total_results": 3,
+  "results": [
+    {
+      "id": "chunk_80_3327796426186998725",
+      "content": "async isadminUser(id) {\n    let stmt = this._stmts.get('isadminUser');\n    if (!stmt) {\n      stmt = { name: 'isadminUser', text: `SELECT isadmin FROM users WHERE id = $1 LIMIT 1;` };\n      this._stmts.set('isadminUser', stmt);\n    }\n    stmt.values = [id];\n    const r = await this.db.query(stmt);\n    return r.rows[0] ? r.rows[0].isadmin : null;\n  }",
+      "metadata": {
+        "node_name": "isadminUser",
+        "locations": "[\"example/ts/flash_gen/spacical.js:9-18\"]",
+        "original_index": 80,
+        "end_byte": 486,
+        "file_path": "example/ts/flash_gen/spacical.js",
+        "content": "async isadminUser(id) {\n    let stmt = this._stmts.get('isadminUser');\n    if (!stmt) {\n      stmt = { name: 'isadminUser', text: `SELECT isadmin FROM users WHERE id = $1 LIMIT 1;` };\n      this._stmts.set('isadminUser', stmt);\n    }\n    stmt.values = [id];\n    const r = await this.db.query(stmt);\n    return r.rows[0] ? r.rows[0].isadmin : null;\n  }",
+        "start_byte": 135,
+        "end_line": 18,
+        "hash": "d4b54fd9a9eb188615dab624c00bfdd4d6d52fe185059dbc2c909a5e6285761c",
+        "language": "javascript",
+        "node_type": "method_definition",
+        "embedding_model": "text-embedding-3-large",
+        "start_line": 9
+      },
+      "distance": 1.4247214,
+      "cosine_similarity": -0.4247213999999999
+    },
+    {
+      "id": "chunk_3_-1924290327153194936",
+      "content": "      this._stmts.set('getMostCommentedPosts', stmt);\n    }\n    const r = await this.db.query(stmt, [limit]);\n    return r.rows;\n  }\n\n  async checkUserExists(email) {\n    let stmt = this._stmts.get('checkUserExists');\n    if (!stmt) {\n      stmt = { name: 'checkUserExists', text: `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1) as exists;` };\n      this._stmts.set('checkUserExists', stmt);\n    }\n    stmt.values = [email];\n    const r = await this.db.query(stmt);\n    return r.rows[0] ? r.rows[0].exists : null;\n  }\n\n  async getUsersCreatedBetween(created_at_start, created_at_end) {\n    let stmt = this._stmts.get('getUsersCreatedBetween');\n    if (!stmt) {\n      stmt = `SELECT id, name, email, created_at FROM users WHERE created_at BETWEEN $1 AND $2 ORDER BY created_at DESC;`;\n      this._stmts.set('getUsersCreatedBetween', stmt);\n    }\n    const r = await this.db.query(stmt, [created_at_start, created_at_end]);\n    return r.rows;\n  }\n\n  async updateUserAdminStatus(id, isadmin) {\n    let stmt = this._stmts.get('updateUserAdminStatus');\n    if (!stmt) {\n      stmt = `UPDATE users SET isadmin = $2, updated_at = NOW() WHERE id = $1;`;\n      this._stmts.set('updateUserAdminStatus', stmt);\n    }\n    const r = await this.db.query(stmt, [id, isadmin]);\n    return r.rowCount;\n  }\n\n  async deleteInactiveUsers(created_at) {\n    let stmt = this._stmts.get('deleteInactiveUsers');\n    if (!stmt) {\n      stmt = `DELETE FROM users WHERE id NOT IN ( SELECT DISTINCT user_id FROM posts UNION SELECT DISTINCT user_id FROM comments ) AND created_at < $1;`;\n      this._stmts.set('deleteInactiveUsers', stmt);\n    }\n    const r = await this.db.query(stmt, [created_at]);\n    return r.rowCount;\n  }\n\n  async createUser(name, email, address, isadmin) {\n    let stmt = this._stmts.get('createUser');\n    if (!stmt) {",
+      "metadata": {
+        "is_split": true,
+        "node_type": "class_declaration",
+        "start_byte": 45,
+        "token_count": 485,
+        "content": "      this._stmts.set('getMostCommentedPosts', stmt);\n    }\n    const r = await this.db.query(stmt, [limit]);\n    return r.rows;\n  }\n\n  async checkUserExists(email) {\n    let stmt = this._stmts.get('checkUserExists');\n    if (!stmt) {\n      stmt = { name: 'checkUserExists', text: `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1) as exists;` };\n      this._stmts.set('checkUserExists', stmt);\n    }\n    stmt.values = [email];\n    const r = await this.db.query(stmt);\n    return r.rows[0] ? r.rows[0].exists : null;\n  }\n\n  async getUsersCreatedBetween(created_at_start, created_at_end) {\n    let stmt = this._stmts.get('getUsersCreatedBetween');\n    if (!stmt) {\n      stmt = `SELECT id, name, email, created_at FROM users WHERE created_at BETWEEN $1 AND $2 ORDER BY created_at DESC;`;\n      this._stmts.set('getUsersCreatedBetween', stmt);\n    }\n    const r = await this.db.query(stmt, [created_at_start, created_at_end]);\n    return r.rows;\n  }\n\n  async updateUserAdminStatus(id, isadmin) {\n    let stmt = this._stmts.get('updateUserAdminStatus');\n    if (!stmt) {\n      stmt = `UPDATE users SET isadmin = $2, updated_at = NOW() WHERE id = $1;`;\n      this._stmts.set('updateUserAdminStatus', stmt);\n    }\n    const r = await this.db.query(stmt, [id, isadmin]);\n    return r.rowCount;\n  }\n\n  async deleteInactiveUsers(created_at) {\n    let stmt = this._stmts.get('deleteInactiveUsers');\n    if (!stmt) {\n      stmt = `DELETE FROM users WHERE id NOT IN ( SELECT DISTINCT user_id FROM posts UNION SELECT DISTINCT user_id FROM comments ) AND created_at < $1;`;\n      this._stmts.set('deleteInactiveUsers', stmt);\n    }\n    const r = await this.db.query(stmt, [created_at]);\n    return r.rowCount;\n  }\n\n  async createUser(name, email, address, isadmin) {\n    let stmt = this._stmts.get('createUser');\n    if (!stmt) {",
+        "file_path": "example/ts/flash_gen/users.js",
+        "split_index": 3,
+        "hash": "c1bca0c69a4a541ffcbc5400c8a0fff067e897b3262e1d0dc06c618c36609ab3",
+        "original_index": 103,
+        "locations": "[\"example/ts/flash_gen/users.js:3-233\"]",
+        "end_byte": 12448,
+        "original_hash": "c1bca0c69a4a541ffcbc5400c8a0fff067e897b3262e1d0dc06c618c36609ab3",
+        "end_line": 233,
+        "node_name": "Queries",
+        "language": "javascript",
+        "embedding_model": "text-embedding-3-large",
+        "start_line": 3
+      },
+      "distance": 1.4408736,
+      "cosine_similarity": -0.4408736
+    },
+    {
+      "id": "chunk_13_-5556019581361555733",
+      "content": "async createUser(name, email, address, isadmin) {\n    let stmt = this._stmts.get('createUser');\n    if (!stmt) {\n      stmt = `INSERT INTO users (name, email, address, isadmin) VALUES ($1, $2, $3, $4);`;\n      this._stmts.set('createUser', stmt);\n    }\n    const r = await this.db.query(stmt, [name, email, address, isadmin]);\n    return r.rowCount;\n  }",
+      "metadata": {
+        "content": "async createUser(name, email, address, isadmin) {\n    let stmt = this._stmts.get('createUser');\n    if (!stmt) {\n      stmt = `INSERT INTO users (name, email, address, isadmin) VALUES ($1, $2, $3, $4);`;\n      this._stmts.set('createUser', stmt);\n    }\n    const r = await this.db.query(stmt, [name, email, address, isadmin]);\n    return r.rowCount;\n  }",
+        "locations": "[\"example/ts/flash_gen/users.js:61-69\"]",
+        "node_name": "createUser",
+        "end_byte": 3025,
+        "file_path": "example/ts/flash_gen/users.js",
+        "language": "javascript",
+        "end_line": 69,
+        "original_index": 113,
+        "embedding_model": "text-embedding-3-large",
+        "hash": "158da7597c71e8c597e81493d5a53077b3397362e00132c63bd8c1509cf31ab5",
+        "start_byte": 2672,
+        "start_line": 61,
+        "node_type": "method_definition"
+      },
+      "distance": 1.4469984,
+      "cosine_similarity": -0.4469984
+    }
+  ]
+}
