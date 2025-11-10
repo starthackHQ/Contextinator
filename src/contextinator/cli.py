@@ -595,8 +595,16 @@ def db_clear_func(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='contextinator', description='Contextinator — semantic codebase tooling')
-
+    parser = argparse.ArgumentParser(
+        prog='contextinator',
+        description='Contextinator — Turn any codebase into semantically-aware, searchable knowledge for AI',
+        epilog='Examples:\n'
+            '  %(prog)s chunk --repo-url https://github.com/user/repo --save\n'
+            '  %(prog)s search "authentication logic" -c MyRepo -n 5\n'
+            '  %(prog)s search-advanced -c MyRepo --semantic "error handling" --language python\n\n'
+            'For detailed help on a command: %(prog)s <command> --help',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = parser.add_subparsers(title='commands', dest='command')
 
     # chunk
@@ -683,7 +691,17 @@ def main():
     # ========================================================================
 
     # search (semantic search)
-    p_search = sub.add_parser('search', help='Semantic search using natural language queries')
+    p_search = sub.add_parser(
+        'search',
+        help='Semantic search using natural language queries',
+        description='Search for code using natural language. By default, excludes parent chunks (classes/modules) for cleaner results.',
+        epilog='Examples:\n'
+            '  %(prog)s search "authentication logic" -c MyRepo\n'
+            '  %(prog)s search "error handling" -c MyRepo --language python -n 10\n'
+            '  %(prog)s search "database queries" -c MyRepo --include-parents\n'
+            '  %(prog)s search "API endpoints" -c MyRepo --toon results.json',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p_search.add_argument('query_text', nargs='+', help='Natural language query')
     p_search.add_argument('--collection', '-c', required=True, help='Collection name')
     p_search.add_argument('--n-results', '-n', type=int, default=5, help='Number of results (default: 5)')
@@ -696,7 +714,17 @@ def main():
     p_search.set_defaults(func=search_func)
 
     # symbol (symbol search)
-    p_symbol = sub.add_parser('symbol', help='Find symbols (functions/classes) by name')
+    p_symbol = sub.add_parser(
+        'symbol',
+        help='Find symbols (functions/classes) by exact or partial name match',
+        description='Search for specific function or class names across the codebase.',
+        epilog='Examples:\n'
+            '  %(prog)s symbol authenticate_user -c MyRepo\n'
+            '  %(prog)s symbol UserManager -c MyRepo --type class_definition\n'
+            '  %(prog)s symbol "get_*" -c MyRepo --file "api/"\n'
+            '  %(prog)s symbol main -c MyRepo --json results.json',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p_symbol.add_argument('symbol_name', help='Symbol name to search for')
     p_symbol.add_argument('--collection', '-c', required=True, help='Collection name')
     p_symbol.add_argument('--type', '-t', help='Filter by node type')
@@ -707,7 +735,17 @@ def main():
     p_symbol.set_defaults(func=symbol_func)
 
     # pattern (regex search)
-    p_pattern = sub.add_parser('pattern', help='Search for code patterns')
+    p_pattern = sub.add_parser(
+        'pattern',
+        help='Search for text patterns or regex in code',
+        description='Find code containing specific text patterns. Useful for finding TODOs, FIXMEs, or specific code patterns.',
+        epilog='Examples:\n'
+            '  %(prog)s pattern "TODO" -c MyRepo\n'
+            '  %(prog)s pattern "import requests" -c MyRepo --language python\n'
+            '  %(prog)s pattern "async def" -c MyRepo --file "api/"\n'
+            '  %(prog)s pattern "FIXME" -c MyRepo --toon fixmes.json',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p_pattern.add_argument('pattern', help='Text pattern to search for')
     p_pattern.add_argument('--collection', '-c', required=True, help='Collection name')
     p_pattern.add_argument('--language', '-l', help='Filter by programming language')
@@ -728,7 +766,21 @@ def main():
     p_read_file.set_defaults(func=read_file_func)
 
     # search-advanced (advanced/hybrid search)
-    p_search_adv = sub.add_parser('search-advanced', help='Advanced search with multiple criteria')
+    p_search_adv = sub.add_parser(
+        'search-advanced',
+        help='Advanced search with multiple criteria and filters',
+        description='Combine semantic search, pattern matching, and metadata filters for precise results.',
+        epilog='Examples:\n'
+            '  # Semantic search with language filter\n'
+            '  %(prog)s search-advanced -c MyRepo --semantic "authentication" --language python\n\n'
+            '  # Pattern search with file filter\n'
+            '  %(prog)s search-advanced -c MyRepo --pattern "TODO" --file "src/"\n\n'
+            '  # Hybrid: semantic + pattern + type filter\n'
+            '  %(prog)s search-advanced -c MyRepo --semantic "error handling" --pattern "try" --type function_definition\n\n'
+            '  # Export to TOON format\n'
+            '  %(prog)s search-advanced -c MyRepo --semantic "API routes" --toon api_routes.json',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p_search_adv.add_argument('--collection', '-c', required=True, help='Collection name')
     p_search_adv.add_argument('--semantic', '-s', help='Semantic query for hybrid search')
     p_search_adv.add_argument('--pattern', '-p', help='Text pattern to search for')
