@@ -245,7 +245,9 @@ def search_func(args):
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
+            include_parents=getattr(args, 'include_parents', False)
         )
+
         
         result_data = {
             'query': query,
@@ -688,6 +690,7 @@ def main():
     p_search.add_argument('--language', '-l', help='Filter by programming language')
     p_search.add_argument('--file', '-f', help='Filter by file path (partial match)')
     p_search.add_argument('--type', '-t', help='Filter by node type')
+    p_search.add_argument('--include-parents', action='store_true', help='Include parent chunks (classes/modules) in results')
     p_search.add_argument('--json', help='Export results to JSON file')
     p_search.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_search.set_defaults(func=search_func)
