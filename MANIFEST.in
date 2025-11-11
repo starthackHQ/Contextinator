@@ -1,0 +1,21 @@
+# Include documentation and configuration files
+include README.md
+include LICENSE
+include CODE_OF_CONDUCT.md
+include pyproject.toml
+
+# Include example configuration
+include .env.example
+include docker-compose.yml
+
+# Include documentation
+recursive-include docs *.md *.png *.webp
+
+# Include package marker for type hints
+include src/contextinator/py.typed
+
+# Exclude build artifacts and cache
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store

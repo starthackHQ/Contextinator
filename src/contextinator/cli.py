@@ -1,6 +1,7 @@
 import argparse
 import sys
 from .utils import resolve_repo_path, logger
+from .utils.exceptions import FileSystemError
 import os    
 from .chunking import chunk_repository
 from .config import get_storage_path
@@ -11,10 +12,14 @@ def chunk_func(args):
     
     repo_url = getattr(args, 'repo_url', None)
     
-    repo_path = resolve_repo_path(
-        repo_url=repo_url,
-        path=getattr(args, 'path', None)
-    )
+    try:
+        repo_path = resolve_repo_path(
+            repo_url=repo_url,
+            path=getattr(args, 'path', None)
+        )
+    except FileSystemError as e:
+        logger.error(str(e))
+        sys.exit(1)
     
     # Determine repository name
     # If cloned from URL, extract name from URL instead of temp directory name
