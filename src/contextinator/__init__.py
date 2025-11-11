@@ -5,21 +5,30 @@ Transform any codebase into semantically-aware, searchable knowledge
 for AI-powered workflows using AST parsing and vector embeddings.
 """
 
-__version__ = "0.1.0"
-__author__ = "StartHack Team"
-__email__ = "founders@starthack.io"
+try:
+    #  the _version.py file is auto-generated when you build the package.
+    from ._version import version as __version__
+except ImportError:
+    # when in dev
+    __version__ = "0.0.0+unknown"
+
+
 
 # Core functionality exports
 from .chunking import chunk_repository
 from .embedding import embed_chunks
-from .vectorstore import store_repository_embeddings
-from .tools import semantic_search, full_text_search
+from .vectorstore import store_repository_embeddings, ChromaVectorStore
+from .tools import semantic_search, full_text_search, symbol_search, regex_search
 
 __all__ = [
     "__version__",
-    "chunk_repository", 
+    "chunk_repository",
     "embed_chunks",
     "store_repository_embeddings",
     "semantic_search",
     "full_text_search",
+    "symbol_search",       
+    "regex_search",
+    "read_file",  
+    "ChromaVectorStore",
 ]
