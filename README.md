@@ -100,19 +100,33 @@ docker-compose up -d
 
 # Usage
 
-this can be used in 2 ways, either via the CLI or programmatically via python code.
+Contextinator can be used in **two ways**: via the **CLI** or **programmatically** as a Python library.
 
-## CLI
+## CLI Usage
 
-**Usage:** `python -m src.contextinator.cli <command> [options]`
+After installation, you can use the `contextinator` command directly:
+
+```bash
+# Recommended: Use the installed command
+contextinator <command> [options]
+
+# Alternative: Use module execution
+python -m contextinator <command> [options]
+```
+
+**Development mode** (before installation):
+
+```bash
+python -m src.contextinator <command> [options]
+```
 
 ### 1. Chunking
 
 ```bash
-python -m src.contextinator.cli chunk --save --path <repo-path> --output <output-dir>
-python -m src.contextinator.cli chunk --save --repo-url <github-url>
-python -m src.contextinator.cli chunk --save-ast  # Save AST trees for debugging
-python -m src.contextinator.cli chunk --chunks-dir <custom-dir>  # Custom chunks directory
+contextinator chunk --save --path <repo-path> --output <output-dir>
+contextinator chunk --save --repo-url <github-url>
+contextinator chunk --save-ast  # Save AST trees for debugging
+contextinator chunk --chunks-dir <custom-dir>  # Custom chunks directory
 ```
 
 ### 2. Embedding
@@ -120,9 +134,9 @@ python -m src.contextinator.cli chunk --chunks-dir <custom-dir>  # Custom chunks
 right now, we're only supporting OpenAI embeddings, so make sure you've got the `.env.example` setup'd correctly.
 
 ```bash
-python -m src.contextinator.cli embed --save --path <repo-path> --output <output-dir>
-python -m src.contextinator.cli embed --save --repo-url <github-url>
-python -m src.contextinator.cli embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
+contextinator embed --save --path <repo-path> --output <output-dir>
+contextinator embed --save --repo-url <github-url>
+contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 ```
 
 ### 3. Storing in Vector Store
@@ -130,10 +144,10 @@ python -m src.contextinator.cli embed --chunks-dir <custom-dir> --embeddings-dir
 **Note:** Make sure ChromaDB server is running: `docker-compose up -d`
 
 ```bash
-python -m src.contextinator.cli store-embeddings --path <repo-path> --output <output-dir>
-python -m src.contextinator.cli store-embeddings --collection-name <custom-name>
-python -m src.contextinator.cli store-embeddings --repo-name <repo-name> --collection-name <custom-name>
-python -m src.contextinator.cli store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
+contextinator store-embeddings --path <repo-path> --output <output-dir>
+contextinator store-embeddings --collection-name <custom-name>
+contextinator store-embeddings --repo-name <repo-name> --collection-name <custom-name>
+contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
 ### 4. Search Commands
@@ -146,25 +160,25 @@ Find code using natural language queries. Uses AI embeddings for semantic simila
 
 ```bash
 # Basic semantic search
-python -m src.contextinator.cli search "authentication logic" --collection MyRepo
+contextinator search "authentication logic" --collection MyRepo
 
 # With filters
-python -m src.contextinator.cli search "error handling" -c MyRepo --language python -n 10
+contextinator search "error handling" -c MyRepo --language python -n 10
 
 # Include parent chunks (classes/modules) in results
-python -m src.contextinator.cli search "database queries" -c MyRepo --include-parents
+contextinator search "database queries" -c MyRepo --include-parents
 
 # Filter by file path
-python -m src.contextinator.cli search "API endpoints" -c MyRepo --file "src/api/"
+contextinator search "API endpoints" -c MyRepo --file "src/api/"
 
 # Filter by node type
-python -m src.contextinator.cli search "validation logic" -c MyRepo --type function_definition
+contextinator search "validation logic" -c MyRepo --type function_definition
 
 # Export to JSON
-python -m src.contextinator.cli search "authentication" -c MyRepo --json results.json
+contextinator search "authentication" -c MyRepo --json results.json
 
 # Export to TOON format (40-60% token savings for LLMs)
-python -m src.contextinator.cli search "authentication" -c MyRepo --toon results.json
+contextinator search "authentication" -c MyRepo --toon results.json
 
 **Options:**
 - `-c, --collection` (required): Collection name
@@ -342,26 +356,94 @@ Perfect for:
 
 ---
 
-### ### 6. Database Management
+### 6. Database Management
 
 ```bash
 # Show database statistics
-python -m src.contextinator.cli db-info
+contextinator db-info
 
 # List all collections
-python -m src.contextinator.cli db-list
+contextinator db-list
 
 # Show collection details with sample documents
-python -m src.contextinator.cli db-show MyRepo --sample 3
+contextinator db-show MyRepo --sample 3
 
 # Delete a collection
-python -m src.contextinator.cli db-clear MyRepo
+contextinator db-clear MyRepo
 
 # Use custom ChromaDB location
-python -m src.contextinator.cli db-info --chromadb-dir <custom-dir>
+contextinator db-info --chromadb-dir <custom-dir>
 
 # Use specific repo database
-python -m src.contextinator.cli db-info --repo-name MyRepo
+contextinator db-info --repo-name MyRepo
+```
+
+---
+
+## 📦 Programmatic Usage (As a Library)
+
+You can also import and use Contextinator directly in your Python code:
+
+```python
+from contextinator import (
+    chunk_repository,
+    embed_chunks,
+    store_repository_embeddings,
+    semantic_search,
+    symbol_search,
+    read_file,
+)
+
+# 1. Chunk a repository
+chunks = chunk_repository(
+    repo_path="./my-project",
+    repo_name="MyProject",
+    save=True,
+    output_dir="./output"
+)
+print(f"Created {len(chunks)} chunks")
+
+# 2. Generate embeddings
+embeddings = embed_chunks(
+    base_dir="./output",
+    repo_name="MyProject",
+    save=True
+)
+
+# 3. Store in vector database
+stats = store_repository_embeddings(
+    base_dir="./output",
+    repo_name="MyProject",
+    embedded_chunks=embeddings,
+    collection_name="MyProject"
+)
+print(f"Stored {stats['stored_count']} embeddings")
+
+# 4. Search semantically
+results = semantic_search(
+    collection_name="MyProject",
+    query="authentication logic",
+    n_results=5
+)
+
+for result in results:
+    print(f"File: {result['metadata']['file_path']}")
+    print(f"Code: {result['content'][:200]}...")
+    print(f"Similarity: {result.get('cosine_similarity', 'N/A')}")
+    print("-" * 80)
+
+# 5. Search by symbol name
+functions = symbol_search(
+    collection_name="MyProject",
+    symbol_name="authenticate_user"
+)
+
+# 6. Read entire file from chunks
+file_content = read_file(
+    collection_name="MyProject",
+    file_path="src/auth.py"
+)
+print(file_content['content'])
 ```
 
 ---
@@ -373,7 +455,7 @@ python -m src.contextinator.cli db-info --repo-name MyRepo
 **1. Index a GitHub repository:**
 
 ```bash
-python -m src.contextinator.cli chunk-embed-store-embeddings \
+contextinator chunk-embed-store-embeddings \
  --repo-url https://github.com/user/repo \
  --save \
  --collection-name MyRepo
@@ -383,13 +465,13 @@ python -m src.contextinator.cli chunk-embed-store-embeddings \
 
 ```bash
 # Natural language search
-python -m src.contextinator.cli search "how is authentication handled" -c MyRepo
+contextinator search "how is authentication handled" -c MyRepo
 
 # Find specific function
-python -m src.contextinator.cli symbol authenticate_user -c MyRepo
+contextinator symbol authenticate_user -c MyRepo
 
 # Find TODOs
-python -m src.contextinator.cli pattern "TODO" -c MyRepo
+contextinator pattern "TODO" -c MyRepo
 ```
 
 **3. Advanced filtered search:**
