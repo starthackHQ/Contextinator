@@ -83,15 +83,10 @@ def discover_files(
                             # Check if file should be ignored
                             relative_path = str(file_path.relative_to(repo_path))
                             if not _should_ignore(relative_path, ignore_patterns):
-                                # Pattern 1: Test file accessibility
-                                try:
-                                    # Quick accessibility test
-                                    file_path.stat()
-                                    files.append(file_path)
-                                    logger.debug(f"Found supported file: {relative_path}")
-                                except (PermissionError, OSError) as e:
-                                    permission_errors.append(str(file_path))
-                                    logger.debug(f"Permission denied: {relative_path}")
+                                # File is valid - os.walk already confirms existence
+                                # No need for additional stat() call
+                                files.append(file_path)
+                                logger.debug(f"Found supported file: {relative_path}")
                             else:
                                 ignored_count += 1
                                 logger.debug(f"Ignoring file: {relative_path}")
@@ -135,25 +130,30 @@ def _should_ignore(path: str, patterns: List[str]) -> bool:
     if not path or not patterns:
         return False
         
-    # Normalize path separators for cross-platform compatibility
+    # Normalize path separators for cross-platform compatibility (done once)
     normalized_path = path.replace('\\', '/')
+    # Split path once for component matching
+    path_parts = normalized_path.split('/')
     
     for pattern in patterns:
         # Normalize pattern separators
         normalized_pattern = pattern.replace('\\', '/')
         
-        # Try glob-style matching first
-        if fnmatch(normalized_path, normalized_pattern):
-            return True
-            
-        # Try substring matching for simple patterns
+        # Fast substring check first (most common case)
         if normalized_pattern in normalized_path:
             return True
+        
+        # Check if pattern has wildcards before doing expensive fnmatch
+        has_wildcards = '*' in normalized_pattern or '?' in normalized_pattern or '[' in normalized_pattern
+        
+        if has_wildcards:
+            # Try glob-style matching on full path
+            if fnmatch(normalized_path, normalized_pattern):
+                return True
             
-        # Check if any path component matches the pattern
-        path_parts = normalized_path.split('/')
-        if any(fnmatch(part, normalized_pattern) for part in path_parts):
-            return True
+            # Check if any path component matches the pattern
+            if any(fnmatch(part, normalized_pattern) for part in path_parts):
+                return True
     
     return False
 
