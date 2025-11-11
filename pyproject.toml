@@ -50,7 +50,6 @@ dependencies = [
     "tree-sitter-kotlin>=1.1.0",
     "tree-sitter-yaml>=0.7.0",
     "tree-sitter-markdown>=0.5.0",
-    "tree-sitter-dockerfile>=0.0.0a1",
     "tree-sitter-json>=0.24.0",
     "tree-sitter-toml>=0.7.0",
     "tree-sitter-swift>=0.0.1",
@@ -59,6 +58,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Platform-specific parsers that may not be available on all platforms
+extended-parsers = [
+    "tree-sitter-dockerfile>=0.0.0a1; platform_system != 'Windows'",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",

@@ -21,7 +21,6 @@ try:
     import tree_sitter_c
     import tree_sitter_c_sharp
     import tree_sitter_cpp
-    import tree_sitter_dockerfile
     import tree_sitter_go
     import tree_sitter_java
     import tree_sitter_javascript
@@ -38,6 +37,15 @@ try:
     import tree_sitter_toml
     import tree_sitter_typescript
     import tree_sitter_yaml
+    
+    # Optional: dockerfile (not available on Windows)
+    try:
+        import tree_sitter_dockerfile
+        HAS_DOCKERFILE = True
+    except ImportError:
+        tree_sitter_dockerfile = None
+        HAS_DOCKERFILE = False
+        logger.debug("tree-sitter-dockerfile not available (Windows platform)")
     
     from .ast_visualizer import save_ast_visualization
     
@@ -64,7 +72,6 @@ try:
         'yml': tree_sitter_yaml,  # Alternative YAML extension
         'markdown': tree_sitter_markdown,
         'md': tree_sitter_markdown,  # Markdown extension
-        'dockerfile': tree_sitter_dockerfile,
         'json': tree_sitter_json,
         'toml': tree_sitter_toml,
         'swift': tree_sitter_swift,
@@ -72,6 +79,10 @@ try:
         'sol': tree_sitter_solidity,  # Solidity extension
         'lua': tree_sitter_lua,
     }
+    
+    # Add dockerfile support if available (platform-dependent)
+    if HAS_DOCKERFILE:
+        LANGUAGE_MODULES['dockerfile'] = tree_sitter_dockerfile
     
     TREE_SITTER_AVAILABLE = True
     logger.info("Tree-sitter imports successful")

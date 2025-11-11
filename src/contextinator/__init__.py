@@ -18,7 +18,7 @@ except ImportError:
 from .chunking import chunk_repository
 from .embedding import embed_chunks
 from .vectorstore import store_repository_embeddings, ChromaVectorStore
-from .tools import semantic_search, full_text_search, symbol_search, regex_search
+from .tools import semantic_search, full_text_search, symbol_search, regex_search, read_file
 
 __all__ = [
     "__version__",
@@ -29,6 +29,6 @@ __all__ = [
     "full_text_search",
     "symbol_search",       
     "regex_search",
-    "read_file",  
+    "read_file",
     "ChromaVectorStore",
 ]
