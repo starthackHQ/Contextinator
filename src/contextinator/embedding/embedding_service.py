@@ -159,8 +159,8 @@ class EmbeddingService:
             is_valid, processed_content = self._validate_chunk_content(content)
             
             if is_valid:
-                # Update chunk with processed content if it was modified
-                if processed_content != content:
+                # Only update chunk if content was actually modified (avoid unnecessary copies)
+                if processed_content is not content:  # Use identity check for performance
                     chunk = chunk.copy()
                     # Update the enriched_content field (or content if no enriched version)
                     if 'enriched_content' in chunk:

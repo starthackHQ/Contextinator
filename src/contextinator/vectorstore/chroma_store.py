@@ -181,8 +181,12 @@ class ChromaVectorStore:
         documents = []
         
         for i, chunk in enumerate(embedded_chunks):
-            # Generate unique ID for chunk
-            chunk_id = f"chunk_{i}_{hash(chunk.get('content', ''))}"
+            # Use existing chunk ID if available, otherwise generate one
+            # This avoids redundant hash computation
+            chunk_id = chunk.get('id')
+            if not chunk_id:
+                # Fallback: generate ID from index and content hash
+                chunk_id = f"chunk_{i}_{chunk.get('hash', hash(chunk.get('content', '')))}"
             ids.append(chunk_id)
             
             # Extract embedding
@@ -236,7 +240,8 @@ class ChromaVectorStore:
         self, 
         embedded_chunks: List[Dict[str, Any]], 
         collection_name: str, 
-        batch_size: Optional[int] = None
+        batch_size: Optional[int] = None,
+        clear_existing: bool = True
     ) -> Dict[str, Any]:
         """
         Store embeddings in ChromaDB with batch processing and error recovery.
@@ -245,6 +250,7 @@ class ChromaVectorStore:
             embedded_chunks: List of chunks with embeddings
             collection_name: Name of the collection to store in
             batch_size: Batch size for processing (defaults to config value)
+            clear_existing: Whether to clear existing collection data (default: True)
             
         Returns:
             Storage statistics dictionary
@@ -273,19 +279,20 @@ class ChromaVectorStore:
         except Exception as e:
             raise VectorStoreError(f"Failed to get/create collection: {e}", "create_collection", collection_name)
         
-        # Clear existing data in collection by deleting and recreating it
-        try:
-            # Delete the collection if it has data
-            if collection.count() > 0:
-                safe_name = sanitize_collection_name(collection_name)
-                self.client.delete_collection(name=safe_name)
-                logger.info("🗑️  Deleted existing collection with data")
-                # Recreate the collection
-                collection = self._get_or_create_collection(collection_name)
-                logger.info("📦 Created fresh collection")
-        except Exception as e:
-            logger.warning(f"Could not clear existing collection data: {e}")
-            # Continue anyway - might be empty collection
+        # Optionally clear existing data in collection
+        if clear_existing:
+            try:
+                # Delete the collection if it has data
+                if collection.count() > 0:
+                    safe_name = sanitize_collection_name(collection_name)
+                    self.client.delete_collection(name=safe_name)
+                    logger.info("🗑️  Deleted existing collection with data")
+                    # Recreate the collection
+                    collection = self._get_or_create_collection(collection_name)
+                    logger.info("📦 Created fresh collection")
+            except Exception as e:
+                logger.warning(f"Could not clear existing collection data: {e}")
+                # Continue anyway - might be empty collection
         
         # Process in batches, continue on failures
         total_batches = (len(embedded_chunks) + batch_size - 1) // batch_size
