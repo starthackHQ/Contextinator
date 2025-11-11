@@ -1,13 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "contextinator"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Intelligent Codebase Understanding for AI Agents - Transform any codebase into semantically-aware, searchable knowledge"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "STARTHACK Team", email = "founders@starthack.io"}
 ]
@@ -20,7 +20,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Code Generators",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -50,7 +50,6 @@ dependencies = [
     "tree-sitter-kotlin>=1.1.0",
     "tree-sitter-yaml>=0.7.0",
     "tree-sitter-markdown>=0.5.0",
-    "tree-sitter-dockerfile>=0.0.0a1",
     "tree-sitter-json>=0.24.0",
     "tree-sitter-toml>=0.7.0",
     "tree-sitter-swift>=0.0.1",
@@ -59,6 +58,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Platform-specific parsers that may not be available on all platforms
+extended-parsers = [
+    "tree-sitter-dockerfile>=0.0.0a1; platform_system != 'Windows'",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -68,8 +71,6 @@ dev = [
     "pre-commit>=3.0.0",
 ]
 docs = [
-    "sphinx>=7.0.0",
-    "sphinx-rtd-theme>=1.3.0",
     "myst-parser>=2.0.0",
 ]
 
@@ -154,3 +155,8 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.setuptools_scm]
+write_to = "src/contextinator/_version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"

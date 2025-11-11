@@ -25,6 +25,7 @@ from .settings import (
     sanitize_collection_name,
     get_storage_path,
     validate_config,
+    validate_openai_api_key,
 )
 
 __all__ = [
@@ -47,4 +48,5 @@ __all__ = [
     'sanitize_collection_name',
     'get_storage_path',
     'validate_config',
+    'validate_openai_api_key',
 ]
