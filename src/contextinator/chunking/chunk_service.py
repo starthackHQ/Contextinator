@@ -11,17 +11,18 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .ast_parser import parse_file
-from .ast_visualizer import save_ast_overview
+# Lazy import ast_parser to avoid slow tree-sitter loading
 from .file_discovery import discover_files
-from .node_collector import NodeCollector
-from .splitter import split_chunk
 from ..config import CHUNKS_DIR, MAX_TOKENS, get_storage_path
 from ..utils import ProgressTracker, logger
 
 
 def _process_file(file_path: Path, repo_path: Path, max_tokens: int) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """Process single file (for parallel execution)."""
+    from .ast_parser import parse_file
+    from .node_collector import NodeCollector
+    from .splitter import split_chunk
+    
     try:
         parsed = parse_file(file_path, save_ast=False, repo_path=repo_path)
         if not parsed:
@@ -116,7 +117,12 @@ def chunk_repository(
         
         progress.finish()
     else:
-        # Sequential processing
+        # Sequential processing - lazy import here
+        from .ast_parser import parse_file
+        from .node_collector import NodeCollector
+        from .splitter import split_chunk
+        from .ast_visualizer import save_ast_overview
+        
         collector = NodeCollector()
         progress = ProgressTracker(len(files), "Chunking files")
         
@@ -159,6 +165,7 @@ def chunk_repository(
     
     if save_ast and chunks_dir:
         try:
+            from .ast_visualizer import save_ast_overview
             save_ast_overview(chunks_dir)
         except Exception as e:
             logger.warning(f"Failed to save AST overview: {e}")
