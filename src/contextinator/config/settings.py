@@ -240,9 +240,9 @@ def get_storage_path(base_dir: Union[str, Path], storage_type: str, repo_name: s
     base_path = Path(base_dir)
     
     
-    # If custom directory is provided, use it instead of defaults
+    # If custom directory is provided, use it as-is (already includes repo name if needed)
     if custom_dir:
-        return base_path / custom_dir / safe_name
+        return Path(custom_dir) if Path(custom_dir).is_absolute() else base_path / custom_dir
     
     if storage_type == 'chunks':
         return base_path / CHUNKS_DIR / safe_name
