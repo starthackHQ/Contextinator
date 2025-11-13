@@ -18,6 +18,7 @@ from ..config import (
     OPENAI_EMBEDDING_MODEL,
     OPENAI_MAX_TOKENS,
     get_storage_path,
+    validate_openai_api_key,
 )
 from ..utils import ProgressTracker, logger
 from ..utils.exceptions import ValidationError, FileSystemError
@@ -45,12 +46,9 @@ class EmbeddingService:
         Validate that OpenAI API key is available.
         
         Raises:
-            ValueError: If API key is not set
+            ConfigurationError: If API key is not set
         """
-        if not OPENAI_API_KEY:
-            raise ValueError(
-                "OpenAI API key not found. Please set OPENAI_API_KEY in your .env file."
-            )
+        validate_openai_api_key()
     
     def _initialize_client(self) -> None:
         """Initialize OpenAI client."""
@@ -216,8 +214,8 @@ class EmbeddingService:
             is_valid, processed_content = self._validate_chunk_content(content)
             
             if is_valid:
-                # Update chunk with processed content if it was modified
-                if processed_content != content:
+                # Only update chunk if content was actually modified (avoid unnecessary copies)
+                if processed_content is not content:  # Use identity check for performance
                     chunk = chunk.copy()
                     # Update the enriched_content field (or content if no enriched version)
                     if 'enriched_content' in chunk:

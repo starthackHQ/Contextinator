@@ -10,6 +10,23 @@ from typing import Any, Dict, List, Optional, Set
 from . import SearchTool
 from ..utils.logger import logger
 
+# Cache for embedding service to avoid repeated initialization
+_embedding_service_cache: Optional[Any] = None
+
+
+def _get_embedding_service():
+    """
+    Get cached EmbeddingService instance, creating it if needed.
+    
+    Returns:
+        Cached EmbeddingService instance
+    """
+    global _embedding_service_cache
+    if _embedding_service_cache is None:
+        from ..embedding.embedding_service import EmbeddingService
+        _embedding_service_cache = EmbeddingService()
+    return _embedding_service_cache
+
 
 def semantic_search(
     collection_name: str,
@@ -85,9 +102,8 @@ def semantic_search(
         if not include_parents:
             where["is_parent"] = False
         
-        # Generate OpenAI embeddings for the query
-        from ..embedding.embedding_service import EmbeddingService
-        embedding_service = EmbeddingService()
+        # Generate OpenAI embeddings for the query using cached service
+        embedding_service = _get_embedding_service()
         
         # Create enriched query with context for better matching
         # For queries, we add language context if specified

@@ -270,15 +270,32 @@ def validate_config() -> None:
     if CHUNK_OVERLAP >= MAX_TOKENS:
         raise ConfigurationError("CHUNK_OVERLAP must be less than MAX_TOKENS", "CHUNK_OVERLAP")
         
-    if not OPENAI_API_KEY:
-        import warnings
-        warnings.warn("OPENAI_API_KEY not set - OpenAI embeddings will not work")
-        
     if EMBEDDING_BATCH_SIZE <= 0:
         raise ConfigurationError("EMBEDDING_BATCH_SIZE must be positive", "EMBEDDING_BATCH_SIZE")
         
     if CHROMA_BATCH_SIZE <= 0:
         raise ConfigurationError("CHROMA_BATCH_SIZE must be positive", "CHROMA_BATCH_SIZE")
+
+
+def validate_openai_api_key() -> None:
+    """
+    Validate that OpenAI API key is set.
+    
+    This should be called before any operation that requires embeddings.
+    
+    Raises:
+        ConfigurationError: If API key is not set
+    """
+    from ..utils.exceptions import ConfigurationError
+    
+    if not OPENAI_API_KEY:
+        raise ConfigurationError(
+            "OPENAI_API_KEY not set. Please:\n"
+            "  1. Copy .env.example to .env\n"
+            "  2. Add your OpenAI API key to .env\n"
+            "  3. Ensure .env is in your working directory",
+            "OPENAI_API_KEY"
+        )
 
 
 # Export all public symbols
@@ -302,4 +319,5 @@ __all__ = [
     'sanitize_collection_name',
     'get_storage_path',
     'validate_config',
+    'validate_openai_api_key',
 ]

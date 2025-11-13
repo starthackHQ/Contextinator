@@ -6,12 +6,12 @@ cloning, path resolution, and URL validation.
 """
 
 import os
-import sys
 import tempfile
 from subprocess import run, CalledProcessError
 from typing import Optional
 
 from .logger import logger
+from .exceptions import FileSystemError
 
 
 def git_root(path: Optional[str] = None) -> str:
@@ -25,7 +25,7 @@ def git_root(path: Optional[str] = None) -> str:
         Git repository root path
     
     Raises:
-        SystemExit: If not a git repository or git command fails
+        FileSystemError: If not a git repository or git command fails
     """
     path_params = []
     if path:
@@ -37,8 +37,11 @@ def git_root(path: Optional[str] = None) -> str:
         return result.stdout.strip()
     except (CalledProcessError, FileNotFoundError) as e:
         check_path = path or os.getcwd()
-        logger.error(f"{check_path} is not a git repo. Run this in a git repository or use --path or --repo-url")
-        sys.exit(1)
+        raise FileSystemError(
+            f"{check_path} is not a git repo. Run this in a git repository or use --path or --repo-url",
+            path=check_path,
+            operation="git_root"
+        )
 
 
 def clone_repo(repo_url: str, target_dir: Optional[str] = None) -> str:
@@ -53,7 +56,7 @@ def clone_repo(repo_url: str, target_dir: Optional[str] = None) -> str:
         Path to cloned repository
     
     Raises:
-        SystemExit: If cloning fails
+        FileSystemError: If cloning fails
         ValueError: If repo_url is empty
     """
     if not repo_url:
@@ -70,8 +73,11 @@ def clone_repo(repo_url: str, target_dir: Optional[str] = None) -> str:
         logger.info(f"Repository cloned to {target_dir}")
         return target_dir
     except (CalledProcessError, FileNotFoundError) as e:
-        logger.error(f"Failed to clone repository: {e}")
-        sys.exit(1)
+        raise FileSystemError(
+            f"Failed to clone repository: {e}",
+            path=target_dir,
+            operation="clone"
+        )
 
 
 def resolve_repo_path(repo_url: Optional[str] = None, path: Optional[str] = None) -> str:
@@ -88,7 +94,7 @@ def resolve_repo_path(repo_url: Optional[str] = None, path: Optional[str] = None
         Resolved repository path
         
     Raises:
-        SystemExit: If repository resolution fails
+        FileSystemError: If repository resolution fails
     """
     if repo_url:
         return clone_repo(repo_url)

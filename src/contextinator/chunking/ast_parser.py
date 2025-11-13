@@ -21,7 +21,6 @@ try:
     import tree_sitter_c
     import tree_sitter_c_sharp
     import tree_sitter_cpp
-    import tree_sitter_dockerfile
     import tree_sitter_go
     import tree_sitter_java
     import tree_sitter_javascript
@@ -38,6 +37,15 @@ try:
     import tree_sitter_toml
     import tree_sitter_typescript
     import tree_sitter_yaml
+    
+    # Optional: dockerfile (not available on Windows)
+    try:
+        import tree_sitter_dockerfile
+        HAS_DOCKERFILE = True
+    except ImportError:
+        tree_sitter_dockerfile = None
+        HAS_DOCKERFILE = False
+        logger.debug("tree-sitter-dockerfile not available (Windows platform)")
     
     from .ast_visualizer import save_ast_visualization
     
@@ -64,7 +72,6 @@ try:
         'yml': tree_sitter_yaml,  # Alternative YAML extension
         'markdown': tree_sitter_markdown,
         'md': tree_sitter_markdown,  # Markdown extension
-        'dockerfile': tree_sitter_dockerfile,
         'json': tree_sitter_json,
         'toml': tree_sitter_toml,
         'swift': tree_sitter_swift,
@@ -72,6 +79,10 @@ try:
         'sol': tree_sitter_solidity,  # Solidity extension
         'lua': tree_sitter_lua,
     }
+    
+    # Add dockerfile support if available (platform-dependent)
+    if HAS_DOCKERFILE:
+        LANGUAGE_MODULES['dockerfile'] = tree_sitter_dockerfile
     
     TREE_SITTER_AVAILABLE = True
     logger.info("Tree-sitter imports successful")
@@ -151,6 +162,9 @@ PARENT_NODE_TYPES: Dict[str, List[str]] = {
 
 # Cache for parsers to avoid recreation
 _parser_cache: Dict[str, "Parser"] = {}
+# Lock for thread-safe parser cache access
+import threading
+_parser_cache_lock = threading.Lock()
 
 
 def parse_file(
@@ -305,6 +319,8 @@ def get_parser(language: str) -> Optional["Parser"]:
     """
     Get tree-sitter parser for language with caching.
     
+    Thread-safe parser retrieval with lazy initialization.
+    
     Args:
         language: Programming language identifier
         
@@ -316,34 +332,40 @@ def get_parser(language: str) -> Optional["Parser"]:
     if not TREE_SITTER_AVAILABLE:
         return None
     
-    # Return cached parser
+    # Fast path: return cached parser without lock if available
     if language in _parser_cache:
         return _parser_cache[language]
     
-    try:
-        # Get language module
-        lang_module = LANGUAGE_MODULES.get(language)
-        if not lang_module:
-            logger.warning(f"No language module available for {language}")
+    # Slow path: create parser with lock to avoid race conditions
+    with _parser_cache_lock:
+        # Double-check after acquiring lock (another thread might have created it)
+        if language in _parser_cache:
+            return _parser_cache[language]
+        
+        try:
+            # Get language module
+            lang_module = LANGUAGE_MODULES.get(language)
+            if not lang_module:
+                logger.warning(f"No language module available for {language}")
+                return None
+            
+            # Handle special case for TypeScript/TSX which have different API
+            if language == 'typescript':
+                lang_obj = Language(lang_module.language_typescript())
+            elif language == 'tsx':
+                lang_obj = Language(lang_module.language_tsx())
+            else:
+                # Create Language object from module for other languages
+                lang_obj = Language(lang_module.language())
+            
+            # Create parser with language
+            parser = Parser(lang_obj)
+            _parser_cache[language] = parser
+            return parser
+            
+        except Exception as e:
+            logger.warning(f"Error creating parser for {language}: {e}")
             return None
-        
-        # Handle special case for TypeScript/TSX which have different API
-        if language == 'typescript':
-            lang_obj = Language(lang_module.language_typescript())
-        elif language == 'tsx':
-            lang_obj = Language(lang_module.language_tsx())
-        else:
-            # Create Language object from module for other languages
-            lang_obj = Language(lang_module.language())
-        
-        # Create parser with language
-        parser = Parser(lang_obj)
-        _parser_cache[language] = parser
-        return parser
-        
-    except Exception as e:
-        logger.warning(f"Error creating parser for {language}: {e}")
-        return None
 
 def extract_nodes(root_node: Any, content: str, language: str) -> List[Dict[str, Any]]:
     """
