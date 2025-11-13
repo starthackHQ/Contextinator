@@ -68,7 +68,7 @@ def clone_repo(repo_url: str, target_dir: Optional[str] = None) -> str:
     logger.info(f"📥 Cloning {repo_url}...")
     
     try:
-        result = run(['git', 'clone', '--depth', '1', repo_url, target_dir], 
+        result = run(['git', 'clone', '--depth', '1', '--single-branch', repo_url, target_dir], 
                      capture_output=True, text=True, check=True)
         logger.info(f"Repository cloned to {target_dir}")
         return target_dir

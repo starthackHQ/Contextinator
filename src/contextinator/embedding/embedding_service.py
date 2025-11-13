@@ -6,10 +6,11 @@ using OpenAI's embedding API, with batch processing and error handling.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import openai
+# Lazy import openai (saves 2-3 seconds at startup)
 
 from ..config import (
     EMBEDDING_BATCH_SIZE,
@@ -32,13 +33,10 @@ class EmbeddingService:
     """
     
     def __init__(self) -> None:
-        """
-        Initialize the embedding service.
+        """Initialize the embedding service."""
+        # Lazy import openai here (not at module level)
+        import openai
         
-        Raises:
-            ValueError: If OpenAI API key is not configured
-            RuntimeError: If OpenAI client initialization fails
-        """
         self.client: Optional[openai.OpenAI] = None
         self._validate_api_key()
         self._initialize_client()
@@ -53,15 +51,11 @@ class EmbeddingService:
         validate_openai_api_key()
     
     def _initialize_client(self) -> None:
-        """
-        Initialize OpenAI client and test connection.
-        
-        Raises:
-            RuntimeError: If client initialization or connection test fails
-        """
+        """Initialize OpenAI client."""
+        import openai
         try:
             self.client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            self._test_connection()
+            logger.info("✅ OpenAI client initialized")
         except Exception as e:
             raise RuntimeError(f"Failed to initialize OpenAI client: {str(e)}")
     
@@ -126,7 +120,68 @@ class EmbeddingService:
         # Prefer enriched content for semantic search quality
         return chunk.get('enriched_content', chunk.get('content', ''))
     
-    def generate_embeddings(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def generate_embeddings(self, chunks: List[Dict[str, Any]], use_async: bool = True, batch_size: int = 250, max_concurrent: int = 5) -> List[Dict[str, Any]]:
+        """Generate embeddings (async if use_async=True)."""
+        if use_async:
+            import asyncio
+            return asyncio.run(self._generate_embeddings_async(chunks, batch_size, max_concurrent))
+        else:
+            return self._generate_embeddings_sync(chunks)
+    
+    async def _generate_embeddings_async(self, chunks: List[Dict[str, Any]], batch_size: int, max_concurrent: int) -> List[Dict[str, Any]]:
+        """Async embedding with concurrency and rate limiting."""
+        from openai import AsyncOpenAI
+        import asyncio
+        
+        client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        semaphore = asyncio.Semaphore(max_concurrent)
+        
+        # Validate chunks
+        logger.info(f"⏳ Validating {len(chunks)} chunks...")
+        valid_chunks = []
+        for i, chunk in enumerate(chunks):
+            if i % 1000 == 0 and i > 0:
+                logger.info(f"   Validated {i}/{len(chunks)} chunks...")
+            content = self._get_embedding_content(chunk)
+            is_valid, processed = self._validate_chunk_content(content)
+            if is_valid:
+                if processed != content:
+                    chunk = chunk.copy()
+                    if 'enriched_content' in chunk:
+                        chunk['enriched_content'] = processed
+                    else:
+                        chunk['content'] = processed
+                valid_chunks.append((i, chunk))
+        
+        if not valid_chunks:
+            return []
+        
+        logger.info(f"🚀 Async embedding {len(valid_chunks)} chunks (batch={batch_size}, concurrent={max_concurrent})")
+        
+        async def embed_batch(batch):
+            contents = [self._get_embedding_content(c) for _, c in batch]
+            async with semaphore:
+                for attempt in range(3):
+                    try:
+                        response = await client.embeddings.create(model=OPENAI_EMBEDDING_MODEL, input=contents)
+                        return [(idx, {**chunk, 'embedding': emb.embedding, 'embedding_model': OPENAI_EMBEDDING_MODEL}) 
+                                for (idx, chunk), emb in zip(batch, response.data)]
+                    except Exception as e:
+                        if attempt < 2:
+                            await asyncio.sleep(2 ** attempt)
+                        else:
+                            logger.error(f"❌ Batch failed after 3 attempts: {e}")
+                            raise  # Re-raise to fail fast instead of silent data loss
+        
+        batches = [valid_chunks[i:i + batch_size] for i in range(0, len(valid_chunks), batch_size)]
+        logger.info(f"📦 Processing {len(batches)} batches...")
+        results = await asyncio.gather(*[embed_batch(b) for b in batches])
+        
+        embedded = [chunk for batch_result in results for _, chunk in batch_result]
+        logger.info(f"✅ Embedded {len(embedded)} chunks")
+        return embedded
+    
+    def _generate_embeddings_sync(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Generate embeddings for a list of chunks with batch processing and error recovery.
         
@@ -321,7 +376,10 @@ def embed_chunks(
     save: bool = False, 
     chunks_data: Optional[List[Dict[str, Any]]] = None,
     custom_chunks_dir: Optional[str] = None,
-    custom_embeddings_dir: Optional[str] = None
+    custom_embeddings_dir: Optional[str] = None,
+    use_async: bool = True,
+    batch_size: int = 250,
+    max_concurrent: int = 5
 ) -> List[Dict[str, Any]]:
     """
     Generate embeddings for repository chunks.
@@ -351,7 +409,7 @@ def embed_chunks(
         return []
     
     embedding_service = EmbeddingService()
-    embedded_chunks = embedding_service.generate_embeddings(chunks_data)
+    embedded_chunks = embedding_service.generate_embeddings(chunks_data, use_async, batch_size, max_concurrent)
     
     if save:
         save_embeddings(embedded_chunks, base_dir, repo_name, custom_embeddings_dir)
@@ -386,6 +444,11 @@ def load_chunks(base_dir: Union[str, Path], repo_name: str, custom_chunks_dir: O
     logger.info(f"📂 Loading chunks from {chunks_file}")
     
     try:
+        # Check file size
+        file_size_mb = chunks_file.stat().st_size / (1024 * 1024)
+        if file_size_mb > 10:
+            logger.warning(f"⚠️  Large chunks file ({file_size_mb:.1f}MB) - this may take a moment...")
+        
         with open(chunks_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -447,8 +510,18 @@ def save_embeddings(
     }
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        import tempfile
+        temp_fd, temp_path = tempfile.mkstemp(dir=embeddings_dir, suffix='.tmp')
+        try:
+            with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            # Atomic rename
+            os.replace(temp_path, output_file)
+        except:
+            # Clean up temp file on error
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise
         
         logger.info(f"💾 Embeddings saved to {output_file}")
         return output_file

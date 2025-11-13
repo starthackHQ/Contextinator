@@ -15,7 +15,7 @@ The main components include:
 
 from typing import Any, Dict, List, Optional
 
-import chromadb
+# Lyazy import chromadb
 
 from ..config import USE_CHROMA_SERVER, sanitize_collection_name
 from ..utils.logger import logger
@@ -55,7 +55,8 @@ class SearchTool:
         except Exception as e:
             raise SearchError(f"Failed to initialize search tool: {e}", collection_name, "initialization")
     
-    def _get_client(self) -> chromadb.Client:
+    def _get_client(self):
+        import chromadb
         """
         Get ChromaDB client with fallback handling.
         
@@ -87,7 +88,7 @@ class SearchTool:
         except Exception as e:
             raise SearchError(f"Failed to initialize ChromaDB client: {e}", self.collection_name, "client_init")
     
-    def _get_collection(self) -> chromadb.Collection:
+    def _get_collection(self):
         """
         Get collection by name with error handling.
         
