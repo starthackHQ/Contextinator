@@ -6,6 +6,7 @@ using OpenAI's embedding API, with batch processing and error handling.
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -171,8 +172,8 @@ class EmbeddingService:
                         if attempt < 2:
                             await asyncio.sleep(2 ** attempt)
                         else:
-                            logger.error(f"Batch failed: {e}")
-                            return []
+                            logger.error(f"❌ Batch failed after 3 attempts: {e}")
+                            raise  # Re-raise to fail fast instead of silent data loss
         
         batches = [valid_chunks[i:i + batch_size] for i in range(0, len(valid_chunks), batch_size)]
         logger.info(f"📦 Processing {len(batches)} batches...")
@@ -445,6 +446,11 @@ def load_chunks(base_dir: Union[str, Path], repo_name: str, custom_chunks_dir: O
     logger.info(f"📂 Loading chunks from {chunks_file}")
     
     try:
+        # Check file size
+        file_size_mb = chunks_file.stat().st_size / (1024 * 1024)
+        if file_size_mb > 10:
+            logger.warning(f"⚠️  Large chunks file ({file_size_mb:.1f}MB) - this may take a moment...")
+        
         with open(chunks_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
@@ -506,8 +512,18 @@ def save_embeddings(
     }
     
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        import tempfile
+        temp_fd, temp_path = tempfile.mkstemp(dir=embeddings_dir, suffix='.tmp')
+        try:
+            with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            # Atomic rename
+            os.replace(temp_path, output_file)
+        except:
+            # Clean up temp file on error
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise
         
         logger.info(f"💾 Embeddings saved to {output_file}")
         return output_file
