@@ -51,7 +51,8 @@ def symbol_search(
     symbol_name: str,
     symbol_type: Optional[str] = None,
     language: Optional[str] = None,
-    exact_match: bool = True
+    exact_match: bool = True,
+    chromadb_dir: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Search for specific symbols (functions, classes, variables) by name.
@@ -79,7 +80,7 @@ def symbol_search(
     
     try:
         tool = SearchTool(collection_name)
-        
+        tool = SearchTool(collection_name, chromadb_dir=chromadb_dir)        
         # Build where clause (get() doesn't support $contains)
         where = {}
         if language:
