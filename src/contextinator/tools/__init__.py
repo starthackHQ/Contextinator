@@ -29,7 +29,7 @@ class SearchTool:
     search results across different search strategies.
     """
     
-    def __init__(self, collection_name: str, base_dir: Optional[str] = None, repo_name: Optional[str] = None) -> None:
+    def __init__(self, collection_name: str, base_dir: Optional[str] = None, repo_name: Optional[str] = None, chromadb_dir: Optional[str] = None) -> None:
         """
         Initialize search tool with ChromaDB connection.
         
@@ -48,6 +48,7 @@ class SearchTool:
             raise ValidationError("Collection name cannot be empty", "collection_name", "non-empty string")
             
         self.collection_name = collection_name
+        self.chromadb_dir = chromadb_dir
         
         try:
             self.client = self._get_client()
@@ -82,7 +83,10 @@ class SearchTool:
             
             # Use local client
             from pathlib import Path
-            db_path = str(Path.cwd() / '.chromadb')
+            if self.chromadb_dir:
+                db_path = str(Path(self.chromadb_dir))
+            else:
+                db_path = str(Path.cwd() / '.chromadb')
             return chromadb.PersistentClient(path=db_path)
             
         except Exception as e:

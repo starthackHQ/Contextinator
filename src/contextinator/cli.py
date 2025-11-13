@@ -62,7 +62,11 @@ def embed_func(args):
     from .utils.repo_utils import extract_repo_name_from_url
     from pathlib import Path
     import os
+    # Set API key if provided
     
+    if hasattr(args, 'api_key') and args.api_key:
+        os.environ['OPENAI_API_KEY'] = args.api_key
+         
     try:
         repo_url = getattr(args, 'repo_url', None)
         
@@ -250,7 +254,8 @@ def search_func(args):
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
-            include_parents=getattr(args, 'include_parents', False)
+            include_parents=getattr(args, 'include_parents', False),
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
         )
 
         
@@ -285,6 +290,7 @@ def symbol_func(args):
             collection_name=args.collection,
             symbol_name=args.symbol_name,
             symbol_type=getattr(args, 'type', None),
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
         )
         
         result_data = {
@@ -630,6 +636,7 @@ def main():
     p_embed.add_argument('--output', '-o', help='Base directory containing chunks folder (default: current directory)')
     p_embed.add_argument('--chunks-dir', help='Custom chunks directory (overrides default .contextinator/chunks)')
     p_embed.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
+    p_embed.add_argument('--api-key', help='OpenAI API key (alternative to OPENAI_API_KEY env var)')  
     p_embed.set_defaults(func=embed_func)
 
     # store-embeddings
@@ -653,6 +660,7 @@ def main():
     p_pipeline.add_argument('--embeddings-dir', help='Custom embeddings directory (overrides default .contextinator/embeddings)')
     p_pipeline.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_pipeline.add_argument('--collection-name', help='Custom collection name (default: repository name)')
+    p_pipeline.add_argument('--api-key', help='OpenAI API key (alternative to OPENAI_API_KEY env var)')   
     p_pipeline.set_defaults(func=pipeline_func)
 
     # query
@@ -716,6 +724,7 @@ def main():
     p_search.add_argument('--include-parents', action='store_true', help='Include parent chunks (classes/modules) in results')
     p_search.add_argument('--json', help='Export results to JSON file')
     p_search.add_argument('--toon', help='Export results to TOON file (compact format)')
+    p_search.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_search.set_defaults(func=search_func)
 
     # symbol (symbol search)
@@ -737,6 +746,7 @@ def main():
     p_symbol.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_symbol.add_argument('--json', help='Export results to JSON file')
     p_symbol.add_argument('--toon', help='Export results to TOON file (compact format)')
+    p_symbol.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_symbol.set_defaults(func=symbol_func)
 
     # pattern (regex search)
@@ -759,6 +769,7 @@ def main():
     p_pattern.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_pattern.add_argument('--json', help='Export results to JSON file')
     p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
+    p_pattern.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_pattern.set_defaults(func=pattern_func)
 
     # read-file (file reconstruction)
@@ -768,6 +779,7 @@ def main():
     p_read_file.add_argument('--no-join', action='store_true', help='Show chunks separately (don\'t join)')
     p_read_file.add_argument('--json', help='Export to JSON file')
     p_read_file.add_argument('--toon', help='Export to TOON file (compact format)')
+    p_read_file.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_read_file.set_defaults(func=read_file_func)
 
     # search-advanced (advanced/hybrid search)
@@ -795,6 +807,7 @@ def main():
     p_search_adv.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
     p_search_adv.add_argument('--json', help='Export results to JSON file')
     p_search_adv.add_argument('--toon', help='Export results to TOON file (compact format)')
+    p_search_adv.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_search_adv.set_defaults(func=search_advanced_func)
 
     args = parser.parse_args()

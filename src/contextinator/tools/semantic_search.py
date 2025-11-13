@@ -35,7 +35,8 @@ def semantic_search(
     language: Optional[str] = None,
     file_path: Optional[str] = None,
     node_type: Optional[str] = None,
-    include_parents: bool = False
+    include_parents: bool = False,
+    chromadb_dir: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Search for semantically similar code using natural language queries.
@@ -83,7 +84,7 @@ def semantic_search(
     try:
         # Pattern 2: Handle missing collection gracefully
         try:
-            tool = SearchTool(collection_name)
+            tool = SearchTool(collection_name, chromadb_dir=chromadb_dir)
         except ValueError as e:
             # Collection doesn't exist
             logger.warning(f"Collection '{collection_name}' not found: {e}")
