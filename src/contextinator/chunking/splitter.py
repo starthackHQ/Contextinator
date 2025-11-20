@@ -5,6 +5,7 @@ This module provides functionality to split large code chunks into smaller
 pieces based on token limits while maintaining context through overlapping content.
 """
 
+import uuid
 from typing import Any, Dict, List
 
 from ..config import CHUNK_OVERLAP, MAX_TOKENS
@@ -102,25 +103,32 @@ def _create_split_chunk(original_chunk: Dict[str, Any], content: str, split_inde
     """
     Create a new chunk from a split with preserved metadata.
     
+    BUGFIX: Generate unique ID for each split chunk to prevent duplicate IDs in ChromaDB.
+    
     Args:
         original_chunk: Original chunk dictionary
         content: New content for the split
         split_index: Index of this split (0-based)
         
     Returns:
-        New chunk dictionary with split metadata
+        New chunk dictionary with split metadata and unique ID
     """
     from .context_builder import build_enriched_content
     
-    # Create base metadata for the split
+    # Create base metadata for the split (exclude 'id' to generate new unique ID)
     chunk_metadata = {k: v for k, v in original_chunk.items() 
-                      if k not in ['content', 'enriched_content', 'is_split', 'split_index', 'original_hash', 'token_count']}
+                      if k not in ['content', 'enriched_content', 'is_split', 'split_index', 'original_hash', 'token_count', 'id']}
     
     # Build enriched content for the split chunk
     enriched_content = build_enriched_content(chunk_metadata, content)
     
+    # Generate unique ID for each split chunk (BUGFIX: prevents duplicate IDs)
+    split_id = str(uuid.uuid4())
+    
     return {
         **original_chunk,
+        'id': split_id,  # NEW UNIQUE ID for split chunk
+        'original_id': original_chunk.get('id'),  # Preserve original ID for reference
         'content': content,
         'enriched_content': enriched_content,  # Rebuild enriched content for split
         'is_split': True,
