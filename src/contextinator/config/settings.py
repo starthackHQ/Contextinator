@@ -199,10 +199,13 @@ def sanitize_collection_name(repo_name: str) -> str:
     if not repo_name:
         raise ValidationError("Repository name cannot be empty", "repo_name", "non-empty string")
         
-    sanitized = re.sub(r'[^a-zA-Z0-9_-]', '_', repo_name)
+    sanitized = re.sub(r'[^a-zA-Z0-9._-]', '_', repo_name)
 
-    if sanitized and not sanitized[0].isalpha() and sanitized[0] != '_':
-        sanitized = '_' + sanitized
+    if sanitized and not sanitized[0].isalnum():
+        sanitized = 'c' + sanitized
+    
+    if sanitized and not sanitized[-1].isalnum():
+        sanitized = sanitized + '0'
     
     result = sanitized[:63] if sanitized else 'default_collection'
     return result
