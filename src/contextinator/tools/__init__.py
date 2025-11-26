@@ -73,7 +73,12 @@ class SearchTool:
             # Try server first, fallback to local
             if USE_CHROMA_SERVER:
                 try:
-                    client = chromadb.HttpClient(host="localhost", port=8000)
+                    from ..config import CHROMA_SERVER_URL
+                    from urllib.parse import urlparse
+                    parsed_url = urlparse(CHROMA_SERVER_URL)
+                    host = parsed_url.hostname or "localhost"
+                    port = parsed_url.port or 8000
+                    client = chromadb.HttpClient(host=host, port=port)
                     # Test connection
                     client.heartbeat()
                     return client

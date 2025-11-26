@@ -75,7 +75,12 @@ class ChromaVectorStore:
         if USE_CHROMA_SERVER:
             try:
                 logger.info(f"Connecting to ChromaDB server at: {CHROMA_SERVER_URL}")
-                self.client = chromadb.HttpClient(host="localhost", port=8000)
+                # Parse URL to get host and port
+                from urllib.parse import urlparse
+                parsed_url = urlparse(CHROMA_SERVER_URL)
+                host = parsed_url.hostname or "localhost"
+                port = parsed_url.port or 8000
+                self.client = chromadb.HttpClient(host=host, port=port)
                 
                 # Test connection
                 self.client.heartbeat()
