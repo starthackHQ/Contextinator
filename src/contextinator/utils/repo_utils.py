@@ -129,18 +129,20 @@ def is_valid_git_url(url: Optional[str]) -> bool:
 
 def extract_repo_name_from_url(repo_url: Optional[str]) -> Optional[str]:
     """
-    Extract repository name from a git URL.
+    Extract repository identifier from a git URL in format: username_reponame
+    
+    This prevents collisions when multiple users have repos with the same name.
     
     Examples:
-        https://github.com/user/repo.git -> repo
-        https://github.com/user/repo -> repo
-        git@github.com:user/repo.git -> repo
+        https://github.com/facebook/react.git -> facebook_react
+        https://github.com/vercel/next.js -> vercel_next_js
+        git@github.com:user/repo.git -> user_repo
     
     Args:
         repo_url: Git repository URL
     
     Returns:
-        Repository name or None if URL is invalid
+        Repository identifier as 'username_reponame' or None if URL is invalid
     """
     if not repo_url or not isinstance(repo_url, str):
         return None
@@ -150,9 +152,20 @@ def extract_repo_name_from_url(repo_url: Optional[str]) -> Optional[str]:
     if url.endswith('.git'):
         url = url[:-4]
     
-    # Extract last part of path (repository name)
-    # Works for both https and git@ URLs
+    # small monkey patch to store folders and collections using a combined identifier like `username_repo_name`
+    # Extract username and repo name from path, Works for both https and git@ URLs
     parts = url.replace(':', '/').split('/')
+    
+    if len(parts) >= 2:
+        username = parts[-2]
+        repo_name = parts[-1]
+        # Combine as username_reponame
+        combined = f"{username}_{repo_name}"
+        # Sanitize special characters (e.g., next.js -> next_js)
+        combined = combined.replace('.', '_').replace('-', '_')
+        return combined
+    
+    # Fallback: just return repo name if we can't extract username
     return parts[-1] if parts else None
 
 
