@@ -60,28 +60,45 @@ jobs:
           else
             # Categorize commits by type
             echo "### ✨ Features" >> CHANGELOG.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^feat:" | sed 's/^feat: /- /' >> CHANGELOG.md || echo "_No new features_" >> CHANGELOG.md
+            FEATURES=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^feat:" | sed 's/^feat: /- /' || true)
+            if [ -z "$FEATURES" ]; then
+              echo "_No new features_" >> CHANGELOG.md
+            else
+              echo "$FEATURES" >> CHANGELOG.md
+            fi
             echo "" >> CHANGELOG.md
             
             echo "### 🐛 Bug Fixes" >> CHANGELOG.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^fix:" | sed 's/^fix: /- /' >> CHANGELOG.md || echo "_No bug fixes_" >> CHANGELOG.md
+            FIXES=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^fix:" | sed 's/^fix: /- /' || true)
+            if [ -z "$FIXES" ]; then
+              echo "_No bug fixes_" >> CHANGELOG.md
+            else
+              echo "$FIXES" >> CHANGELOG.md
+            fi
             echo "" >> CHANGELOG.md
             
             echo "### 📚 Documentation" >> CHANGELOG.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^docs:" | sed 's/^docs: /- /' >> CHANGELOG.md || echo "_No documentation changes_" >> CHANGELOG.md
+            DOCS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^docs:" | sed 's/^docs: /- /' || true)
+            if [ -z "$DOCS" ]; then
+              echo "_No documentation changes_" >> CHANGELOG.md
+            else
+              echo "$DOCS" >> CHANGELOG.md
+            fi
             echo "" >> CHANGELOG.md
             
             echo "### 🔧 Other Changes" >> CHANGELOG.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -Ev "^- (feat|fix|docs):" >> CHANGELOG.md || echo "_No other changes_" >> CHANGELOG.md
+            OTHERS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -Ev "^- (feat:|fix:|docs:)" || true)
+            if [ -z "$OTHERS" ]; then
+              echo "_No other changes_" >> CHANGELOG.md
+            else
+              echo "$OTHERS" >> CHANGELOG.md
+            fi
           fi
 
           echo "" >> CHANGELOG.md
           echo "---" >> CHANGELOG.md
           echo "" >> CHANGELOG.md
           echo "**Full Changelog**: https://github.com/starthackHQ/Contextinator/compare/${PREV_TAG:-v0.0.96}...${{ steps.tag.outputs.TAG_NAME }}" >> CHANGELOG.md
-
-          # Add to release artifacts
-          cp CHANGELOG.md release/
 
           cat CHANGELOG.md
 
@@ -90,6 +107,9 @@ jobs:
           python -m build
           mkdir -p release
           cp dist/* release/
+
+          # Copy CHANGELOG.md to release artifacts
+          cp CHANGELOG.md release/
 
       - name: Create checksums
         run: |
@@ -112,19 +132,39 @@ jobs:
           else
             # Get commits categorized by type
             echo "### ✨ Features" >> release_notes.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^feat" | sed 's/^feat: /- /' || echo "- No new features" >> release_notes.md
+            FEATURES=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^feat:" | sed 's/^feat: /- /' || true)
+            if [ -z "$FEATURES" ]; then
+              echo "- No new features" >> release_notes.md
+            else
+              echo "$FEATURES" >> release_notes.md
+            fi
             echo "" >> release_notes.md
             
             echo "### 🐛 Bug Fixes" >> release_notes.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^fix" | sed 's/^fix: /- /' || echo "- No bug fixes" >> release_notes.md
+            FIXES=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^fix:" | sed 's/^fix: /- /' || true)
+            if [ -z "$FIXES" ]; then
+              echo "- No bug fixes" >> release_notes.md
+            else
+              echo "$FIXES" >> release_notes.md
+            fi
             echo "" >> release_notes.md
             
             echo "### 📚 Documentation" >> release_notes.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^docs" | sed 's/^docs: /- /' || echo "- No documentation changes" >> release_notes.md
+            DOCS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^docs:" | sed 's/^docs: /- /' || true)
+            if [ -z "$DOCS" ]; then
+              echo "- No documentation changes" >> release_notes.md
+            else
+              echo "$DOCS" >> release_notes.md
+            fi
             echo "" >> release_notes.md
             
             echo "### 🔧 Other Changes" >> release_notes.md
-            git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -iv "^- \(feat\|fix\|docs\)" || echo "- No other changes" >> release_notes.md
+            OTHERS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -Ev "^- (feat:|fix:|docs:)" || true)
+            if [ -z "$OTHERS" ]; then
+              echo "- No other changes" >> release_notes.md
+            else
+              echo "$OTHERS" >> release_notes.md
+            fi
           fi
 
           echo "" >> release_notes.md
