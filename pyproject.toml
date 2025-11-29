@@ -162,5 +162,6 @@ exclude_lines = [
 
 [tool.setuptools_scm]
 write_to = "src/contextinator/_version.py"
-version_scheme = "post-release"
+version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
+tag_regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"

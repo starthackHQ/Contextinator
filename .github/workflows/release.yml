@@ -1,4 +1,4 @@
-name: Release
+name: Release and Publish
 
 on:
   push:
@@ -7,32 +7,83 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
-  release:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Full history for changelog
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Get tag name
+      - name: Get tag information
         id: tag
-        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "RELEASE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Get current date
-        id: date
-        run: echo "RELEASE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          pip install build twine setuptools-scm
+
+      - name: Generate CHANGELOG.md for release
+        run: |
+          # Generate changelog from git commit history
+          cat > CHANGELOG.md << 'EOF'
+          # Changelog
+
+          All notable changes are documented here.
+          Generated from git commit history.
+
+          EOF
+
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          echo "## [${{ steps.tag.outputs.VERSION }}] - ${{ steps.tag.outputs.RELEASE_DATE }}" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+
+          if [ -z "$PREV_TAG" ]; then
+            echo "### Initial Release" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            git log --pretty=format:"- %s (%h)" --no-merges | head -30 >> CHANGELOG.md
+          else
+            # Categorize commits by type
+            echo "### ✨ Features" >> CHANGELOG.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^feat:" | sed 's/^feat: /- /' >> CHANGELOG.md || echo "_No new features_" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            
+            echo "### 🐛 Bug Fixes" >> CHANGELOG.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^fix:" | sed 's/^fix: /- /' >> CHANGELOG.md || echo "_No bug fixes_" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            
+            echo "### 📚 Documentation" >> CHANGELOG.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -E "^docs:" | sed 's/^docs: /- /' >> CHANGELOG.md || echo "_No documentation changes_" >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            
+            echo "### 🔧 Other Changes" >> CHANGELOG.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges | grep -Ev "^- (feat|fix|docs):" >> CHANGELOG.md || echo "_No other changes_" >> CHANGELOG.md
+          fi
+
+          echo "" >> CHANGELOG.md
+          echo "---" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "**Full Changelog**: https://github.com/starthackHQ/Contextinator/compare/${PREV_TAG:-v0.0.96}...${{ steps.tag.outputs.TAG_NAME }}" >> CHANGELOG.md
+
+          # Add to release artifacts
+          cp CHANGELOG.md release/
+
+          cat CHANGELOG.md
 
       - name: Build package
         run: |
@@ -45,20 +96,66 @@ jobs:
           cd release
           sha256sum * > checksums.txt
 
-      - name: Generate release notes
+      - name: Generate release notes from commits
+        id: changelog
         run: |
-          VERSION="${{ steps.tag.outputs.TAG_NAME }}"
-          DATE="${{ steps.date.outputs.RELEASE_DATE }}"
-          sed "s/\[X\.Y\.Z\]/$VERSION/g; s/\[Date\]/$DATE/g" .github/RELEASE.md > release_notes.md
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+          echo "## 🎉 What's Changed" > release_notes.md
+          echo "" >> release_notes.md
+
+          if [ -z "$PREV_TAG" ]; then
+            # First release
+            echo "Initial release! 🚀" >> release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" --no-merges | head -20 >> release_notes.md
+          else
+            # Get commits categorized by type
+            echo "### ✨ Features" >> release_notes.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^feat" | sed 's/^feat: /- /' || echo "- No new features" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 🐛 Bug Fixes" >> release_notes.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^fix" | sed 's/^fix: /- /' || echo "- No bug fixes" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 📚 Documentation" >> release_notes.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"%s" --no-merges | grep -i "^docs" | sed 's/^docs: /- /' || echo "- No documentation changes" >> release_notes.md
+            echo "" >> release_notes.md
+            
+            echo "### 🔧 Other Changes" >> release_notes.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges | grep -iv "^- \(feat\|fix\|docs\)" || echo "- No other changes" >> release_notes.md
+          fi
+
+          echo "" >> release_notes.md
+          echo "## 📦 Installation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo "pip install contextinator==${{ steps.tag.outputs.VERSION }}" >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## 📖 Documentation" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "Visit [https://github.com/starthackHQ/Contextinator](https://github.com/starthackHQ/Contextinator) for full documentation." >> release_notes.md
+
+          cat release_notes.md
+
+      - name: Verify package
+        run: twine check dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.TAG_NAME }}
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
           draft: false
           prerelease: false
-          generate_release_notes: true
-          files: |
-            release/*
+          files: release/*
           body_path: release_notes.md
+          make_latest: true
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
