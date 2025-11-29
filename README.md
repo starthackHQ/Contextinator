@@ -1,4 +1,4 @@
-<img src="./docs/banner.webp" alt="Contextinator" width="100%" />
+<img src="https://github.com/starthackHQ/Contextinator/blob/main/docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
 <p align="center">
 Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
@@ -45,7 +45,7 @@ Verify the installation _(requiers chromadb & openai api key setup)_:
 contextinator --help
 ```
 
-For detailed setup and configuration, see [`USAGE.md`](USAGE.md)
+For detailed setup and configuration, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
 
 ### Getting Started
 
@@ -71,7 +71,7 @@ contextinator symbol authenticate_user -c MyRepo
 contextinator search "error handling" -c MyRepo --toon results.json
 ```
 
-For comprehensive CLI and Python API documentation, see [`USAGE.md`](USAGE.md)
+For comprehensive CLI and Python API documentation, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
 
 ## Acknowledgements
 
@@ -83,9 +83,9 @@ For comprehensive CLI and Python API documentation, see [`USAGE.md`](USAGE.md)
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+Licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/starthackHQ/Contextinator/blob/main/LICENSE) for details.
 
-<h1 align="left">TL;DR <img src="./docs/0banner.png" alt="Contextinator" width="30" /></h1>
+<h1 align="left">TL;DR <img src="https://github.com/starthackHQ/Contextinator/blob/main/docs/0banner.png" alt="Contextinator" width="30" /></h1>
 
 Contextinator is a code intelligence tool that uses Abstract Syntax Tree (AST) parsing to extract semantic code chunks, generates embeddings, and stores them in a vector database. This enables AI systems to understand, navigate, and reason about codebases with precision.
 
