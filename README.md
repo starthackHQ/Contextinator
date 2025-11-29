@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/banner.webp" alt="Contextinator" width="100%" />
+<img src="https://github.com/starthackHQ/Contextinator/raw/main/docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
 <p align="center">
 Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
