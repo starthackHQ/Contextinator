@@ -1,4 +1,4 @@
-<img src="https://github.com/starthackHQ/Contextinator/raw/main/docs/banner.webp" alt="Contextinator" width="100%" />
+<img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
 <p align="center">
 Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
@@ -97,7 +97,7 @@ Built with and inspired by amazing open-source projects:
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/starthackHQ/Contextinator/blob/main/LICENSE) for details.
 
-<h1 align="left">TL;DR <img src="https://github.com/starthackHQ/Contextinator/raw/main/docs/0banner.png" alt="Contextinator" width="30" /></h1>
+<h1 align="left">TL;DR <img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/0banner.png" alt="Contextinator" width="30" /></h1>
 
 Contextinator is a code intelligence tool that uses Abstract Syntax Tree (AST) parsing to extract semantic code chunks, generates embeddings, and stores them in a vector database. This enables AI systems to understand, navigate, and reason about codebases with precision.
 
