@@ -2,6 +2,7 @@ import argparse
 import sys
 from .utils import resolve_repo_path, logger
 from .utils.exceptions import FileSystemError
+from .utils.rich_help import print_main_help, RichHelpFormatter
 import os    
 from .chunking import chunk_repository
 from .config import get_storage_path
@@ -606,9 +607,15 @@ def db_clear_func(args):
 
 
 def main():
+    # Check if no arguments or just --help/-h is provided
+    if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h', 'help']):
+        print_main_help()
+        sys.exit(0)
+    
     parser = argparse.ArgumentParser(
         prog='contextinator',
         description='Contextinator — Turn any codebase into semantically-aware, searchable knowledge for AI',
+        add_help=False,  # We handle help ourselves
         epilog='Examples:\n'
             '  %(prog)s chunk --repo-url https://github.com/user/repo --save\n'
             '  %(prog)s search "authentication logic" -c MyRepo -n 5\n'
@@ -616,10 +623,14 @@ def main():
             'For detailed help on a command: %(prog)s <command> --help',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    
+    # Add custom help argument
+    parser.add_argument('-h', '--help', action='store_true', help='Show this help message')
+    
     sub = parser.add_subparsers(title='commands', dest='command')
 
     # chunk
-    p_chunk = sub.add_parser('chunk', help='Chunks the local Git codebase into semantic units and (optionally) save them')
+    p_chunk = sub.add_parser('chunk', help='Chunks the local Git codebase into semantic units and (optionally) save them', formatter_class=RichHelpFormatter)
     p_chunk.add_argument('--save', action='store_true', help='Save chunks to .contextinator/chunks/ folder')
     p_chunk.add_argument('--save-ast', action='store_true', help='Save AST trees for analysis and debugging')
     p_chunk.add_argument('--repo-url', help='GitHub/Git repository URL to clone and chunk')
@@ -629,7 +640,7 @@ def main():
     p_chunk.set_defaults(func=chunk_func)
 
     # embed
-    p_embed = sub.add_parser('embed', help='Generate embeddings for existing chunks using OpenAI and (optionally) save them')
+    p_embed = sub.add_parser('embed', help='Generate embeddings for existing chunks using OpenAI and (optionally) save them', formatter_class=RichHelpFormatter)
     p_embed.add_argument('--save', action='store_true', help='Save embeddings to .contextinator/embeddings/ folder')
     p_embed.add_argument('--repo-url', help='GitHub/Git repository URL to clone and embed')
     p_embed.add_argument('--path', help='Local path to repository (default: current directory)')
@@ -640,7 +651,7 @@ def main():
     p_embed.set_defaults(func=embed_func)
 
     # store-embeddings
-    p_store = sub.add_parser('store-embeddings', help='Load embeddings into ChromaDB vector store')
+    p_store = sub.add_parser('store-embeddings', help='Load embeddings into ChromaDB vector store', formatter_class=RichHelpFormatter)
     p_store.add_argument('--repo-url', help='GitHub/Git repository URL')
     p_store.add_argument('--path', help='Local path to repository (default: current directory)')
     p_store.add_argument('--output', '-o', help='Base directory containing embeddings folder (default: current directory)')
@@ -651,7 +662,7 @@ def main():
     p_store.set_defaults(func=store_embeddings_func)
 
     # combined pipeline: chunk-embed-store-embeddings
-    p_pipeline = sub.add_parser('chunk-embed-store-embeddings', help='Run chunk, embed and store-embeddings in a single command')
+    p_pipeline = sub.add_parser('chunk-embed-store-embeddings', help='Run chunk, embed and store-embeddings in a single command', formatter_class=RichHelpFormatter)
     p_pipeline.add_argument('--save', action='store_true', help='Save intermediate artifacts (chunks + embeddings)')
     p_pipeline.add_argument('--repo-url', help='GitHub/Git repository URL to clone and process')
     p_pipeline.add_argument('--path', help='Local path to repository (default: current directory)')
@@ -664,26 +675,26 @@ def main():
     p_pipeline.set_defaults(func=pipeline_func)
 
     # query
-    p_query = sub.add_parser('query', help='Query the vector store for semantically similar code chunks')
+    p_query = sub.add_parser('query', help='Query the vector store for semantically similar code chunks', formatter_class=RichHelpFormatter)
     p_query.add_argument('query_text', nargs=argparse.REMAINDER, help='Query text (wrap in quotes if multiple words)')
     p_query.add_argument('--n-results', '-n', type=int, default=5, help='Number of results to return')
     p_query.add_argument('--save', metavar='FILE', help='Save results to a file (JSON or text)')
     p_query.set_defaults(func=query_func)
 
     # db-info
-    p_db_info = sub.add_parser('db-info', help='Show ChromaDB database information and statistics')
+    p_db_info = sub.add_parser('db-info', help='Show ChromaDB database information and statistics', formatter_class=RichHelpFormatter)
     p_db_info.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_info.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_db_info.set_defaults(func=db_info_func)
 
     # db-list
-    p_db_list = sub.add_parser('db-list', help='List all collections in ChromaDB')
+    p_db_list = sub.add_parser('db-list', help='List all collections in ChromaDB', formatter_class=RichHelpFormatter)
     p_db_list.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_list.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_db_list.set_defaults(func=db_list_func)
 
     # db-show
-    p_db_show = sub.add_parser('db-show', help='Show details of a specific collection')
+    p_db_show = sub.add_parser('db-show', help='Show details of a specific collection', formatter_class=RichHelpFormatter)
     p_db_show.add_argument('collection_name', help='Name of the collection to show')
     p_db_show.add_argument('--sample', type=int, default=0, help='Show sample documents (specify number)')
     p_db_show.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
@@ -691,7 +702,7 @@ def main():
     p_db_show.set_defaults(func=db_show_func)
 
     # db-clear
-    p_db_clear = sub.add_parser('db-clear', help='Delete a specific collection')
+    p_db_clear = sub.add_parser('db-clear', help='Delete a specific collection', formatter_class=RichHelpFormatter)
     p_db_clear.add_argument('collection_name', help='Name of the collection to delete')
     p_db_clear.add_argument('--force', action='store_true', help='Skip confirmation prompt')
     p_db_clear.set_defaults(func=db_clear_func)
@@ -709,11 +720,11 @@ def main():
         help='Semantic search using natural language queries',
         description='Search for code using natural language. By default, excludes parent chunks (classes/modules) for cleaner results.',
         epilog='Examples:\n'
-            '  %(prog)s search "authentication logic" -c MyRepo\n'
-            '  %(prog)s search "error handling" -c MyRepo --language python -n 10\n'
-            '  %(prog)s search "database queries" -c MyRepo --include-parents\n'
-            '  %(prog)s search "API endpoints" -c MyRepo --toon results.json',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+            '  %(prog)s "authentication logic" -c MyRepo\n'
+            '  %(prog)s "error handling" -c MyRepo --language python -n 10\n'
+            '  %(prog)s "database queries" -c MyRepo --include-parents\n'
+            '  %(prog)s "API endpoints" -c MyRepo --toon results.json',
+        formatter_class=RichHelpFormatter
     )
     p_search.add_argument('query_text', nargs='+', help='Natural language query')
     p_search.add_argument('--collection', '-c', required=True, help='Collection name')
@@ -733,11 +744,11 @@ def main():
         help='Find symbols (functions/classes) by exact or partial name match',
         description='Search for specific function or class names across the codebase.',
         epilog='Examples:\n'
-            '  %(prog)s symbol authenticate_user -c MyRepo\n'
-            '  %(prog)s symbol UserManager -c MyRepo --type class_definition\n'
-            '  %(prog)s symbol "get_*" -c MyRepo --file "api/"\n'
-            '  %(prog)s symbol main -c MyRepo --json results.json',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+            '  %(prog)s authenticate_user -c MyRepo\n'
+            '  %(prog)s UserManager -c MyRepo --type class_definition\n'
+            '  %(prog)s "get_*" -c MyRepo --file "api/"\n'
+            '  %(prog)s main -c MyRepo --json results.json',
+        formatter_class=RichHelpFormatter
     )
     p_symbol.add_argument('symbol_name', help='Symbol name to search for')
     p_symbol.add_argument('--collection', '-c', required=True, help='Collection name')
@@ -755,11 +766,11 @@ def main():
         help='Search for text patterns or regex in code',
         description='Find code containing specific text patterns. Useful for finding TODOs, FIXMEs, or specific code patterns.',
         epilog='Examples:\n'
-            '  %(prog)s pattern "TODO" -c MyRepo\n'
-            '  %(prog)s pattern "import requests" -c MyRepo --language python\n'
-            '  %(prog)s pattern "async def" -c MyRepo --file "api/"\n'
-            '  %(prog)s pattern "FIXME" -c MyRepo --toon fixmes.json',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+            '  %(prog)s "TODO" -c MyRepo\n'
+            '  %(prog)s "import requests" -c MyRepo --language python\n'
+            '  %(prog)s "async def" -c MyRepo --file "api/"\n'
+            '  %(prog)s "FIXME" -c MyRepo --toon fixmes.json',
+        formatter_class=RichHelpFormatter
     )
     p_pattern.add_argument('pattern', help='Text pattern to search for')
     p_pattern.add_argument('--collection', '-c', required=True, help='Collection name')
@@ -773,7 +784,7 @@ def main():
     p_pattern.set_defaults(func=pattern_func)
 
     # read-file (file reconstruction)
-    p_read_file = sub.add_parser('read-file', help='Reconstruct and display complete file from chunks')
+    p_read_file = sub.add_parser('read-file', help='Reconstruct and display complete file from chunks', formatter_class=RichHelpFormatter)
     p_read_file.add_argument('file_path', help='File path to read')
     p_read_file.add_argument('--collection', '-c', required=True, help='Collection name')
     p_read_file.add_argument('--no-join', action='store_true', help='Show chunks separately (don\'t join)')
@@ -789,14 +800,14 @@ def main():
         description='Combine semantic search, pattern matching, and metadata filters for precise results.',
         epilog='Examples:\n'
             '  # Semantic search with language filter\n'
-            '  %(prog)s search-advanced -c MyRepo --semantic "authentication" --language python\n\n'
+            '  %(prog)s -c MyRepo --semantic "authentication" --language python\n\n'
             '  # Pattern search with file filter\n'
-            '  %(prog)s search-advanced -c MyRepo --pattern "TODO" --file "src/"\n\n'
+            '  %(prog)s -c MyRepo --pattern "TODO" --file "src/"\n\n'
             '  # Hybrid: semantic + pattern + type filter\n'
-            '  %(prog)s search-advanced -c MyRepo --semantic "error handling" --pattern "try" --type function_definition\n\n'
+            '  %(prog)s -c MyRepo --semantic "error handling" --pattern "try" --type function_definition\n\n'
             '  # Export to TOON format\n'
-            '  %(prog)s search-advanced -c MyRepo --semantic "API routes" --toon api_routes.json',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+            '  %(prog)s -c MyRepo --semantic "API routes" --toon api_routes.json',
+        formatter_class=RichHelpFormatter
     )
     p_search_adv.add_argument('--collection', '-c', required=True, help='Collection name')
     p_search_adv.add_argument('--semantic', '-s', help='Semantic query for hybrid search')
@@ -812,9 +823,14 @@ def main():
 
     args = parser.parse_args()
 
+    # Handle help flag
+    if hasattr(args, 'help') and args.help and not args.command:
+        print_main_help()
+        sys.exit(0)
+
     # If no subcommand was provided, show help and exit
     if not hasattr(args, 'func'):
-        parser.print_help()
+        print_main_help()
         sys.exit(1)
 
     # Call the selected subcommand handler
