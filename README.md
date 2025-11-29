@@ -35,6 +35,7 @@ Turn any codebase into semantically-aware, searchable knowledge for AI-powered w
 - OpenAI API key (for embeddings)
 
 ### Installation
+
 ```bash
 pip install contextinator
 ```
@@ -75,11 +76,22 @@ For comprehensive CLI and Python API documentation, see [`USAGE.md`](USAGE.md)
 
 ## Acknowledgements
 
+Built with and inspired by amazing open-source projects:
+
+### Core Technologies
+
 - **[tree-sitter](https://github.com/tree-sitter/tree-sitter)** - Incremental parsing system for AST generation
 - **[ChromaDB](https://github.com/chroma-core/chroma)** - AI-native embedding database
 - **[OpenAI](https://openai.com)** - Embedding generation API
-- **[Vs-code-copilotchat](https://github.com/microsoft/vscode-copilotchat)** - overall architecture inspiration
-- **[Continue.dev](https://continue.dev)** - chunking and embedding pipeline inspiration
+
+### Inspired By
+
+- **[Serena](https://github.com/oraios/serena)** - Code intelligence and semantic search
+- **[Continue](https://github.com/continuedev/continue)** - AI-powered code assistant
+- **[Tabby](https://github.com/TabbyML/tabby)** - Self-hosted AI coding assistant
+- **[Semantic Code Search](https://github.com/sturdy-dev/semantic-code-search)** - Code search and retrieval
+- **[Aider](https://github.com/Aider-AI/aider)** - AI pair programming in the terminal
+- **[VS Code Copilot Chat](https://github.com/microsoft/vscode-copilot-chat)** - Conversational AI for code
 
 ## License
 
