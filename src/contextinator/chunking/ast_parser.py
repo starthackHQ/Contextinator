@@ -213,6 +213,11 @@ def parse_file(
             logger.debug(f"Unsupported file extension: {file_path.suffix}")
             return None
         
+        # Special handling for Jupyter Notebook files
+        if language == 'ipynb':
+            from .notebook_parser import parse_notebook
+            return parse_notebook(file_path, repo_path=repo_path)
+        
         # Handle file reading errors gracefully
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
