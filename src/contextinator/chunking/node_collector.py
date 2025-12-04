@@ -72,6 +72,12 @@ class NodeCollector:
                     'end_byte': node['end_byte']
                 }
                 
+                # Preserve notebook-specific metadata if present
+                if 'cell_index' in node:
+                    chunk_metadata['cell_index'] = node['cell_index']
+                if 'cell_type' in node:
+                    chunk_metadata['cell_type'] = node['cell_type']
+                
                 # Build enriched content for better semantic search
                 # This combines context metadata with code for embedding
                 enriched_content = build_enriched_content(chunk_metadata, content)
