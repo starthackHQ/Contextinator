@@ -108,7 +108,6 @@ def parse_notebook(
                 )
             else:
                 # Raw cells or other types - treat as plain text
-                cell_language = 'text'
                 cell_nodes = _create_raw_cell_node(
                     source, cell_type, cell_index, file_path_str
                 )
