@@ -104,6 +104,39 @@ def embed_func(args):
         exit(1)
 
 
+
+
+def structure_func(args):
+    """Analyze and display repository structure."""
+    from .tools.repo_structure import analyze_structure
+    from .utils import resolve_repo_path, logger
+    
+    try:
+        repo_url = getattr(args, 'repo_url', None)
+        
+        repo_path = resolve_repo_path(
+            repo_url=repo_url,
+            path=getattr(args, 'path', None)
+        )
+        
+        max_depth = getattr(args, 'depth', None)
+        output_format = getattr(args, 'format', 'tree')
+        output_file = getattr(args, 'output', None)
+        
+        structure = analyze_structure(
+            repo_path=repo_path,
+            max_depth=max_depth,
+            output_format=output_format,
+            output_file=output_file
+        )
+        
+        print(structure)
+        
+    except Exception as e:
+        logger.error(f"Structure analysis failed: {str(e)}")
+        sys.exit(1)
+
+
 def store_embeddings_func(args):
     """Store embeddings in ChromaDB vector store."""
     from .embedding import load_embeddings
@@ -346,6 +379,61 @@ def pattern_func(args):
         
     except Exception as e:
         logger.error(f"Pattern search failed: {e}")
+        exit(1)
+
+
+def cat_file_func(args):
+    """Display complete file contents from chunks."""
+    from .tools import cat_file
+    from .utils.output_formatter import export_results_json
+    
+    try:
+        content = cat_file(
+            collection_name=args.collection,
+            file_path=args.file_path,
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        )
+        
+        if args.json:
+            export_results_json({"file_path": args.file_path, "content": content}, args.json)
+        else:
+            print(f"File: {args.file_path}")
+            print("=" * 80)
+            print(content)
+        
+    except Exception as e:
+        logger.error(f"Cat file failed: {e}")
+        exit(1)
+
+
+def grep_func(args):
+    """Advanced grep search with $contains operator."""
+    from .tools import grep_search
+    from .utils.output_formatter import export_results_json
+    
+    try:
+        results = grep_search(
+            collection_name=args.collection,
+            pattern=args.pattern,
+            max_chunks=getattr(args, 'limit', 50),
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        )
+        
+        if args.json:
+            export_results_json(results, args.json)
+        else:
+            print(f"Pattern: '{args.pattern}'")
+            print(f"Found {results['total_matches']} matches in {results['total_files']} files\n")
+            
+            for file_result in results['files']:
+                print(f"\n📄 {file_result['path']}")
+                for match in file_result['matches'][:10]:  # Show first 10 per file
+                    print(f"  Line {match['line_number']}: {match['content']}")
+                if len(file_result['matches']) > 10:
+                    print(f"  ... and {len(file_result['matches']) - 10} more matches")
+        
+    except Exception as e:
+        logger.error(f"Grep search failed: {e}")
         exit(1)
 
 
@@ -710,6 +798,15 @@ def main():
     p_db_clear.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
 
+    # structure
+    p_structure = sub.add_parser('structure', help='Analyze and display repository structure as a tree', formatter_class=RichHelpFormatter)
+    p_structure.add_argument('--repo-url', help='GitHub/Git repository URL to analyze')
+    p_structure.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_structure.add_argument('--depth', type=int, help='Maximum depth to traverse (default: unlimited)')
+    p_structure.add_argument('--format', choices=['tree', 'json'], default='tree', help='Output format (default: tree)')
+    p_structure.add_argument('--output', '-o', help='Save output to file')
+    p_structure.set_defaults(func=structure_func)
+
     # ========================================================================
     # SEARCH TOOL COMMANDS
     # ========================================================================
@@ -782,6 +879,23 @@ def main():
     p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_pattern.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_pattern.set_defaults(func=pattern_func)
+
+    # cat (file display)
+    p_cat = sub.add_parser('cat', help='Display complete file contents from chunks', formatter_class=RichHelpFormatter)
+    p_cat.add_argument('file_path', help='File path to display')
+    p_cat.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_cat.add_argument('--json', help='Export to JSON file')
+    p_cat.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_cat.set_defaults(func=cat_file_func)
+
+    # grep (advanced search with $contains)
+    p_grep = sub.add_parser('grep', help='Advanced grep search using $contains operator', formatter_class=RichHelpFormatter)
+    p_grep.add_argument('pattern', help='Text pattern to search for')
+    p_grep.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_grep.add_argument('--limit', type=int, default=50, help='Maximum chunks to search (default: 50)')
+    p_grep.add_argument('--json', help='Export to JSON file')
+    p_grep.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_grep.set_defaults(func=grep_func)
 
     # read-file (file reconstruction)
     p_read_file = sub.add_parser('read-file', help='Reconstruct and display complete file from chunks', formatter_class=RichHelpFormatter)
