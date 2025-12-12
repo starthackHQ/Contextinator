@@ -11,6 +11,7 @@ The main components include:
 - Regular expression pattern matching
 - Symbol and file-based searches
 - Hybrid search combining multiple strategies
+- Repository structure analysis
 """
 
 from typing import Any, Dict, List, Optional
@@ -149,11 +150,14 @@ class SearchTool:
 from .full_text_search import full_text_search, hybrid_search, search_by_type
 from .read_file import list_files, read_file
 from .regex_search import find_function_calls, regex_search
+from .repo_structure import analyze_structure, analyze_structure_async
 from .semantic_search import semantic_search, semantic_search_with_context
 from .symbol_search import list_symbols, symbol_search
 
 __all__ = [
     'SearchTool',
+    'analyze_structure',
+    'analyze_structure_async',
     'find_function_calls',
     'full_text_search',
     'hybrid_search',

@@ -104,6 +104,39 @@ def embed_func(args):
         exit(1)
 
 
+
+
+def structure_func(args):
+    """Analyze and display repository structure."""
+    from .tools.repo_structure import analyze_structure
+    from .utils import resolve_repo_path, logger
+    
+    try:
+        repo_url = getattr(args, 'repo_url', None)
+        
+        repo_path = resolve_repo_path(
+            repo_url=repo_url,
+            path=getattr(args, 'path', None)
+        )
+        
+        max_depth = getattr(args, 'depth', None)
+        output_format = getattr(args, 'format', 'tree')
+        output_file = getattr(args, 'output', None)
+        
+        structure = analyze_structure(
+            repo_path=repo_path,
+            max_depth=max_depth,
+            output_format=output_format,
+            output_file=output_file
+        )
+        
+        print(structure)
+        
+    except Exception as e:
+        logger.error(f"Structure analysis failed: {str(e)}")
+        sys.exit(1)
+
+
 def store_embeddings_func(args):
     """Store embeddings in ChromaDB vector store."""
     from .embedding import load_embeddings
@@ -709,6 +742,15 @@ def main():
 
     p_db_clear.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
+
+    # structure
+    p_structure = sub.add_parser('structure', help='Analyze and display repository structure as a tree', formatter_class=RichHelpFormatter)
+    p_structure.add_argument('--repo-url', help='GitHub/Git repository URL to analyze')
+    p_structure.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_structure.add_argument('--depth', type=int, help='Maximum depth to traverse (default: unlimited)')
+    p_structure.add_argument('--format', choices=['tree', 'json'], default='tree', help='Output format (default: tree)')
+    p_structure.add_argument('--output', '-o', help='Save output to file')
+    p_structure.set_defaults(func=structure_func)
 
     # ========================================================================
     # SEARCH TOOL COMMANDS
