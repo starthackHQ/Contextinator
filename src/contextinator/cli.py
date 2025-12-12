@@ -382,6 +382,61 @@ def pattern_func(args):
         exit(1)
 
 
+def cat_file_func(args):
+    """Display complete file contents from chunks."""
+    from .tools import cat_file
+    from .utils.output_formatter import export_results_json
+    
+    try:
+        content = cat_file(
+            collection_name=args.collection,
+            file_path=args.file_path,
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        )
+        
+        if args.json:
+            export_results_json({"file_path": args.file_path, "content": content}, args.json)
+        else:
+            print(f"File: {args.file_path}")
+            print("=" * 80)
+            print(content)
+        
+    except Exception as e:
+        logger.error(f"Cat file failed: {e}")
+        exit(1)
+
+
+def grep_func(args):
+    """Advanced grep search with $contains operator."""
+    from .tools import grep_search
+    from .utils.output_formatter import export_results_json
+    
+    try:
+        results = grep_search(
+            collection_name=args.collection,
+            pattern=args.pattern,
+            max_chunks=getattr(args, 'limit', 50),
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        )
+        
+        if args.json:
+            export_results_json(results, args.json)
+        else:
+            print(f"Pattern: '{args.pattern}'")
+            print(f"Found {results['total_matches']} matches in {results['total_files']} files\n")
+            
+            for file_result in results['files']:
+                print(f"\n📄 {file_result['path']}")
+                for match in file_result['matches'][:10]:  # Show first 10 per file
+                    print(f"  Line {match['line_number']}: {match['content']}")
+                if len(file_result['matches']) > 10:
+                    print(f"  ... and {len(file_result['matches']) - 10} more matches")
+        
+    except Exception as e:
+        logger.error(f"Grep search failed: {e}")
+        exit(1)
+
+
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
     from .tools import read_file
@@ -824,6 +879,23 @@ def main():
     p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_pattern.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_pattern.set_defaults(func=pattern_func)
+
+    # cat (file display)
+    p_cat = sub.add_parser('cat', help='Display complete file contents from chunks', formatter_class=RichHelpFormatter)
+    p_cat.add_argument('file_path', help='File path to display')
+    p_cat.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_cat.add_argument('--json', help='Export to JSON file')
+    p_cat.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_cat.set_defaults(func=cat_file_func)
+
+    # grep (advanced search with $contains)
+    p_grep = sub.add_parser('grep', help='Advanced grep search using $contains operator', formatter_class=RichHelpFormatter)
+    p_grep.add_argument('pattern', help='Text pattern to search for')
+    p_grep.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_grep.add_argument('--limit', type=int, default=50, help='Maximum chunks to search (default: 50)')
+    p_grep.add_argument('--json', help='Export to JSON file')
+    p_grep.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_grep.set_defaults(func=grep_func)
 
     # read-file (file reconstruction)
     p_read_file = sub.add_parser('read-file', help='Reconstruct and display complete file from chunks', formatter_class=RichHelpFormatter)
