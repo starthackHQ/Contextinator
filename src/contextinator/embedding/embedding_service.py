@@ -175,9 +175,21 @@ class EmbeddingService:
         
         batches = [valid_chunks[i:i + batch_size] for i in range(0, len(valid_chunks), batch_size)]
         logger.info(f"📦 Processing {len(batches)} batches...")
-        results = await asyncio.gather(*[embed_batch(b) for b in batches])
+        results = await asyncio.gather(*[embed_batch(b) for b in batches], return_exceptions=True)
         
-        embedded = [chunk for batch_result in results for _, chunk in batch_result]
+        # Filter out failed batches (exceptions) and flatten successful results
+        embedded = []
+        failed_count = 0
+        for batch_result in results:
+            if isinstance(batch_result, Exception):
+                failed_count += 1
+                logger.warning(f"⚠️  Batch failed: {batch_result}")
+            else:
+                embedded.extend([chunk for _, chunk in batch_result])
+        
+        if failed_count > 0:
+            logger.warning(f"⚠️  {failed_count}/{len(batches)} batches failed")
+        
         logger.info(f"✅ Embedded {len(embedded)} chunks")
         return embedded
     

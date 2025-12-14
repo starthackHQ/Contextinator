@@ -70,8 +70,8 @@ async def build_tree_dict_async(path: Path, ignore_patterns: List[str], max_dept
             
             # Process children concurrently
             tasks = [build_tree_dict_async(item, ignore_patterns, max_depth, current_depth + 1) for item in items]
-            results = await asyncio.gather(*tasks)
-            children = [r for r in results if r]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            children = [r for r in results if r and not isinstance(r, Exception)]
         except PermissionError:
             pass
         

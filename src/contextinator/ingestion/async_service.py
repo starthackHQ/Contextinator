@@ -51,7 +51,10 @@ class AsyncIngestionService:
         logger.info(f"📦 Chunking {repo_name}")
         
         loop = asyncio.get_event_loop()
-        chunks = await loop.run_in_executor(None, chunk_repository, repo_path, repo_name)
+        chunks = await loop.run_in_executor(
+            None, 
+            lambda: chunk_repository(repo_path, repo_name, save=False, output_dir=None)
+        )
         
         logger.info(f"✅ Created {len(chunks)} chunks")
         return chunks
@@ -90,11 +93,13 @@ class AsyncIngestionService:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
-            store_repository_embeddings,
-            "./contextinator_data",  # base_dir
-            repo_name,
-            embedded_chunks,
-            collection_name
+            lambda: store_repository_embeddings(
+                "./contextinator_data",  # base_dir
+                repo_name,
+                embedded_chunks,
+                collection_name,
+                None  # chromadb_dir
+            )
         )
         
         logger.info(f"✅ Stored embeddings")
