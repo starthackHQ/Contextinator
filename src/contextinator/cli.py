@@ -348,40 +348,6 @@ def symbol_func(args):
         exit(1)
 
 
-def pattern_func(args):
-    """Search for code patterns using regex."""
-    from .tools import regex_search
-    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
-    
-    try:
-        results = regex_search(
-            collection_name=args.collection,
-            pattern=args.pattern,
-            language=getattr(args, 'language', None),
-            file_path=getattr(args, 'file', None)
-        )
-        
-        result_data = {
-            'pattern': args.pattern,
-            'collection': args.collection,
-            'total_results': len(results),
-            'results': results
-        }
-        
-        if args.json:
-            export_results_json(result_data, args.json)
-        
-        if getattr(args, 'toon', None):
-            export_results_toon(result_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_search_results(results, query=f"Pattern: {args.pattern}", collection=args.collection)
-        
-    except Exception as e:
-        logger.error(f"Pattern search failed: {e}")
-        exit(1)
-
-
 def cat_file_func(args):
     """Display complete file contents from chunks."""
     from .tools import cat_file
@@ -407,7 +373,7 @@ def cat_file_func(args):
 
 
 def grep_func(args):
-    """Advanced grep search with $contains operator."""
+    """Advanced grep search with optional regex support."""
     from .tools import grep_search
     from .utils.output_formatter import export_results_json
     
@@ -415,20 +381,35 @@ def grep_func(args):
         results = grep_search(
             collection_name=args.collection,
             pattern=args.pattern,
-            max_chunks=getattr(args, 'limit', 50),
+            max_chunks=getattr(args, 'limit', 100),
+            use_regex=getattr(args, 'regex', False),
+            case_sensitive=getattr(args, 'case_sensitive', False),
+            whole_word=getattr(args, 'whole_word', False),
+            context_lines=getattr(args, 'context', 0),
+            language=getattr(args, 'language', None),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
         )
         
         if args.json:
             export_results_json(results, args.json)
         else:
-            print(f"Pattern: '{args.pattern}'")
+            mode = "Regex" if getattr(args, 'regex', False) else "Text"
+            print(f"{mode} Pattern: '{args.pattern}'")
             print(f"Found {results['total_matches']} matches in {results['total_files']} files\n")
             
             for file_result in results['files']:
-                print(f"\n📄 {file_result['path']}")
-                for match in file_result['matches'][:10]:  # Show first 10 per file
-                    print(f"  Line {match['line_number']}: {match['content']}")
+                print(f"\n📄 {file_result['path']} ({file_result['match_count']} matches)")
+                for match in file_result['matches'][:10]:
+                    if getattr(args, 'context', 0) > 0:
+                        if match.get('context_before'):
+                            for ctx in match['context_before']:
+                                print(f"      {ctx}")
+                        print(f"  Line {match['line_number']}: {match['content']}")
+                        if match.get('context_after'):
+                            for ctx in match['context_after']:
+                                print(f"      {ctx}")
+                    else:
+                        print(f"  Line {match['line_number']}: {match['content']}")
                 if len(file_result['matches']) > 10:
                     print(f"  ... and {len(file_result['matches']) - 10} more matches")
         
@@ -439,24 +420,27 @@ def grep_func(args):
 
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
-    from .tools import read_file
-    from .utils.output_formatter import format_file_content, export_results_json, export_results_toon
+    from .tools import cat_file
+    from .utils.output_formatter import export_results_json, export_results_toon
     
     try:
-        file_data = read_file(
+        content = cat_file(
             collection_name=args.collection,
             file_path=args.file_path,
-            join_chunks=not args.no_join
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
         )
+        
+        file_data = {
+            'file_path': args.file_path,
+            'content': content
+        }
         
         if args.json:
             export_results_json(file_data, args.json)
-        
-        if getattr(args, 'toon', None):
+        elif getattr(args, 'toon', None):
             export_results_toon(file_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_file_content(file_data)
+        else:
+            print(content)
         
     except Exception as e:
         logger.error(f"Read file failed: {e}")
@@ -464,62 +448,53 @@ def read_file_func(args):
 
 
 def search_advanced_func(args):
-    """Advanced search with multiple criteria."""
-    from .tools import hybrid_search, full_text_search
+    """Advanced search with multiple criteria - uses grep for pattern matching."""
+    from .tools import semantic_search, grep_search
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
-        # Use hybrid search if semantic query provided
+        # Use semantic search if query provided
         if args.semantic:
-            filters = {}
-            if args.language:
-                filters['language'] = args.language
-            if args.file:
-                filters['file_path'] = {'$contains': args.file}
-            if args.type:
-                filters['node_type'] = args.type
-            
-            results = hybrid_search(
+            results = semantic_search(
                 collection_name=args.collection,
-                semantic_query=args.semantic,
-                text_pattern=getattr(args, 'pattern', None),
-                where=filters if filters else None,
-                n_results=args.limit
+                query=args.semantic,
+                n_results=args.limit,
+                language=args.language if hasattr(args, 'language') else None,
+                chromadb_dir=getattr(args, 'chromadb_dir', None)
             )
-            query_desc = f"Hybrid: {args.semantic}"
+            query_desc = f"Semantic: {args.semantic}"
+            
+            result_data = {
+                'query': query_desc,
+                'collection': args.collection,
+                'total_results': len(results),
+                'results': results
+            }
+            
+            if args.json:
+                export_results_json(result_data, args.json)
+            elif getattr(args, 'toon', None):
+                export_results_toon(result_data, args.toon)
+            else:
+                format_search_results(results, query=query_desc, collection=args.collection)
+                
+        elif args.pattern:
+            # Use grep search for pattern
+            results = grep_search(
+                collection_name=args.collection,
+                pattern=args.pattern,
+                max_chunks=args.limit,
+                chromadb_dir=getattr(args, 'chromadb_dir', None)
+            )
+            
+            if args.json:
+                export_results_json(results, args.json)
+            else:
+                print(f"Pattern: '{args.pattern}'")
+                print(f"Found {results['total_matches']} matches in {results['total_files']} files")
         else:
-            # Use full text search
-            where = {}
-            if args.language:
-                where['language'] = args.language
-            if args.file:
-                where['file_path'] = {'$contains': args.file}
-            if args.type:
-                where['node_type'] = args.type
-            
-            results = full_text_search(
-                collection_name=args.collection,
-                text_pattern=args.pattern,
-                where=where if where else None,
-                limit=args.limit
-            )
-            query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
-        
-        result_data = {
-            'query': query_desc,
-            'collection': args.collection,
-            'total_results': len(results),
-            'results': results
-        }
-        
-        if args.json:
-            export_results_json(result_data, args.json)
-        
-        if getattr(args, 'toon', None):
-            export_results_toon(result_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_search_results(results, query=query_desc, collection=args.collection)
+            logger.error("Please provide either --semantic or --pattern")
+            exit(1)
         
     except Exception as e:
         logger.error(f"Advanced search failed: {e}")
@@ -858,29 +833,6 @@ def main():
     p_symbol.set_defaults(func=symbol_func)
 
     # pattern (regex search)
-    p_pattern = sub.add_parser(
-        'pattern',
-        help='Search for text patterns or regex in code',
-        description='Find code containing specific text patterns. Useful for finding TODOs, FIXMEs, or specific code patterns.',
-        epilog='Examples:\n'
-            '  %(prog)s "TODO" -c MyRepo\n'
-            '  %(prog)s "import requests" -c MyRepo --language python\n'
-            '  %(prog)s "async def" -c MyRepo --file "api/"\n'
-            '  %(prog)s "FIXME" -c MyRepo --toon fixmes.json',
-        formatter_class=RichHelpFormatter
-    )
-    p_pattern.add_argument('pattern', help='Text pattern to search for')
-    p_pattern.add_argument('--collection', '-c', required=True, help='Collection name')
-    p_pattern.add_argument('--language', '-l', help='Filter by programming language')
-    p_pattern.add_argument('--file', '-f', help='Filter by file path (partial match)')
-    p_pattern.add_argument('--type', '-t', help='Filter by node type')
-    p_pattern.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
-    p_pattern.add_argument('--json', help='Export results to JSON file')
-    p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
-    p_pattern.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
-    p_pattern.set_defaults(func=pattern_func)
-
-    # cat (file display)
     p_cat = sub.add_parser('cat', help='Display complete file contents from chunks', formatter_class=RichHelpFormatter)
     p_cat.add_argument('file_path', help='File path to display')
     p_cat.add_argument('--collection', '-c', required=True, help='Collection name')
@@ -889,10 +841,15 @@ def main():
     p_cat.set_defaults(func=cat_file_func)
 
     # grep (advanced search with $contains)
-    p_grep = sub.add_parser('grep', help='Advanced grep search using $contains operator', formatter_class=RichHelpFormatter)
-    p_grep.add_argument('pattern', help='Text pattern to search for')
+    p_grep = sub.add_parser('grep', help='Advanced grep search with optional regex support', formatter_class=RichHelpFormatter)
+    p_grep.add_argument('pattern', help='Text pattern or regex to search for')
     p_grep.add_argument('--collection', '-c', required=True, help='Collection name')
-    p_grep.add_argument('--limit', type=int, default=50, help='Maximum chunks to search (default: 50)')
+    p_grep.add_argument('--limit', type=int, default=100, help='Maximum chunks to search (default: 100)')
+    p_grep.add_argument('--regex', action='store_true', help='Enable regex pattern matching')
+    p_grep.add_argument('--case-sensitive', action='store_true', help='Case-sensitive matching')
+    p_grep.add_argument('--whole-word', action='store_true', help='Match whole words only')
+    p_grep.add_argument('--context', type=int, default=0, help='Number of context lines before/after match')
+    p_grep.add_argument('--language', '-l', help='Filter by programming language')
     p_grep.add_argument('--json', help='Export to JSON file')
     p_grep.add_argument('--chromadb-dir', help='Custom chromadb directory')
     p_grep.set_defaults(func=grep_func)
