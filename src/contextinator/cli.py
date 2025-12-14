@@ -271,6 +271,86 @@ def query_func(args):
     pass
 
 
+def async_batch_func(args):
+    """Process multiple repositories asynchronously."""
+    import asyncio
+    import json
+    from .ingestion import AsyncIngestionService
+    from pathlib import Path
+    
+    try:
+        # Load repos from JSON file
+        repos_file = Path(args.repos_file)
+        if not repos_file.exists():
+            logger.error(f"Repos file not found: {repos_file}")
+            sys.exit(1)
+        
+        with open(repos_file, 'r') as f:
+            repos = json.load(f)
+        
+        if not isinstance(repos, list):
+            logger.error("Repos file must contain a JSON array of repo objects")
+            sys.exit(1)
+        
+        # Validate repo format
+        for i, repo in enumerate(repos):
+            if 'repo_url' not in repo or 'collection_name' not in repo:
+                logger.error(f"Repo {i} missing required fields: repo_url, collection_name")
+                sys.exit(1)
+        
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        max_concurrent = getattr(args, 'max_concurrent', 3)
+        cleanup = not getattr(args, 'no_cleanup', False)
+        
+        logger.info(f"🚀 Starting async batch processing for {len(repos)} repositories")
+        logger.info(f"   Base directory: {base_dir}")
+        logger.info(f"   Max concurrent: {max_concurrent}")
+        logger.info(f"   Cleanup: {cleanup}")
+        
+        # Run async batch processing
+        async def run_batch():
+            service = AsyncIngestionService(base_dir=base_dir)
+            results = await service.process_batch_async(
+                repos=repos,
+                max_concurrent=max_concurrent,
+                cleanup=cleanup
+            )
+            return results
+        
+        results = asyncio.run(run_batch())
+        
+        # Report results
+        success_count = sum(1 for r in results if r.get('status') == 'success')
+        failed_count = len(results) - success_count
+        
+        logger.info(f"\n{'='*60}")
+        logger.info(f"✅ Batch processing complete!")
+        logger.info(f"   Success: {success_count}/{len(repos)}")
+        logger.info(f"   Failed: {failed_count}/{len(repos)}")
+        
+        # Show details for failed repos
+        if failed_count > 0:
+            logger.info(f"\n❌ Failed repositories:")
+            for r in results:
+                if r.get('status') == 'failed':
+                    logger.info(f"   - {r.get('repo_url', 'unknown')}: {r.get('error', 'unknown error')}")
+        
+        # Save results if requested
+        if hasattr(args, 'results_file') and args.results_file:
+            results_path = Path(args.results_file)
+            with open(results_path, 'w') as f:
+                json.dump(results, f, indent=2)
+            logger.info(f"\n💾 Results saved to: {results_path}")
+        
+        sys.exit(0 if failed_count == 0 else 1)
+        
+    except Exception as e:
+        logger.error(f"Async batch processing failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 # ============================================================================
 # SEARCH TOOL COMMANDS
 # ============================================================================
@@ -891,6 +971,32 @@ def main():
     p_search_adv.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_search_adv.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_search_adv.set_defaults(func=search_advanced_func)
+
+    # async-batch (async batch processing)
+    p_async_batch = sub.add_parser(
+        'async-batch',
+        help='Process multiple repositories asynchronously',
+        description='Batch process multiple repositories concurrently using async pipeline.',
+        epilog='Examples:\n'
+            '  # Process repos from JSON file\n'
+            '  %(prog)s repos.json --max-concurrent 3\n\n'
+            '  # With custom output directory\n'
+            '  %(prog)s repos.json --output ./data --max-concurrent 5\n\n'
+            '  # Save results to file\n'
+            '  %(prog)s repos.json --results results.json\n\n'
+            'JSON format:\n'
+            '  [\n'
+            '    {"repo_url": "https://github.com/user/repo1", "collection_name": "repo1"},\n'
+            '    {"repo_url": "https://github.com/user/repo2", "collection_name": "repo2"}\n'
+            '  ]',
+        formatter_class=RichHelpFormatter
+    )
+    p_async_batch.add_argument('repos_file', help='JSON file containing list of repositories')
+    p_async_batch.add_argument('--output', '-o', help='Base output directory (default: current directory)')
+    p_async_batch.add_argument('--max-concurrent', type=int, default=3, help='Max concurrent repositories (default: 3)')
+    p_async_batch.add_argument('--no-cleanup', action='store_true', help='Keep temporary cloned directories')
+    p_async_batch.add_argument('--results', dest='results_file', help='Save results to JSON file')
+    p_async_batch.set_defaults(func=async_batch_func)
 
     args = parser.parse_args()
 
