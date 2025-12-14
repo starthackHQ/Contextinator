@@ -79,7 +79,6 @@ def symbol_search(
     logger.debug(f"Symbol search: '{symbol_name}' in collection '{collection_name}'")
     
     try:
-        tool = SearchTool(collection_name)
         tool = SearchTool(collection_name, chromadb_dir=chromadb_dir)        
         # Build where clause (get() doesn't support $contains)
         where = {}
@@ -92,8 +91,9 @@ def symbol_search(
         if exact_match:
             where["node_name"] = symbol_name
         
+        # ChromaDB requires at least one filter in where clause, or pass None
         results = tool.collection.get(
-            where=where,
+            where=where if where else None,
             include=['documents', 'metadatas']
         )
         
@@ -105,7 +105,8 @@ def symbol_search(
                 'metadatas': []
             }
             for id_, doc, meta in zip(results['ids'], results['documents'], results['metadatas']):
-                if symbol_name in meta.get('node_name', ''):
+                node_name = meta.get('node_name', '')
+                if node_name and symbol_name.lower() in node_name.lower():
                     filtered_results['ids'].append(id_)
                     filtered_results['documents'].append(doc)
                     filtered_results['metadatas'].append(meta)

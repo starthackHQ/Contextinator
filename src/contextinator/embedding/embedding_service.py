@@ -124,7 +124,21 @@ class EmbeddingService:
         """Generate embeddings (async if use_async=True)."""
         if use_async:
             import asyncio
-            return asyncio.run(self._generate_embeddings_async(chunks, batch_size, max_concurrent))
+            # Check if already in async context to avoid nested event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # Already in async context - cannot use asyncio.run()
+                raise RuntimeError(
+                    "generate_embeddings called with use_async=True from async context. "
+                    "Call _generate_embeddings_async() directly instead."
+                )
+            except RuntimeError as e:
+                if "no running event loop" in str(e).lower():
+                    # Not in async context - safe to use asyncio.run()
+                    return asyncio.run(self._generate_embeddings_async(chunks, batch_size, max_concurrent))
+                else:
+                    # Already in async context
+                    raise
         else:
             return self._generate_embeddings_sync(chunks)
     
@@ -132,6 +146,7 @@ class EmbeddingService:
         """Async embedding with concurrency and rate limiting."""
         from openai import AsyncOpenAI
         import asyncio
+        from ..utils.exceptions import EmbeddingError
         
         client = AsyncOpenAI(api_key=OPENAI_API_KEY)
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -171,24 +186,26 @@ class EmbeddingService:
                             await asyncio.sleep(2 ** attempt)
                         else:
                             logger.error(f"❌ Batch failed after 3 attempts: {e}")
-                            raise  # Re-raise to fail fast instead of silent data loss
+                            raise  # Re-raise to be caught by gather
         
         batches = [valid_chunks[i:i + batch_size] for i in range(0, len(valid_chunks), batch_size)]
         logger.info(f"📦 Processing {len(batches)} batches...")
         results = await asyncio.gather(*[embed_batch(b) for b in batches], return_exceptions=True)
         
-        # Filter out failed batches (exceptions) and flatten successful results
+        # Fail fast on errors instead of silent data loss
         embedded = []
-        failed_count = 0
-        for batch_result in results:
+        failed_batches = []
+        for i, batch_result in enumerate(results):
             if isinstance(batch_result, Exception):
-                failed_count += 1
-                logger.warning(f"⚠️  Batch failed: {batch_result}")
+                failed_batches.append((i, str(batch_result)))
+                logger.error(f"⚠️  Batch {i+1}/{len(batches)} failed: {batch_result}")
             else:
                 embedded.extend([chunk for _, chunk in batch_result])
         
-        if failed_count > 0:
-            logger.warning(f"⚠️  {failed_count}/{len(batches)} batches failed")
+        if failed_batches:
+            error_msg = f"{len(failed_batches)}/{len(batches)} batches failed"
+            logger.error(f"❌ {error_msg}")
+            raise EmbeddingError(f"Async embedding failed: {error_msg}")
         
         logger.info(f"✅ Embedded {len(embedded)} chunks")
         return embedded
