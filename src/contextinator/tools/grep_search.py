@@ -82,7 +82,7 @@ def grep_search(
         # Use $contains for fast initial filtering (only for non-regex simple text)
         if not use_regex:
             results = tool.collection.get(
-                where_document={"$contains": pattern if case_sensitive else pattern.lower()},
+                where_document={"$contains": pattern},
                 where=where if where else None,
                 limit=max_chunks * 2,
                 include=['documents', 'metadatas']
