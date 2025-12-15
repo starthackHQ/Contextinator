@@ -27,7 +27,7 @@ __all__ = [
     "embed_chunks",
     "store_repository_embeddings",
     "semantic_search",
-    "symbol_search",       
+    "symbol_search",
     "cat_file",
     "grep_search",
     "find_function_calls",
