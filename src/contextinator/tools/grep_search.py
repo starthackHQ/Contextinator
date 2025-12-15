@@ -1,10 +1,25 @@
-"""Grep search with async support."""
+"""Grep search with TRUE async."""
 import re
 import asyncio
 from typing import Dict, Optional
 from collections import defaultdict
-from . import SearchTool
 from ..utils.logger import logger
+from ..config import USE_CHROMA_SERVER
+
+_async_chroma_client = None
+
+async def _get_async_chroma():
+    global _async_chroma_client
+    if _async_chroma_client is None:
+        if USE_CHROMA_SERVER:
+            from ..vectorstore.async_chroma import get_async_client
+            from ..config import CHROMA_SERVER_URL
+            from urllib.parse import urlparse
+            parsed = urlparse(CHROMA_SERVER_URL)
+            _async_chroma_client = await get_async_client(host=parsed.hostname or "localhost", port=parsed.port or 8000)
+        else:
+            return None
+    return _async_chroma_client
 
 async def grep_search(
     collection_name: str,
@@ -17,85 +32,82 @@ async def grep_search(
     language: Optional[str] = None,
     chromadb_dir: Optional[str] = None
 ) -> Dict:
-    """Async grep search with pattern matching."""
+    """TRUE async grep search."""
     if not collection_name or not pattern:
         raise ValueError("Collection name and pattern required")
     
-    loop = asyncio.get_event_loop()
+    regex_pattern = None
+    if use_regex:
+        flags = 0 if case_sensitive else re.IGNORECASE
+        regex_pattern = re.compile(pattern, flags)
     
-    def _search():
-        tool = SearchTool(collection_name, chromadb_dir=chromadb_dir)
+    where = {"language": language} if language else None
+    
+    client = await _get_async_chroma()
+    from ..config import sanitize_collection_name
+    collection = await client.get_collection(sanitize_collection_name(collection_name))
+    
+    if not use_regex:
+        results = await collection.get(
+            where_document={"$contains": pattern},
+            where=where,
+            limit=max_chunks * 2,
+            include=['documents', 'metadatas']
+        )
+    else:
+        results = await collection.get(
+            where=where,
+            limit=max_chunks * 3,
+            include=['documents', 'metadatas']
+        )
+    
+    if not results['ids']:
+        return {'files': [], 'total_matches': 0, 'total_files': 0, 'pattern': pattern}
+    
+    file_matches = defaultdict(list)
+    total_matches = 0
+    
+    for doc, meta in zip(results['documents'][:max_chunks], results['metadatas'][:max_chunks]):
+        file_path = meta.get('file_path', 'unknown')
+        start_line = meta.get('start_line', 1)
         
-        regex_pattern = None
-        if use_regex:
-            flags = 0 if case_sensitive else re.IGNORECASE
-            regex_pattern = re.compile(pattern, flags)
-        
-        where = {"language": language} if language else None
-        
-        if not use_regex:
-            results = tool.collection.get(
-                where_document={"$contains": pattern},
-                where=where,
-                limit=max_chunks * 2,
-                include=['documents', 'metadatas']
-            )
-        else:
-            results = tool.collection.get(
-                where=where,
-                limit=max_chunks * 3,
-                include=['documents', 'metadatas']
-            )
-        
-        if not results['ids']:
-            return {'files': [], 'total_matches': 0, 'total_files': 0, 'pattern': pattern}
-        
-        file_matches = defaultdict(list)
-        total_matches = 0
-        
-        for doc, meta in zip(results['documents'][:max_chunks], results['metadatas'][:max_chunks]):
-            file_path = meta.get('file_path', 'unknown')
-            start_line = meta.get('start_line', 1)
+        for i, line in enumerate(doc.split('\n')):
+            matched = False
             
-            for i, line in enumerate(doc.split('\n')):
-                matched = False
+            if use_regex:
+                matched = bool(regex_pattern.search(line))
+            else:
+                search_line = line if case_sensitive else line.lower()
+                search_pattern = pattern if case_sensitive else pattern.lower()
                 
-                if use_regex:
-                    matched = bool(regex_pattern.search(line))
+                if whole_word:
+                    word_pattern = r'\b' + re.escape(search_pattern) + r'\b'
+                    matched = bool(re.search(word_pattern, search_line, 0 if case_sensitive else re.IGNORECASE))
                 else:
-                    search_line = line if case_sensitive else line.lower()
-                    search_pattern = pattern if case_sensitive else pattern.lower()
-                    
-                    if whole_word:
-                        word_pattern = r'\b' + re.escape(search_pattern) + r'\b'
-                        matched = bool(re.search(word_pattern, search_line, 0 if case_sensitive else re.IGNORECASE))
-                    else:
-                        matched = search_pattern in search_line
-                
-                if matched:
-                    file_matches[file_path].append({
-                        'line_number': start_line + i,
-                        'content': line.strip()
-                    })
-                    total_matches += 1
-        
-        files = [
-            {
-                'path': path,
-                'matches': sorted(matches, key=lambda x: x['line_number']),
-                'match_count': len(matches)
-            }
-            for path, matches in sorted(file_matches.items())
-        ]
-        
-        return {
-            'files': files,
-            'total_matches': total_matches,
-            'total_files': len(files),
-            'pattern': pattern
-        }
+                    matched = search_pattern in search_line
+            
+            if matched:
+                file_matches[file_path].append({
+                    'line_number': start_line + i,
+                    'content': line.strip()
+                })
+                total_matches += 1
     
-    return await loop.run_in_executor(None, _search)
+    files = [
+        {
+            'path': path,
+            'matches': sorted(matches, key=lambda x: x['line_number']),
+            'match_count': len(matches)
+        }
+        for path, matches in sorted(file_matches.items())
+    ]
+    
+    return {
+        'files': files,
+        'total_matches': total_matches,
+        'total_files': len(files),
+        'pattern': pattern
+    }
 
 async def find_function_calls(
     collection_name: str,
@@ -103,7 +115,7 @@ async def find_function_calls(
     language: Optional[str] = None,
     chromadb_dir: Optional[str] = None
 ) -> Dict:
-    """Find function call sites."""
+    """Find function calls."""
     if not collection_name or not function_name:
         raise ValueError("Collection name and function name required")
     
