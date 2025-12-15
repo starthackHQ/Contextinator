@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: contextinator-test-chromadb
+    ports:
+      - "8000:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+    volumes:
+      - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - test-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: contextinator-test-runner
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    environment:
+      - USE_CHROMA_SERVER=true
+      - CHROMA_SERVER_URL=http://chromadb:8000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/app/src
+    volumes:
+      - .:/app
+      - test_cache:/app/.pytest_cache
+    networks:
+      - test-network
+    command: >
+      sh -c "
+        echo 'Waiting for ChromaDB to be fully ready...' &&
+        sleep 5 &&
+        echo 'Running unit tests...' &&
+        pytest tests/ -v --cov=src/contextinator --cov-report=xml --cov-report=term -m 'not integration' &&
+        echo 'Running integration tests...' &&
+        pytest tests/integration/ -v --cov=src/contextinator --cov-report=xml --cov-report=term --cov-append &&
+        echo 'All tests completed!'
+      "
+
+volumes:
+  chroma_data:
+    driver: local
+  test_cache:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
