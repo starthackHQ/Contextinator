@@ -137,11 +137,12 @@ def test_collection(temp_chromadb):
     store = ChromaVectorStore(db_path=temp_dir)
     
     # Create sample embedded chunks
+    # Using 3072 dimensions to match OpenAI text-embedding-3-small model
     embedded_chunks = [
         {
             "id": "chunk1",
             "content": "def authenticate_user(username, password):\n    '''Authenticate user with credentials.'''",
-            "embedding": [0.1] * 1536,
+            "embedding": [0.1] * 3072,
             "metadata": {
                 "file_path": "src/main.py",
                 "node_name": "authenticate_user",
@@ -154,7 +155,7 @@ def test_collection(temp_chromadb):
         {
             "id": "chunk2",
             "content": "class UserManager:\n    '''Manage user operations.'''",
-            "embedding": [0.2] * 1536,
+            "embedding": [0.2] * 3072,
             "metadata": {
                 "file_path": "src/main.py",
                 "node_name": "UserManager",
@@ -238,6 +239,65 @@ def sample_embedded_chunks(sample_chunks):
     embedded = []
     for chunk in sample_chunks:
         chunk_copy = chunk.copy()
-        chunk_copy["embedding"] = [0.1] * 1536
+        # Using 3072 dimensions to match OpenAI text-embedding-3-small model
+        chunk_copy["embedding"] = [0.1] * 3072
         embedded.append(chunk_copy)
     return embedded
+
+
+@pytest.fixture
+def test_collection_with_data(temp_chromadb):
+    """Create a test collection with sample embedded data for search tests.
+    
+    This fixture is specifically for testing search tools that require
+    a pre-populated ChromaDB collection.
+    """
+    from contextinator.vectorstore.chroma_store import ChromaVectorStore
+    
+    client, temp_dir = temp_chromadb
+    store = ChromaVectorStore(db_path=temp_dir)
+    
+    # Create sample embedded chunks with proper structure
+    # Using 3072 dimensions to match OpenAI text-embedding-3-small model
+    embedded_chunks = [
+        {
+            "id": "chunk_calculate",
+            "content": "def calculate(a, b):\n    '''Calculate sum of two numbers.'''\n    return a + b",
+            "embedding": [0.1] * 3072,
+            "file_path": "utils.py",
+            "node_name": "calculate",
+            "language": "python",
+            "node_type": "function_definition",
+            "start_line": 1,
+            "end_line": 3
+        },
+        {
+            "id": "chunk_userauth",
+            "content": "class UserAuth:\n    '''Handle user authentication.'''\n    def login(self, user, pwd):\n        return True",
+            "embedding": [0.2] * 3072,
+            "file_path": "auth.py",
+            "node_name": "UserAuth",
+            "language": "python",
+            "node_type": "class_definition",
+            "start_line": 1,
+            "end_line": 4
+        },
+        {
+            "id": "chunk_validate",
+            "content": "def validate_input(data):\n    '''Validate input data.'''\n    return bool(data)",
+            "embedding": [0.15] * 3072,
+            "file_path": "utils.py",
+            "node_name": "validate_input",
+            "language": "python",
+            "node_type": "function_definition",
+            "start_line": 5,
+            "end_line": 7
+        }
+    ]
+    
+    # Store the embeddings in the test_collection
+    store.store_embeddings(embedded_chunks, "test_collection", clear_existing=True)
+    
+    yield store, temp_dir
+    
+    # Cleanup handled by temp_chromadb fixture
