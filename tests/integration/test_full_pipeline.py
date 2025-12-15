@@ -1,8 +1,12 @@
 """Integration tests for full pipeline."""
 import pytest
+import os
 from pathlib import Path
 from contextinator.chunking.chunk_service import chunk_repository
+from contextinator.embedding.embedding_service import EmbeddingService
 from contextinator.vectorstore.chroma_store import ChromaVectorStore
+from contextinator.tools.semantic_search import semantic_search
+from contextinator.tools.symbol_search import symbol_search
 
 
 @pytest.mark.integration
@@ -18,6 +22,103 @@ def test_full_chunking_pipeline(temp_repo):
     print(f"✓ Chunked {len(chunks)} code blocks")
     
     print("\n✅ Chunking pipeline test passed!")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+@pytest.mark.skipif(not os.getenv('OPENAI_API_KEY'), reason="Requires OPENAI_API_KEY for real embeddings")
+async def test_complete_e2e_pipeline_with_real_embeddings(temp_repo, temp_chromadb):
+    """
+    Test COMPLETE end-to-end flow with REAL embeddings:
+    1. Chunk repository
+    2. Generate real OpenAI embeddings
+    3. Store in ChromaDB
+    4. Perform semantic search
+    5. Perform symbol search
+    """
+    client, chromadb_dir = temp_chromadb
+    
+    print("\n" + "="*60)
+    print("TESTING COMPLETE END-TO-END PIPELINE")
+    print("="*60)
+    
+    # Step 1: Chunk the repository
+    print("\n[Step 1/5] Chunking repository...")
+    chunks = chunk_repository(temp_repo, save=False)
+    assert len(chunks) > 0, "Should have chunked at least one code block"
+    print(f"✓ Chunked {len(chunks)} code blocks")
+    
+    # Step 2: Generate REAL embeddings using OpenAI
+    print("\n[Step 2/5] Generating real OpenAI embeddings...")
+    embedding_service = EmbeddingService()
+    
+    # Take first 3 chunks to save API costs
+    chunks_to_embed = chunks[:3]
+    
+    # Call async method directly since we're in async context
+    embedded_chunks = await embedding_service._generate_embeddings_async(
+        chunks_to_embed,
+        batch_size=10,
+        max_concurrent=2
+    )
+    
+    assert len(embedded_chunks) == len(chunks_to_embed)
+    assert all('embedding' in ec for ec in embedded_chunks), "All chunks should have embeddings"
+    assert all(len(ec['embedding']) == 3072 for ec in embedded_chunks), "OpenAI embeddings should be 3072-dim"
+    print(f"✓ Generated {len(embedded_chunks)} real embeddings (3072 dimensions)")
+    
+    # Step 3: Store in ChromaDB
+    print("\n[Step 3/5] Storing embeddings in ChromaDB...")
+    store = ChromaVectorStore(db_path=chromadb_dir)
+    collection_name = "e2e_test_real"
+    
+    result = store.store_embeddings(
+        embedded_chunks=embedded_chunks,
+        collection_name=collection_name
+    )
+    
+    assert result['stored_count'] == len(embedded_chunks)
+    print(f"✓ Stored {result['stored_count']} embeddings in ChromaDB")
+    
+    # Step 4: Perform semantic search with REAL query
+    print("\n[Step 4/5] Testing semantic search...")
+    search_query = "function that calculates something"
+    search_results = await semantic_search(
+        collection_name=collection_name,
+        query=search_query,
+        n_results=2
+    )
+    
+    assert len(search_results) > 0, "Semantic search should return results"
+    assert all('content' in r for r in search_results), "Results should have content"
+    print(f"✓ Semantic search returned {len(search_results)} results")
+    
+    # Step 5: Perform symbol search
+    print("\n[Step 5/5] Testing symbol search...")
+    # Get a symbol from one of the chunks
+    first_chunk_content = embedded_chunks[0]['content']
+    
+    # Try to find a function definition
+    symbol_to_search = None
+    for line in first_chunk_content.split('\n'):
+        if 'def ' in line:
+            # Extract function name
+            symbol_to_search = line.split('def ')[1].split('(')[0].strip()
+            break
+    
+    if symbol_to_search:
+        symbol_results = await symbol_search(
+            collection_name=collection_name,
+            symbol_name=symbol_to_search
+        )
+        assert len(symbol_results) > 0, f"Should find symbol '{symbol_to_search}'"
+        print(f"✓ Symbol search found '{symbol_to_search}'")
+    else:
+        print("⊘ No function definition found to test symbol search")
+    
+    print("\n" + "="*60)
+    print("✅ COMPLETE E2E PIPELINE TEST PASSED!")
+    print("="*60)
 
 
 @pytest.mark.integration
