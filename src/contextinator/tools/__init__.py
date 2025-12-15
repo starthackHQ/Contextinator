@@ -145,7 +145,7 @@ class SearchTool:
         return formatted
 
 
-# Import all search functions
+# Import all search functions (all async now)
 from .cat_file import cat_file
 from .grep_search import grep_search, find_function_calls
 from .repo_structure import analyze_structure, analyze_structure_async

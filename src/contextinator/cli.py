@@ -108,7 +108,8 @@ def embed_func(args):
 
 def structure_func(args):
     """Analyze and display repository structure."""
-    from .tools.repo_structure import analyze_structure
+    import asyncio
+    from .tools.repo_structure import analyze_structure_async
     from .utils import resolve_repo_path, logger
     
     try:
@@ -123,12 +124,12 @@ def structure_func(args):
         output_format = getattr(args, 'format', 'tree')
         output_file = getattr(args, 'output', None)
         
-        structure = analyze_structure(
+        structure = asyncio.run(analyze_structure_async(
             repo_path=repo_path,
             max_depth=max_depth,
             output_format=output_format,
             output_file=output_file
-        )
+        ))
         
         print(structure)
         
@@ -358,19 +359,20 @@ def async_batch_func(args):
 def search_func(args):
     """Semantic search using natural language queries."""
     from .tools import semantic_search
+    import asyncio
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         query = ' '.join(args.query_text) if isinstance(args.query_text, list) else args.query_text
         
-        results = semantic_search(
+        results = asyncio.run(semantic_search(
             collection_name=args.collection,
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
             include_parents=getattr(args, 'include_parents', False),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
 
         
         result_data = {
@@ -397,15 +399,16 @@ def search_func(args):
 def symbol_func(args):
     """Find symbols (functions/classes) by name."""
     from .tools import symbol_search
+    import asyncio
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
-        results = symbol_search(
+        results = asyncio.run(symbol_search(
             collection_name=args.collection,
             symbol_name=args.symbol_name,
             symbol_type=getattr(args, 'type', None),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
         
         result_data = {
             'symbol': args.symbol_name,
@@ -430,15 +433,16 @@ def symbol_func(args):
 
 def cat_file_func(args):
     """Display complete file contents from chunks."""
+    import asyncio
     from .tools import cat_file
     from .utils.output_formatter import export_results_json
     
     try:
-        content = cat_file(
+        content = asyncio.run(cat_file(
             collection_name=args.collection,
             file_path=args.file_path,
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
         
         if args.json:
             export_results_json({"file_path": args.file_path, "content": content}, args.json)
@@ -455,10 +459,11 @@ def cat_file_func(args):
 def grep_func(args):
     """Advanced grep search with optional regex support."""
     from .tools import grep_search
+    import asyncio
     from .utils.output_formatter import export_results_json
     
     try:
-        results = grep_search(
+        results = asyncio.run(grep_search(
             collection_name=args.collection,
             pattern=args.pattern,
             max_chunks=getattr(args, 'limit', 100),
@@ -468,7 +473,7 @@ def grep_func(args):
             context_lines=getattr(args, 'context', 0),
             language=getattr(args, 'language', None),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
         
         if args.json:
             export_results_json(results, args.json)
@@ -500,15 +505,16 @@ def grep_func(args):
 
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
+    import asyncio
     from .tools import cat_file
     from .utils.output_formatter import export_results_json, export_results_toon
     
     try:
-        content = cat_file(
+        content = asyncio.run(cat_file(
             collection_name=args.collection,
             file_path=args.file_path,
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
         
         file_data = {
             'file_path': args.file_path,
@@ -535,13 +541,13 @@ def search_advanced_func(args):
     try:
         # Use semantic search if query provided
         if args.semantic:
-            results = semantic_search(
+            results = asyncio.run(semantic_search(
                 collection_name=args.collection,
                 query=args.semantic,
                 n_results=args.limit,
                 language=args.language if hasattr(args, 'language') else None,
                 chromadb_dir=getattr(args, 'chromadb_dir', None)
-            )
+            ))
             query_desc = f"Semantic: {args.semantic}"
             
             result_data = {
@@ -560,12 +566,12 @@ def search_advanced_func(args):
                 
         elif args.pattern:
             # Use grep search for pattern
-            results = grep_search(
+            results = asyncio.run(grep_search(
                 collection_name=args.collection,
                 pattern=args.pattern,
                 max_chunks=args.limit,
                 chromadb_dir=getattr(args, 'chromadb_dir', None)
-            )
+            ))
             
             if args.json:
                 export_results_json(results, args.json)
