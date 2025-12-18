@@ -47,6 +47,7 @@ SUPPORTED_EXTENSIONS: Dict[str, str] = {
     '.swift': 'swift',
     '.sol': 'solidity',
     '.lua': 'lua',
+    '.ipynb': 'ipynb',  # Jupyter Notebook files
 }
 
 # Files/directories to ignore during processing
