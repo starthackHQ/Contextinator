@@ -21,11 +21,15 @@ jobs:
         image: ghcr.io/chroma-core/chroma:latest
         ports:
           - 8000:8000
+        env:
+          IS_PERSISTENT: FALSE
+          ANONYMIZED_TELEMETRY: FALSE
         options: >-
-          --health-cmd "curl -f http://localhost:8000/api/v2/healthcheck || exit 1"
+          --health-cmd "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"
           --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-timeout 10s
+          --health-retries 10
+          --health-start-period 30s
     
     steps:
     - name: Checkout code
@@ -54,7 +58,7 @@ jobs:
     - name: Wait for ChromaDB to be ready
       run: |
         echo "Waiting for ChromaDB to be healthy..."
-        timeout 60 bash -c 'until curl -f http://localhost:8000/api/v2/healthcheck; do sleep 2; echo "Waiting..."; done'
+        timeout 90 bash -c 'until curl -f http://localhost:8000/api/v1/heartbeat; do sleep 3; echo "Waiting..."; done'
         echo "ChromaDB is ready!"
     
     - name: Run unit tests
