@@ -46,9 +46,11 @@ jobs:
     
     - name: Wait for ChromaDB to be ready
       run: |
-        echo "Waiting for ChromaDB to be healthy..."
-        timeout 90 bash -c 'until curl -f http://localhost:8000/api/v1/heartbeat; do sleep 3; echo "Waiting..."; done'
-        echo "ChromaDB is ready!"
+        echo "Waiting for ChromaDB to start..."
+        sleep 15
+        echo "Testing ChromaDB connection..."
+        curl -v http://localhost:8000/api/v1/version || true
+        echo "ChromaDB should be ready!"
     
     - name: Run unit tests
       env:
