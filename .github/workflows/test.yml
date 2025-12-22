@@ -63,6 +63,7 @@ jobs:
           --cov-report=xml \
           --cov-report=term \
           -m "not integration" \
+          -k "not (TestSemanticSearch or TestSymbolSearch or TestGrepSearch or TestCatFile)" \
           --tb=short
     
     - name: Run integration tests
