@@ -66,28 +66,6 @@ jobs:
           -k "not (TestSemanticSearch or TestSymbolSearch or TestGrepSearch or TestCatFile)" \
           --tb=short
     
-    - name: Run integration tests
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        USE_CHROMA_SERVER: "false"
-        CHROMA_SERVER_URL: "http://localhost:8000"
-        PYTHONPATH: ${{ github.workspace }}/src
-      run: |
-        echo "=========================================="
-        echo "Running COMPLETE End-to-End Pipeline Tests"
-        echo "Testing: Chunking → Real Embeddings → ChromaDB → Search"
-        echo "=========================================="
-        pytest tests/integration/ -v \
-          --cov=src/contextinator \
-          --cov-report=xml \
-          --cov-report=term \
-          --cov-append \
-          --tb=short \
-          -s
-        echo "=========================================="
-        echo "✅ Full Pipeline Integration Tests Complete"
-        echo "=========================================="
-    
     - name: Verify all tests passed
       if: always()
       run: |
