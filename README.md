@@ -74,6 +74,14 @@ contextinator search "error handling" -c MyRepo --toon results.json
 
 For comprehensive CLI and Python API documentation, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
 
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+pytest tests/ -v
+```
+
 ## Acknowledgements
 
 Built with and inspired by amazing open-source projects:
