@@ -21,32 +21,124 @@ CHUNK_OVERLAP: int = 50
 
 # Supported file extensions mapping to language identifiers
 SUPPORTED_EXTENSIONS: Dict[str, str] = {
+    # Python
     '.py': 'python',
+    '.pyi': 'python',
+    '.pyw': 'python',
+    
+    # JavaScript/TypeScript
     '.js': 'javascript',
+    '.mjs': 'javascript',
+    '.cjs': 'javascript',
+    '.jsx': 'jsx',
     '.ts': 'typescript',
     '.tsx': 'tsx',
+    '.mts': 'typescript',
+    '.cts': 'typescript',
+    
+    # Java/JVM
     '.java': 'java',
-    '.go': 'go',
-    '.cpp': 'cpp',
+    '.kt': 'kotlin',
+    '.kts': 'kotlin',
+    '.scala': 'scala',
+    '.sc': 'scala',
+    
+    # C/C++
     '.c': 'c',
-    '.rs': 'rust',
+    '.h': 'c',
+    '.cpp': 'cpp',
+    '.cc': 'cpp',
+    '.cxx': 'cpp',
+    '.hpp': 'cpp',
+    '.hh': 'cpp',
+    '.hxx': 'cpp',
+    
+    # C#
     '.cs': 'csharp',
+    
+    # Go
+    '.go': 'go',
+    
+    # Rust
+    '.rs': 'rust',
+    
+    # Zig
+    '.zig': 'zig',
+    
+    # PHP
     '.php': 'php',
+    '.phtml': 'php',
+    
+    # Ruby
+    '.rb': 'ruby',
+    '.rake': 'ruby',
+    'Rakefile': 'ruby',
+    'Gemfile': 'ruby',
+    
+    # Shell
     '.sh': 'bash',
     '.bash': 'bash',
+    '.zsh': 'bash',
+    '.fish': 'bash',
+    
+    # SQL
     '.sql': 'sql',
-    '.kt': 'kotlin',
-    '.kts': 'kotlin',  # Kotlin script files
+    
+    # Swift
+    '.swift': 'swift',
+    
+    # Solidity
+    '.sol': 'solidity',
+    
+    # Lua
+    '.lua': 'lua',
+    
+    # Elixir
+    '.ex': 'elixir',
+    '.exs': 'elixir',
+    
+    # Haskell
+    '.hs': 'haskell',
+    '.lhs': 'haskell',
+    
+    # OCaml
+    '.ml': 'ocaml',
+    '.mli': 'ocaml',
+    
+    # Web (HTML/CSS)
+    '.html': 'html',
+    '.htm': 'html',
+    '.css': 'css',
+    '.scss': 'scss',
+    '.sass': 'sass',
+    '.less': 'less',
+    
+    # Data formats
+    '.json': 'json',
+    '.jsonl': 'json',
+    '.ndjson': 'json',
     '.yaml': 'yaml',
     '.yml': 'yaml',
+    '.toml': 'toml',
+    '.xml': 'xml',
+    
+    # Markdown
     '.md': 'markdown',
+    
+    # Docker
     '.dockerfile': 'dockerfile',
     'Dockerfile': 'dockerfile',
-    '.json': 'json',
-    '.toml': 'toml',
-    '.swift': 'swift',
-    '.sol': 'solidity',
-    '.lua': 'lua',
+    
+    # Infrastructure as Code
+    '.tf': 'hcl',
+    '.tfvars': 'hcl',
+    '.hcl': 'hcl',
+    
+    # Build files
+    'Makefile': 'make',
+    'makefile': 'make',
+    '.mk': 'make',
+    'CMakeLists.txt': 'make',
 }
 
 # Files/directories to ignore during processing
