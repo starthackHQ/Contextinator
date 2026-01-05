@@ -1,24 +1,22 @@
 # Quick Release Guide
 
-## TL;DR - Release in 2 Commands
+## TL;DR - Release in 2 Commands + 1 Click
 
 ```bash
 git tag -a v0.1.3 -m "Your release summary"
 git push origin v0.1.3
 ```
 
-**That's it!** Everything else is automatic.
+Then go to GitHub → Releases, edit the draft notes, and click **Publish release**.
 
 ---
 
 ## What Happens Automatically
 
-✅ CHANGELOG.md is generated and committed  
-✅ Package is built and verified  
-✅ GitHub Release is created with notes  
-✅ Package is published to PyPI
+✅ On tag push: package is built and verified, and a **draft GitHub Release** is created  
+✅ On release publish: package is built again, artifacts are attached, and the package is published to PyPI
 
-**No manual work needed!**
+**You write the release notes (once) in the draft, then publish.**
 
 ---
 
@@ -33,6 +31,8 @@ git commit -m "docs: documentation update"
 ```
 
 These automatically categorize changes in release notes.
+
+Tip: since release notes are now human-written, you can still use conventional commits, but you’re not forced to.
 
 ---
 

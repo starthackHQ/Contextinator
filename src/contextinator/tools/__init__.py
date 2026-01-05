@@ -2,20 +2,20 @@
 Search tools module for Contextinator.
 
 This module provides comprehensive search functionality for querying ChromaDB
-collections with various search strategies including semantic search, full-text
-search, regex patterns, and symbol-based searches.
+collections with various search strategies including semantic search, grep search,
+regex patterns, and symbol-based searches.
 
 The main components include:
 - Semantic search using embeddings and cosine similarity
-- Full-text search with metadata filtering
+- Grep search with pattern matching
 - Regular expression pattern matching
 - Symbol and file-based searches
-- Hybrid search combining multiple strategies
+- Repository structure analysis
 """
 
 from typing import Any, Dict, List, Optional
 
-# Lyazy import chromadb
+# Lazy import chromadb
 
 from ..config import USE_CHROMA_SERVER, sanitize_collection_name
 from ..utils.logger import logger
@@ -145,23 +145,21 @@ class SearchTool:
         return formatted
 
 
-# Import all search functions
-from .full_text_search import full_text_search, hybrid_search, search_by_type
-from .read_file import list_files, read_file
-from .regex_search import find_function_calls, regex_search
+# Import all search functions (all async now)
+from .cat_file import cat_file
+from .grep_search import grep_search, find_function_calls
+from .repo_structure import analyze_structure, analyze_structure_async
 from .semantic_search import semantic_search, semantic_search_with_context
 from .symbol_search import list_symbols, symbol_search
 
 __all__ = [
     'SearchTool',
+    'analyze_structure',
+    'analyze_structure_async',
+    'cat_file',
     'find_function_calls',
-    'full_text_search',
-    'hybrid_search',
-    'list_files',
+    'grep_search',
     'list_symbols',
-    'read_file',
-    'regex_search',
-    'search_by_type',
     'semantic_search',
     'semantic_search_with_context',
     'symbol_search',

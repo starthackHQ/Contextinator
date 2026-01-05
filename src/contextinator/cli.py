@@ -104,6 +104,40 @@ def embed_func(args):
         exit(1)
 
 
+
+
+def structure_func(args):
+    """Analyze and display repository structure."""
+    import asyncio
+    from .tools.repo_structure import analyze_structure_async
+    from .utils import resolve_repo_path, logger
+    
+    try:
+        repo_url = getattr(args, 'repo_url', None)
+        
+        repo_path = resolve_repo_path(
+            repo_url=repo_url,
+            path=getattr(args, 'path', None)
+        )
+        
+        max_depth = getattr(args, 'depth', None)
+        output_format = getattr(args, 'format', 'tree')
+        output_file = getattr(args, 'output', None)
+        
+        structure = asyncio.run(analyze_structure_async(
+            repo_path=repo_path,
+            max_depth=max_depth,
+            output_format=output_format,
+            output_file=output_file
+        ))
+        
+        print(structure)
+        
+    except Exception as e:
+        logger.error(f"Structure analysis failed: {str(e)}")
+        sys.exit(1)
+
+
 def store_embeddings_func(args):
     """Store embeddings in ChromaDB vector store."""
     from .embedding import load_embeddings
@@ -238,6 +272,86 @@ def query_func(args):
     pass
 
 
+def async_batch_func(args):
+    """Process multiple repositories asynchronously."""
+    import asyncio
+    import json
+    from .ingestion import AsyncIngestionService
+    from pathlib import Path
+    
+    try:
+        # Load repos from JSON file
+        repos_file = Path(args.repos_file)
+        if not repos_file.exists():
+            logger.error(f"Repos file not found: {repos_file}")
+            sys.exit(1)
+        
+        with open(repos_file, 'r') as f:
+            repos = json.load(f)
+        
+        if not isinstance(repos, list):
+            logger.error("Repos file must contain a JSON array of repo objects")
+            sys.exit(1)
+        
+        # Validate repo format
+        for i, repo in enumerate(repos):
+            if 'repo_url' not in repo or 'collection_name' not in repo:
+                logger.error(f"Repo {i} missing required fields: repo_url, collection_name")
+                sys.exit(1)
+        
+        base_dir = getattr(args, 'output', None) or os.getcwd()
+        max_concurrent = getattr(args, 'max_concurrent', 3)
+        cleanup = not getattr(args, 'no_cleanup', False)
+        
+        logger.info(f"🚀 Starting async batch processing for {len(repos)} repositories")
+        logger.info(f"   Base directory: {base_dir}")
+        logger.info(f"   Max concurrent: {max_concurrent}")
+        logger.info(f"   Cleanup: {cleanup}")
+        
+        # Run async batch processing
+        async def run_batch():
+            service = AsyncIngestionService(base_dir=base_dir)
+            results = await service.process_batch_async(
+                repos=repos,
+                max_concurrent=max_concurrent,
+                cleanup=cleanup
+            )
+            return results
+        
+        results = asyncio.run(run_batch())
+        
+        # Report results
+        success_count = sum(1 for r in results if r.get('status') == 'success')
+        failed_count = len(results) - success_count
+        
+        logger.info(f"\n{'='*60}")
+        logger.info(f"✅ Batch processing complete!")
+        logger.info(f"   Success: {success_count}/{len(repos)}")
+        logger.info(f"   Failed: {failed_count}/{len(repos)}")
+        
+        # Show details for failed repos
+        if failed_count > 0:
+            logger.info(f"\n❌ Failed repositories:")
+            for r in results:
+                if r.get('status') == 'failed':
+                    logger.info(f"   - {r.get('repo_url', 'unknown')}: {r.get('error', 'unknown error')}")
+        
+        # Save results if requested
+        if hasattr(args, 'results_file') and args.results_file:
+            results_path = Path(args.results_file)
+            with open(results_path, 'w') as f:
+                json.dump(results, f, indent=2)
+            logger.info(f"\n💾 Results saved to: {results_path}")
+        
+        sys.exit(0 if failed_count == 0 else 1)
+        
+    except Exception as e:
+        logger.error(f"Async batch processing failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 # ============================================================================
 # SEARCH TOOL COMMANDS
 # ============================================================================
@@ -245,19 +359,20 @@ def query_func(args):
 def search_func(args):
     """Semantic search using natural language queries."""
     from .tools import semantic_search
+    import asyncio
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
         query = ' '.join(args.query_text) if isinstance(args.query_text, list) else args.query_text
         
-        results = semantic_search(
+        results = asyncio.run(semantic_search(
             collection_name=args.collection,
             query=query,
             n_results=args.n_results,
             language=getattr(args, 'language', None),
             include_parents=getattr(args, 'include_parents', False),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
 
         
         result_data = {
@@ -284,15 +399,16 @@ def search_func(args):
 def symbol_func(args):
     """Find symbols (functions/classes) by name."""
     from .tools import symbol_search
+    import asyncio
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
-        results = symbol_search(
+        results = asyncio.run(symbol_search(
             collection_name=args.collection,
             symbol_name=args.symbol_name,
             symbol_type=getattr(args, 'type', None),
             chromadb_dir=getattr(args, 'chromadb_dir', None)
-        )
+        ))
         
         result_data = {
             'symbol': args.symbol_name,
@@ -315,60 +431,102 @@ def symbol_func(args):
         exit(1)
 
 
-def pattern_func(args):
-    """Search for code patterns using regex."""
-    from .tools import regex_search
-    from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
+def cat_file_func(args):
+    """Display complete file contents from chunks."""
+    import asyncio
+    from .tools import cat_file
+    from .utils.output_formatter import export_results_json
     
     try:
-        results = regex_search(
+        content = asyncio.run(cat_file(
             collection_name=args.collection,
-            pattern=args.pattern,
-            language=getattr(args, 'language', None),
-            file_path=getattr(args, 'file', None)
-        )
-        
-        result_data = {
-            'pattern': args.pattern,
-            'collection': args.collection,
-            'total_results': len(results),
-            'results': results
-        }
+            file_path=args.file_path,
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        ))
         
         if args.json:
-            export_results_json(result_data, args.json)
-        
-        if getattr(args, 'toon', None):
-            export_results_toon(result_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_search_results(results, query=f"Pattern: {args.pattern}", collection=args.collection)
+            export_results_json({"file_path": args.file_path, "content": content}, args.json)
+        else:
+            print(f"File: {args.file_path}")
+            print("=" * 80)
+            print(content)
         
     except Exception as e:
-        logger.error(f"Pattern search failed: {e}")
+        logger.error(f"Cat file failed: {e}")
+        exit(1)
+
+
+def grep_func(args):
+    """Advanced grep search with optional regex support."""
+    from .tools import grep_search
+    import asyncio
+    from .utils.output_formatter import export_results_json
+    
+    try:
+        results = asyncio.run(grep_search(
+            collection_name=args.collection,
+            pattern=args.pattern,
+            max_chunks=getattr(args, 'limit', 100),
+            use_regex=getattr(args, 'regex', False),
+            case_sensitive=getattr(args, 'case_sensitive', False),
+            whole_word=getattr(args, 'whole_word', False),
+            context_lines=getattr(args, 'context', 0),
+            language=getattr(args, 'language', None),
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        ))
+        
+        if args.json:
+            export_results_json(results, args.json)
+        else:
+            mode = "Regex" if getattr(args, 'regex', False) else "Text"
+            print(f"{mode} Pattern: '{args.pattern}'")
+            print(f"Found {results['total_matches']} matches in {results['total_files']} files\n")
+            
+            for file_result in results['files']:
+                print(f"\n📄 {file_result['path']} ({file_result['match_count']} matches)")
+                for match in file_result['matches'][:10]:
+                    if getattr(args, 'context', 0) > 0:
+                        if match.get('context_before'):
+                            for ctx in match['context_before']:
+                                print(f"      {ctx}")
+                        print(f"  Line {match['line_number']}: {match['content']}")
+                        if match.get('context_after'):
+                            for ctx in match['context_after']:
+                                print(f"      {ctx}")
+                    else:
+                        print(f"  Line {match['line_number']}: {match['content']}")
+                if len(file_result['matches']) > 10:
+                    print(f"  ... and {len(file_result['matches']) - 10} more matches")
+        
+    except Exception as e:
+        logger.error(f"Grep search failed: {e}")
         exit(1)
 
 
 def read_file_func(args):
     """Reconstruct and display complete file from chunks."""
-    from .tools import read_file
-    from .utils.output_formatter import format_file_content, export_results_json, export_results_toon
+    import asyncio
+    from .tools import cat_file
+    from .utils.output_formatter import export_results_json, export_results_toon
     
     try:
-        file_data = read_file(
+        content = asyncio.run(cat_file(
             collection_name=args.collection,
             file_path=args.file_path,
-            join_chunks=not args.no_join
-        )
+            chromadb_dir=getattr(args, 'chromadb_dir', None)
+        ))
+        
+        file_data = {
+            'file_path': args.file_path,
+            'content': content
+        }
         
         if args.json:
             export_results_json(file_data, args.json)
-        
-        if getattr(args, 'toon', None):
+        elif getattr(args, 'toon', None):
             export_results_toon(file_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_file_content(file_data)
+        else:
+            print(content)
         
     except Exception as e:
         logger.error(f"Read file failed: {e}")
@@ -376,62 +534,53 @@ def read_file_func(args):
 
 
 def search_advanced_func(args):
-    """Advanced search with multiple criteria."""
-    from .tools import hybrid_search, full_text_search
+    """Advanced search with multiple criteria - uses grep for pattern matching."""
+    from .tools import semantic_search, grep_search
     from .utils.output_formatter import format_search_results, export_results_json, export_results_toon
     
     try:
-        # Use hybrid search if semantic query provided
+        # Use semantic search if query provided
         if args.semantic:
-            filters = {}
-            if args.language:
-                filters['language'] = args.language
-            if args.file:
-                filters['file_path'] = {'$contains': args.file}
-            if args.type:
-                filters['node_type'] = args.type
-            
-            results = hybrid_search(
+            results = asyncio.run(semantic_search(
                 collection_name=args.collection,
-                semantic_query=args.semantic,
-                text_pattern=getattr(args, 'pattern', None),
-                where=filters if filters else None,
-                n_results=args.limit
-            )
-            query_desc = f"Hybrid: {args.semantic}"
+                query=args.semantic,
+                n_results=args.limit,
+                language=args.language if hasattr(args, 'language') else None,
+                chromadb_dir=getattr(args, 'chromadb_dir', None)
+            ))
+            query_desc = f"Semantic: {args.semantic}"
+            
+            result_data = {
+                'query': query_desc,
+                'collection': args.collection,
+                'total_results': len(results),
+                'results': results
+            }
+            
+            if args.json:
+                export_results_json(result_data, args.json)
+            elif getattr(args, 'toon', None):
+                export_results_toon(result_data, args.toon)
+            else:
+                format_search_results(results, query=query_desc, collection=args.collection)
+                
+        elif args.pattern:
+            # Use grep search for pattern
+            results = asyncio.run(grep_search(
+                collection_name=args.collection,
+                pattern=args.pattern,
+                max_chunks=args.limit,
+                chromadb_dir=getattr(args, 'chromadb_dir', None)
+            ))
+            
+            if args.json:
+                export_results_json(results, args.json)
+            else:
+                print(f"Pattern: '{args.pattern}'")
+                print(f"Found {results['total_matches']} matches in {results['total_files']} files")
         else:
-            # Use full text search
-            where = {}
-            if args.language:
-                where['language'] = args.language
-            if args.file:
-                where['file_path'] = {'$contains': args.file}
-            if args.type:
-                where['node_type'] = args.type
-            
-            results = full_text_search(
-                collection_name=args.collection,
-                text_pattern=args.pattern,
-                where=where if where else None,
-                limit=args.limit
-            )
-            query_desc = f"Advanced: {args.pattern or 'metadata filters'}"
-        
-        result_data = {
-            'query': query_desc,
-            'collection': args.collection,
-            'total_results': len(results),
-            'results': results
-        }
-        
-        if args.json:
-            export_results_json(result_data, args.json)
-        
-        if getattr(args, 'toon', None):
-            export_results_toon(result_data, args.toon)
-        
-        if not args.json and not getattr(args, 'toon', None):
-            format_search_results(results, query=query_desc, collection=args.collection)
+            logger.error("Please provide either --semantic or --pattern")
+            exit(1)
         
     except Exception as e:
         logger.error(f"Advanced search failed: {e}")
@@ -710,6 +859,15 @@ def main():
     p_db_clear.add_argument('--repo-name', help='Repository name (for locating database when not using --output)')
     p_db_clear.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
 
+    # structure
+    p_structure = sub.add_parser('structure', help='Analyze and display repository structure as a tree', formatter_class=RichHelpFormatter)
+    p_structure.add_argument('--repo-url', help='GitHub/Git repository URL to analyze')
+    p_structure.add_argument('--path', help='Local path to repository (default: current directory)')
+    p_structure.add_argument('--depth', type=int, help='Maximum depth to traverse (default: unlimited)')
+    p_structure.add_argument('--format', choices=['tree', 'json'], default='tree', help='Output format (default: tree)')
+    p_structure.add_argument('--output', '-o', help='Save output to file')
+    p_structure.set_defaults(func=structure_func)
+
     # ========================================================================
     # SEARCH TOOL COMMANDS
     # ========================================================================
@@ -761,27 +919,26 @@ def main():
     p_symbol.set_defaults(func=symbol_func)
 
     # pattern (regex search)
-    p_pattern = sub.add_parser(
-        'pattern',
-        help='Search for text patterns or regex in code',
-        description='Find code containing specific text patterns. Useful for finding TODOs, FIXMEs, or specific code patterns.',
-        epilog='Examples:\n'
-            '  %(prog)s "TODO" -c MyRepo\n'
-            '  %(prog)s "import requests" -c MyRepo --language python\n'
-            '  %(prog)s "async def" -c MyRepo --file "api/"\n'
-            '  %(prog)s "FIXME" -c MyRepo --toon fixmes.json',
-        formatter_class=RichHelpFormatter
-    )
-    p_pattern.add_argument('pattern', help='Text pattern to search for')
-    p_pattern.add_argument('--collection', '-c', required=True, help='Collection name')
-    p_pattern.add_argument('--language', '-l', help='Filter by programming language')
-    p_pattern.add_argument('--file', '-f', help='Filter by file path (partial match)')
-    p_pattern.add_argument('--type', '-t', help='Filter by node type')
-    p_pattern.add_argument('--limit', type=int, default=50, help='Maximum results (default: 50)')
-    p_pattern.add_argument('--json', help='Export results to JSON file')
-    p_pattern.add_argument('--toon', help='Export results to TOON file (compact format)')
-    p_pattern.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
-    p_pattern.set_defaults(func=pattern_func)
+    p_cat = sub.add_parser('cat', help='Display complete file contents from chunks', formatter_class=RichHelpFormatter)
+    p_cat.add_argument('file_path', help='File path to display')
+    p_cat.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_cat.add_argument('--json', help='Export to JSON file')
+    p_cat.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_cat.set_defaults(func=cat_file_func)
+
+    # grep (advanced search with $contains)
+    p_grep = sub.add_parser('grep', help='Advanced grep search with optional regex support', formatter_class=RichHelpFormatter)
+    p_grep.add_argument('pattern', help='Text pattern or regex to search for')
+    p_grep.add_argument('--collection', '-c', required=True, help='Collection name')
+    p_grep.add_argument('--limit', type=int, default=100, help='Maximum chunks to search (default: 100)')
+    p_grep.add_argument('--regex', action='store_true', help='Enable regex pattern matching')
+    p_grep.add_argument('--case-sensitive', action='store_true', help='Case-sensitive matching')
+    p_grep.add_argument('--whole-word', action='store_true', help='Match whole words only')
+    p_grep.add_argument('--context', type=int, default=0, help='Number of context lines before/after match')
+    p_grep.add_argument('--language', '-l', help='Filter by programming language')
+    p_grep.add_argument('--json', help='Export to JSON file')
+    p_grep.add_argument('--chromadb-dir', help='Custom chromadb directory')
+    p_grep.set_defaults(func=grep_func)
 
     # read-file (file reconstruction)
     p_read_file = sub.add_parser('read-file', help='Reconstruct and display complete file from chunks', formatter_class=RichHelpFormatter)
@@ -820,6 +977,32 @@ def main():
     p_search_adv.add_argument('--toon', help='Export results to TOON file (compact format)')
     p_search_adv.add_argument('--chromadb-dir', help='Custom chromadb directory (overrides default .contextinator/chromadb)')
     p_search_adv.set_defaults(func=search_advanced_func)
+
+    # async-batch (async batch processing)
+    p_async_batch = sub.add_parser(
+        'async-batch',
+        help='Process multiple repositories asynchronously',
+        description='Batch process multiple repositories concurrently using async pipeline.',
+        epilog='Examples:\n'
+            '  # Process repos from JSON file\n'
+            '  %(prog)s repos.json --max-concurrent 3\n\n'
+            '  # With custom output directory\n'
+            '  %(prog)s repos.json --output ./data --max-concurrent 5\n\n'
+            '  # Save results to file\n'
+            '  %(prog)s repos.json --results results.json\n\n'
+            'JSON format:\n'
+            '  [\n'
+            '    {"repo_url": "https://github.com/user/repo1", "collection_name": "repo1"},\n'
+            '    {"repo_url": "https://github.com/user/repo2", "collection_name": "repo2"}\n'
+            '  ]',
+        formatter_class=RichHelpFormatter
+    )
+    p_async_batch.add_argument('repos_file', help='JSON file containing list of repositories')
+    p_async_batch.add_argument('--output', '-o', help='Base output directory (default: current directory)')
+    p_async_batch.add_argument('--max-concurrent', type=int, default=3, help='Max concurrent repositories (default: 3)')
+    p_async_batch.add_argument('--no-cleanup', action='store_true', help='Keep temporary cloned directories')
+    p_async_batch.add_argument('--results', dest='results_file', help='Save results to JSON file')
+    p_async_batch.set_defaults(func=async_batch_func)
 
     args = parser.parse_args()
 

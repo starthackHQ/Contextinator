@@ -2,33 +2,42 @@
 
 ## Overview
 
-The release process is **fully automated**. You only need to create and push a git tag.
+The release process is **two-stage**:
 
-## Quick Release (2 Commands)
+1. Push a git tag → CI validates build and creates a **draft GitHub Release**
+2. Publish the GitHub Release → CI publishes to **PyPI** and attaches build artifacts
+
+## Quick Release (2 Commands + 1 Click)
 
 ```bash
 # 1. Create and push tag with your release message
 git tag -a v0.1.3 -m "Add new search features and improve CLI"
 git push origin v0.1.3
-
-# 2. That's it! Everything else is automatic ✨
 ```
+
+# 2. Edit the draft GitHub Release notes (in the GitHub UI)
+
+# 3. Click "Publish release"
 
 ## What Happens Automatically
 
 When you push a tag, the workflow:
 
-1. ✅ **Generates CHANGELOG.md** from git commit history
-2. ✅ **Commits CHANGELOG.md** back to the repository
-3. ✅ **Builds** the package
-4. ✅ **Creates GitHub Release** with categorized changes
-5. ✅ **Publishes to PyPI** automatically
+1. ✅ **Builds** the package
+2. ✅ **Verifies** the distribution with `twine check`
+3. ✅ **Creates a draft GitHub Release** with a human-editable template
 
-**No manual changelog maintenance needed!**
+When you publish the GitHub Release, the workflow:
 
-## Release Notes Are Auto-Generated
+1. ✅ **Builds** the package again from the tag
+2. ✅ **Publishes to PyPI**
+3. ✅ **Attaches artifacts** to the GitHub Release (wheel/sdist + checksums + generated CHANGELOG artifact)
 
-The workflow automatically categorizes your commits:
+## Release Notes Are Human-Written (Recommended)
+
+Release notes live in the GitHub Release description. You edit them in the draft release before publishing.
+
+If you like structured notes, you can still use conventional commit prefixes as a guide:
 
 - **Features** - Commits starting with `feat:`
 - **Bug Fixes** - Commits starting with `fix:`
@@ -45,7 +54,7 @@ git commit -m "refactor: simplify embedding service"
 git commit -m "chore: update dependencies"
 ```
 
-Using these prefixes makes release notes cleaner and more organized.
+Using these prefixes can make summarizing changes easier.
 
 ## Version Numbering
 
@@ -80,7 +89,7 @@ git push origin v0.1.3
 Track progress:
 
 1. Go to [GitHub Actions](https://github.com/starthackHQ/Contextinator/actions)
-2. Watch the "Release and Publish" workflow
+2. Watch the "Release (Draft Notes) and Publish (PyPI)" workflow
 3. Should complete in 2-3 minutes
 
 ## Tag Message Tips
@@ -106,6 +115,8 @@ Check if `PYPI_API_TOKEN` is set:
 2. Verify `PYPI_API_TOKEN` exists
 3. Re-run the failed workflow
 
+Note: PyPI will reject re-uploading the same version. If you already uploaded `vX.Y.Z`, you must release a new version.
+
 ### Wrong Version Number
 
 Delete and recreate tag:
@@ -117,18 +128,9 @@ git tag -a v0.1.3 -m "Your message"
 git push origin v0.1.3
 ```
 
-### Need to Update CHANGELOG Manually
+### Where is CHANGELOG.md?
 
-Even though it's auto-generated, you can edit CHANGELOG.md anytime:
-
-```bash
-# Edit CHANGELOG.md
-git add CHANGELOG.md
-git commit -m "docs: update changelog with additional notes"
-git push
-```
-
-The next release will preserve your changes and add new sections.
+The workflow generates a `CHANGELOG.md` file as a **release artifact** (attached to the GitHub Release). The GitHub Release description is the source of truth.
 
 ## Manual PyPI Upload (Emergency)
 

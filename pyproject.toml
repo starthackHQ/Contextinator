@@ -39,7 +39,6 @@ dependencies = [
     "requests>=2.32.0",
     "rich>=13.0.0",
     "toon-format>=0.9.0b1",
-    "nbformat>=5.7.0",
     "tree-sitter-python>=0.25.0",
     "tree-sitter-javascript>=0.25.0",
     "tree-sitter-typescript>=0.23.0",
@@ -60,12 +59,24 @@ dependencies = [
     "tree-sitter-swift>=0.0.1",
     "tree-sitter-solidity>=1.2.0",
     "tree-sitter-lua>=0.2.0",
+    "tree-sitter-html>=0.23.0",
+    "tree-sitter-css>=0.25.0",
+    "tree-sitter-zig>=1.1.0",
+    "tree-sitter-ruby>=0.23.0",
+    "tree-sitter-scala>=0.24.0",
+    "tree-sitter-haskell>=0.23.0",
+    "tree-sitter-ocaml>=0.24.0",
+    "tree-sitter-elixir>=0.3.0",
+    "tree-sitter-hcl>=1.2.0",
+    "tree-sitter-make>=1.1.0",
+    "tree-sitter-xml>=0.7.0",
 ]
 
 [project.optional-dependencies]
 # Platform-specific parsers that may not be available on all platforms
 extended-parsers = [
     "tree-sitter-dockerfile>=0.0.0a1; platform_system != 'Windows'",
+    "tree-sitter-embedded-template>=0.25.0",
 ]
 dev = [
     "pytest>=7.0.0",

@@ -47,6 +47,88 @@ try:
         HAS_DOCKERFILE = False
         logger.debug("tree-sitter-dockerfile not available (Windows platform)")
     
+    # Optional: HTML parser
+    try:
+        import tree_sitter_html
+        HAS_HTML = True
+    except ImportError:
+        tree_sitter_html = None
+        HAS_HTML = False
+        logger.debug("tree-sitter-html not available")
+    
+    # Optional: CSS parser
+    try:
+        import tree_sitter_css
+        HAS_CSS = True
+    except ImportError:
+        tree_sitter_css = None
+        HAS_CSS = False
+        logger.debug("tree-sitter-css not available")
+    
+    # Optional: Additional language parsers
+    try:
+        import tree_sitter_zig
+        HAS_ZIG = True
+    except ImportError:
+        tree_sitter_zig = None
+        HAS_ZIG = False
+    
+    try:
+        import tree_sitter_ruby
+        HAS_RUBY = True
+    except ImportError:
+        tree_sitter_ruby = None
+        HAS_RUBY = False
+    
+    try:
+        import tree_sitter_scala
+        HAS_SCALA = True
+    except ImportError:
+        tree_sitter_scala = None
+        HAS_SCALA = False
+    
+    try:
+        import tree_sitter_haskell
+        HAS_HASKELL = True
+    except ImportError:
+        tree_sitter_haskell = None
+        HAS_HASKELL = False
+    
+    try:
+        import tree_sitter_ocaml
+        HAS_OCAML = True
+    except ImportError:
+        tree_sitter_ocaml = None
+        HAS_OCAML = False
+    
+    try:
+        import tree_sitter_elixir
+        HAS_ELIXIR = True
+    except ImportError:
+        tree_sitter_elixir = None
+        HAS_ELIXIR = False
+    
+    try:
+        import tree_sitter_hcl
+        HAS_HCL = True
+    except ImportError:
+        tree_sitter_hcl = None
+        HAS_HCL = False
+    
+    try:
+        import tree_sitter_make
+        HAS_MAKE = True
+    except ImportError:
+        tree_sitter_make = None
+        HAS_MAKE = False
+    
+    try:
+        import tree_sitter_xml
+        HAS_XML = True
+    except ImportError:
+        tree_sitter_xml = None
+        HAS_XML = False
+    
     from .ast_visualizer import save_ast_visualization
     
     # Language module mapping for parser creation
@@ -83,6 +165,39 @@ try:
     # Add dockerfile support if available (platform-dependent)
     if HAS_DOCKERFILE:
         LANGUAGE_MODULES['dockerfile'] = tree_sitter_dockerfile
+    if HAS_HTML:
+        LANGUAGE_MODULES['html'] = tree_sitter_html
+        LANGUAGE_MODULES['htm'] = tree_sitter_html
+    if HAS_CSS:
+        LANGUAGE_MODULES['css'] = tree_sitter_css
+        LANGUAGE_MODULES['scss'] = tree_sitter_css
+        LANGUAGE_MODULES['sass'] = tree_sitter_css
+        LANGUAGE_MODULES['less'] = tree_sitter_css
+    if HAS_ZIG:
+        LANGUAGE_MODULES['zig'] = tree_sitter_zig
+    if HAS_RUBY:
+        LANGUAGE_MODULES['ruby'] = tree_sitter_ruby
+    if HAS_SCALA:
+        LANGUAGE_MODULES['scala'] = tree_sitter_scala
+        LANGUAGE_MODULES['sc'] = tree_sitter_scala
+    if HAS_HASKELL:
+        LANGUAGE_MODULES['haskell'] = tree_sitter_haskell
+        LANGUAGE_MODULES['lhs'] = tree_sitter_haskell
+    if HAS_OCAML:
+        LANGUAGE_MODULES['ocaml'] = tree_sitter_ocaml
+        LANGUAGE_MODULES['mli'] = tree_sitter_ocaml
+    if HAS_ELIXIR:
+        LANGUAGE_MODULES['elixir'] = tree_sitter_elixir
+        LANGUAGE_MODULES['ex'] = tree_sitter_elixir
+        LANGUAGE_MODULES['exs'] = tree_sitter_elixir
+    if HAS_HCL:
+        LANGUAGE_MODULES['hcl'] = tree_sitter_hcl
+        LANGUAGE_MODULES['tf'] = tree_sitter_hcl
+        LANGUAGE_MODULES['tfvars'] = tree_sitter_hcl
+    if HAS_MAKE:
+        LANGUAGE_MODULES['make'] = tree_sitter_make
+    if HAS_XML:
+        LANGUAGE_MODULES['xml'] = tree_sitter_xml
     
     TREE_SITTER_AVAILABLE = True
     logger.info("Tree-sitter imports successful")
@@ -126,6 +241,28 @@ NODE_TYPES: Dict[str, List[str]] = {
     'solidity': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'sol': ['contract_declaration', 'function_definition', 'struct_definition', 'event_definition'],
     'lua': ['function_definition', 'local_function', 'table_constructor'],
+    'html': ['element', 'script_element', 'style_element'],
+    'htm': ['element', 'script_element', 'style_element'],
+    'css': ['rule_set', 'media_statement', 'keyframes_statement'],
+    'scss': ['rule_set', 'media_statement', 'keyframes_statement'],
+    'sass': ['rule_set', 'media_statement', 'keyframes_statement'],
+    'less': ['rule_set', 'media_statement', 'keyframes_statement'],
+    'zig': ['function_declaration', 'struct_declaration', 'enum_declaration'],
+    'ruby': ['method', 'class', 'module', 'def'],
+    'scala': ['class_definition', 'object_definition', 'trait_definition', 'function_definition'],
+    'sc': ['class_definition', 'object_definition', 'trait_definition', 'function_definition'],
+    'haskell': ['function_declaration', 'type_declaration', 'data_declaration'],
+    'lhs': ['function_declaration', 'type_declaration', 'data_declaration'],
+    'ocaml': ['value_definition', 'type_definition', 'module_definition'],
+    'mli': ['value_specification', 'type_definition', 'module_specification'],
+    'elixir': ['call', 'def', 'defmodule', 'defp'],
+    'ex': ['call', 'def', 'defmodule', 'defp'],
+    'exs': ['call', 'def', 'defmodule', 'defp'],
+    'hcl': ['block', 'attribute'],
+    'tf': ['block', 'attribute'],
+    'tfvars': ['attribute'],
+    'make': ['rule', 'variable_assignment'],
+    'xml': ['element', 'STag'],
 }
 
 
@@ -158,6 +295,28 @@ PARENT_NODE_TYPES: Dict[str, List[str]] = {
     'solidity': ['contract_declaration', 'struct_definition'],
     'sol': ['contract_declaration', 'struct_definition'],
     'lua': ['table_constructor'],
+    'html': [],
+    'htm': [],
+    'css': [],
+    'scss': [],
+    'sass': [],
+    'less': [],
+    'zig': ['struct_declaration', 'enum_declaration'],
+    'ruby': ['class', 'module'],
+    'scala': ['class_definition', 'object_definition', 'trait_definition'],
+    'sc': ['class_definition', 'object_definition', 'trait_definition'],
+    'haskell': [],
+    'lhs': [],
+    'ocaml': ['module_definition'],
+    'mli': ['module_specification'],
+    'elixir': ['defmodule'],
+    'ex': ['defmodule'],
+    'exs': ['defmodule'],
+    'hcl': [],
+    'tf': [],
+    'tfvars': [],
+    'make': [],
+    'xml': [],
 }
 
 # Cache for parsers to avoid recreation
@@ -354,11 +513,17 @@ def get_parser(language: str) -> Optional["Parser"]:
                 logger.warning(f"No language module available for {language}")
                 return None
             
-            # Handle special case for TypeScript/TSX which have different API
+            # Handle special cases for different parser APIs
             if language == 'typescript':
                 lang_obj = Language(lang_module.language_typescript())
             elif language == 'tsx':
                 lang_obj = Language(lang_module.language_tsx())
+            elif language == 'ocaml':
+                lang_obj = Language(lang_module.language_ocaml())
+            elif language == 'mli':
+                lang_obj = Language(lang_module.language_ocaml_interface())
+            elif language == 'xml':
+                lang_obj = Language(lang_module.language_xml())
             else:
                 # Create Language object from module for other languages
                 lang_obj = Language(lang_module.language())
