@@ -131,17 +131,12 @@ SUPPORTED_EXTENSIONS: Dict[str, str] = {
     # Docker
     '.dockerfile': 'dockerfile',
     'Dockerfile': 'dockerfile',
-    
-    # Infrastructure as Code
-    '.tf': 'hcl',
-    '.tfvars': 'hcl',
-    '.hcl': 'hcl',
-    
-    # Build files
-    'Makefile': 'make',
-    'makefile': 'make',
-    '.mk': 'make',
-    'CMakeLists.txt': 'make',
+    '.json': 'json',
+    '.toml': 'toml',
+    '.swift': 'swift',
+    '.sol': 'solidity',
+    '.lua': 'lua',
+    '.ipynb': 'ipynb',  # Jupyter Notebook files
 }
 
 # Files/directories to ignore during processing
