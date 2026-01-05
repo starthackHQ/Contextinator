@@ -42,6 +42,9 @@ SUPPORTED_EXTENSIONS: Dict[str, str] = {
     '.kts': 'kotlin',
     '.scala': 'scala',
     '.sc': 'scala',
+    '.gradle': 'java',
+    'build.gradle': 'java',
+    'settings.gradle': 'java',
     
     # C/C++
     '.c': 'c',
