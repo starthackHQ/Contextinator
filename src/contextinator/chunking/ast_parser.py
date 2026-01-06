@@ -215,8 +215,8 @@ except ImportError as e:
 NODE_TYPES: Dict[str, List[str]] = {
     'python': ['function_definition', 'class_definition', 'decorated_definition', 'import_statement', 'import_from_statement'],
     'javascript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'import_statement'],
-    'typescript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement'],
-    'tsx': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement'],
+    'typescript': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement', 'lexical_declaration', 'expression_statement', 'export_statement'],
+     'tsx': ['function_declaration', 'function_expression', 'arrow_function', 'class_declaration', 'method_definition', 'interface_declaration', 'import_statement', 'lexical_declaration', 'expression_statement', 'export_statement'],
     'java': ['class_declaration', 'method_declaration', 'constructor_declaration', 'interface_declaration', 'import_declaration'],
     'go': ['function_declaration', 'method_declaration', 'type_declaration', 'import_declaration'],
     'rust': ['function_item', 'impl_item', 'struct_item', 'enum_item', 'trait_item', 'use_declaration'],
@@ -227,7 +227,7 @@ NODE_TYPES: Dict[str, List[str]] = {
     'php': ['function_definition', 'class_declaration', 'method_declaration', 'namespace_use_declaration'],
     'bash': ['function_definition', 'command'],
     'sh': ['function_definition', 'command'],
-    'sql': ['create_table_statement', 'create_view_statement', 'create_function_statement', 'create_procedure_statement'],
+    'sql': ['statement', 'create_table', 'create_index', 'select', 'insert', 'update', 'delete'],
     'kotlin': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration', 'import_header'],
     'kt': ['class_declaration', 'function_declaration', 'property_declaration', 'object_declaration', 'import_header'],
     'yaml': ['block_mapping', 'block_sequence'],
@@ -263,6 +263,7 @@ NODE_TYPES: Dict[str, List[str]] = {
     'tfvars': ['attribute'],
     'make': ['rule', 'variable_assignment'],
     'xml': ['element', 'STag'],
+    'prisma': ['model', 'generator', 'datasource', 'enum']
 }
 
 
@@ -312,6 +313,7 @@ PARENT_NODE_TYPES: Dict[str, List[str]] = {
     'elixir': ['defmodule'],
     'ex': ['defmodule'],
     'exs': ['defmodule'],
+    'prisma': ['model'],
     'hcl': [],
     'tf': [],
     'tfvars': [],
@@ -463,13 +465,19 @@ def _fallback_parse(file_path: Path, file_path_str: str, language: str, content:
         'language': language,
         'content': content,
         'nodes': [{
+            'id': str(uuid.uuid4()),
             'type': 'file',
             'name': file_path.name,
             'content': content,
             'start_line': 1,
             'end_line': len(content.splitlines()),
             'start_byte': 0,
-            'end_byte': len(content.encode('utf-8'))
+            'end_byte': len(content.encode('utf-8')),
+            'parent_id': None,
+            'parent_type': None,
+            'parent_name': None,
+            'is_parent': False,
+            'children_ids': []
         }],
         'tree_info': {
             'has_ast': False,
