@@ -117,7 +117,7 @@ def _should_ignore(path: str, patterns: List[str]) -> bool:
     """
     Check if path matches any ignore pattern.
     
-    Uses both glob-style pattern matching and substring matching
+    Uses glob-style pattern matching and exact path component matching
     to determine if a file or directory should be ignored.
     
     Args:
@@ -139,10 +139,6 @@ def _should_ignore(path: str, patterns: List[str]) -> bool:
         # Normalize pattern separators
         normalized_pattern = pattern.replace('\\', '/')
         
-        # Fast substring check first (most common case)
-        if normalized_pattern in normalized_path:
-            return True
-        
         # Check if pattern has wildcards before doing expensive fnmatch
         has_wildcards = '*' in normalized_pattern or '?' in normalized_pattern or '[' in normalized_pattern
         
@@ -153,6 +149,11 @@ def _should_ignore(path: str, patterns: List[str]) -> bool:
             
             # Check if any path component matches the pattern
             if any(fnmatch(part, normalized_pattern) for part in path_parts):
+                return True
+        else:
+            # For non-wildcard patterns, only match exact path components
+            # This prevents "out" from matching "routes"
+            if any(part == normalized_pattern for part in path_parts):
                 return True
     
     return False
