@@ -15,9 +15,9 @@ from .embedding_service import (
 )
 
 __all__ = [
-    'EmbeddingService',
-    'embed_chunks',
-    'load_chunks',
-    'load_embeddings',
-    'save_embeddings',
+    "EmbeddingService",
+    "embed_chunks",
+    "load_chunks",
+    "load_embeddings",
+    "save_embeddings",
 ]

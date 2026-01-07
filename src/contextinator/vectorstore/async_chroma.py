@@ -1,7 +1,9 @@
 """Async ChromaDB client wrapper with singleton caching."""
+
 import chromadb
 
 _client_cache = {}
+
 
 async def get_async_client(host: str = "localhost", port: int = 8000):
     """Get cached ChromaDB async client (singleton per host:port)."""
@@ -11,4 +13,4 @@ async def get_async_client(host: str = "localhost", port: int = 8000):
     return _client_cache[key]
 
 
-__all__ = ['get_async_client']
+__all__ = ["get_async_client"]

@@ -12,7 +12,7 @@ from .chroma_store import (
 )
 
 __all__ = [
-    'ChromaVectorStore',
-    'get_repository_collection_info',
-    'store_repository_embeddings',
+    "ChromaVectorStore",
+    "get_repository_collection_info",
+    "store_repository_embeddings",
 ]

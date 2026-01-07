@@ -22,6 +22,7 @@ def _get_nbformat() -> Any:
     if _nbformat is None:
         try:
             import nbformat
+
             _nbformat = nbformat
         except ImportError as e:
             logger.warning(f"nbformat not available: {e}")
@@ -31,8 +32,7 @@ def _get_nbformat() -> Any:
 
 
 def parse_notebook(
-    file_path: Path,
-    repo_path: Optional[Path] = None
+    file_path: Path, repo_path: Optional[Path] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Parse a Jupyter Notebook file and extract nodes from each cell.
@@ -69,13 +69,15 @@ def parse_notebook(
         # Read the notebook file
         try:
             nbformat = _get_nbformat()
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 nb = nbformat.read(f, as_version=4)
         except ImportError:
             # nbformat not available - fallback to JSON parsing
             return _fallback_notebook_parse(file_path, file_path_str)
         except (OSError, IOError, PermissionError) as e:
-            raise FileSystemError(f"Cannot read notebook file: {e}", str(file_path), "read")
+            raise FileSystemError(
+                f"Cannot read notebook file: {e}", str(file_path), "read"
+            )
         except Exception as e:
             logger.warning(f"Failed to parse notebook {file_path}: {e}")
             return _fallback_notebook_parse(file_path, file_path_str)
@@ -86,7 +88,9 @@ def parse_notebook(
         # Process each cell in the notebook
         for cell_index, cell in enumerate(nb.cells):
             cell_type = cell.cell_type
-            source = cell.source if isinstance(cell.source, str) else ''.join(cell.source)
+            source = (
+                cell.source if isinstance(cell.source, str) else "".join(cell.source)
+            )
 
             if not source.strip():
                 continue
@@ -94,15 +98,15 @@ def parse_notebook(
             all_content_parts.append(f"# Cell {cell_index + 1} ({cell_type})\n{source}")
 
             # Determine the language for parsing based on cell type
-            if cell_type == 'code':
+            if cell_type == "code":
                 # Parse code cells with Python parser (most common in Jupyter)
-                cell_language = 'python'
+                cell_language = "python"
                 cell_nodes = _parse_cell_content(
                     source, cell_language, cell_index, file_path_str
                 )
-            elif cell_type == 'markdown':
+            elif cell_type == "markdown":
                 # Parse markdown cells
-                cell_language = 'markdown'
+                cell_language = "markdown"
                 cell_nodes = _parse_cell_content(
                     source, cell_language, cell_index, file_path_str
                 )
@@ -121,25 +125,25 @@ def parse_notebook(
             )
             return _fallback_notebook_parse(file_path, file_path_str)
 
-        full_content = '\n\n'.join(all_content_parts)
+        full_content = "\n\n".join(all_content_parts)
 
         logger.debug(
             f"Parsed notebook {file_path} - Found {len(nodes)} nodes from {len(nb.cells)} cells"
         )
 
         return {
-            'file_path': file_path_str,
-            'language': 'ipynb',
-            'content': full_content,
-            'nodes': nodes,
-            'tree_info': {
-                'has_ast': True,
-                'is_notebook': True,
-                'total_cells': len(nb.cells),
-                'code_cells': sum(1 for c in nb.cells if c.cell_type == 'code'),
-                'markdown_cells': sum(1 for c in nb.cells if c.cell_type == 'markdown'),
-                'total_nodes': len(nodes)
-            }
+            "file_path": file_path_str,
+            "language": "ipynb",
+            "content": full_content,
+            "nodes": nodes,
+            "tree_info": {
+                "has_ast": True,
+                "is_notebook": True,
+                "total_cells": len(nb.cells),
+                "code_cells": sum(1 for c in nb.cells if c.cell_type == "code"),
+                "markdown_cells": sum(1 for c in nb.cells if c.cell_type == "markdown"),
+                "total_nodes": len(nodes),
+            },
         }
 
     except FileSystemError:
@@ -150,10 +154,7 @@ def parse_notebook(
 
 
 def _parse_cell_content(
-    source: str,
-    language: str,
-    cell_index: int,
-    file_path_str: str
+    source: str, language: str, cell_index: int, file_path_str: str
 ) -> List[Dict[str, Any]]:
     """
     Parse cell content using the appropriate Tree-sitter parser.
@@ -177,7 +178,7 @@ def _parse_cell_content(
         return _create_raw_cell_node(source, language, cell_index, file_path_str)
 
     try:
-        tree = parser.parse(bytes(source, 'utf-8'))
+        tree = parser.parse(bytes(source, "utf-8"))
         nodes = extract_nodes(tree.root_node, source, language)
 
         # If no semantic nodes found, create a cell-level node
@@ -186,13 +187,13 @@ def _parse_cell_content(
 
         # Add cell context to each node
         for node in nodes:
-            node['cell_index'] = cell_index
-            node['cell_type'] = 'code' if language == 'python' else language
+            node["cell_index"] = cell_index
+            node["cell_type"] = "code" if language == "python" else language
             # Prefix name with cell context for better identification
-            if node.get('name'):
-                node['name'] = f"cell_{cell_index + 1}:{node['name']}"
+            if node.get("name"):
+                node["name"] = f"cell_{cell_index + 1}:{node['name']}"
             else:
-                node['name'] = f"cell_{cell_index + 1}:{node['type']}"
+                node["name"] = f"cell_{cell_index + 1}:{node['type']}"
 
         return nodes
 
@@ -202,10 +203,7 @@ def _parse_cell_content(
 
 
 def _create_raw_cell_node(
-    source: str,
-    cell_type: str,
-    cell_index: int,
-    file_path_str: str
+    source: str, cell_type: str, cell_index: int, file_path_str: str
 ) -> List[Dict[str, Any]]:
     """
     Create a raw node for a cell when AST parsing is not possible.
@@ -222,23 +220,25 @@ def _create_raw_cell_node(
     lines = source.splitlines()
     node_id = str(uuid.uuid4())
 
-    return [{
-        'id': node_id,
-        'type': f'notebook_{cell_type}_cell',
-        'name': f"cell_{cell_index + 1}",
-        'content': source,
-        'start_line': 1,
-        'end_line': max(1, len(lines)),
-        'start_byte': 0,
-        'end_byte': len(source.encode('utf-8')),
-        'is_parent': False,
-        'parent_id': None,
-        'parent_type': None,
-        'parent_name': None,
-        'children_ids': [],
-        'cell_index': cell_index,
-        'cell_type': cell_type
-    }]
+    return [
+        {
+            "id": node_id,
+            "type": f"notebook_{cell_type}_cell",
+            "name": f"cell_{cell_index + 1}",
+            "content": source,
+            "start_line": 1,
+            "end_line": max(1, len(lines)),
+            "start_byte": 0,
+            "end_byte": len(source.encode("utf-8")),
+            "is_parent": False,
+            "parent_id": None,
+            "parent_type": None,
+            "parent_name": None,
+            "children_ids": [],
+            "cell_index": cell_index,
+            "cell_type": cell_type,
+        }
+    ]
 
 
 def _fallback_notebook_parse(file_path: Path, file_path_str: str) -> Dict[str, Any]:
@@ -255,39 +255,41 @@ def _fallback_notebook_parse(file_path: Path, file_path_str: str) -> Dict[str, A
         Dictionary with file-level chunk information
     """
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
     except Exception as e:
         logger.warning(f"Failed to read notebook {file_path}: {e}")
         content = ""
 
     return {
-        'file_path': file_path_str,
-        'language': 'ipynb',
-        'content': content,
-        'nodes': [{
-            'id': str(uuid.uuid4()),
-            'type': 'notebook_file',
-            'name': file_path.name,
-            'content': content,
-            'start_line': 1,
-            'end_line': max(1, len(content.splitlines())),
-            'start_byte': 0,
-            'end_byte': len(content.encode('utf-8')),
-            'is_parent': False,
-            'parent_id': None,
-            'parent_type': None,
-            'parent_name': None,
-            'children_ids': []
-        }],
-        'tree_info': {
-            'has_ast': False,
-            'is_notebook': True,
-            'fallback_reason': 'nbformat not available or notebook parsing failed'
-        }
+        "file_path": file_path_str,
+        "language": "ipynb",
+        "content": content,
+        "nodes": [
+            {
+                "id": str(uuid.uuid4()),
+                "type": "notebook_file",
+                "name": file_path.name,
+                "content": content,
+                "start_line": 1,
+                "end_line": max(1, len(content.splitlines())),
+                "start_byte": 0,
+                "end_byte": len(content.encode("utf-8")),
+                "is_parent": False,
+                "parent_id": None,
+                "parent_type": None,
+                "parent_name": None,
+                "children_ids": [],
+            }
+        ],
+        "tree_info": {
+            "has_ast": False,
+            "is_notebook": True,
+            "fallback_reason": "nbformat not available or notebook parsing failed",
+        },
     }
 
 
 __all__ = [
-    'parse_notebook',
+    "parse_notebook",
 ]
