@@ -107,7 +107,15 @@ async def analyze_structure(
     if output_format == "json":
         output = json.dumps(tree, indent=2)
     else:
-        output = f"{path.name}/\n" + format_tree_string(tree, "", True)
+        # Format tree starting from children to avoid duplicate root
+        if tree and "children" in tree:
+            tree_lines = []
+            children = tree["children"]
+            for i, child in enumerate(children):
+                tree_lines.append(format_tree_string(child, "", i == len(children) - 1))
+            output = "\n".join(tree_lines)
+        else:
+            output = "(empty directory)"
 
     if output_file:
         await loop.run_in_executor(
