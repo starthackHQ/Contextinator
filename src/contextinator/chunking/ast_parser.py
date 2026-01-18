@@ -241,6 +241,10 @@ NODE_TYPES: Dict[str, List[str]] = {
         "class_declaration",
         "method_definition",
         "import_statement",
+        "variable_declaration",
+        "lexical_declaration",
+        "expression_statement",
+        "export_statement",
     ],
     "typescript": [
         "function_declaration",
