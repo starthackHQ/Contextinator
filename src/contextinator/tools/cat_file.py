@@ -32,6 +32,9 @@ async def cat_file(
     if not collection_name or not file_path:
         raise ValueError("Collection name and file path required")
 
+    if file_path.startswith("/"):
+        file_path = file_path[1:]
+
     client = await _get_async_chroma()
     from ..config import sanitize_collection_name
 
