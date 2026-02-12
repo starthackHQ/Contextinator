@@ -147,6 +147,7 @@ try:
     LANGUAGE_MODULES: Dict[str, Any] = {
         "python": tree_sitter_python,
         "javascript": tree_sitter_javascript,
+        "jsx": tree_sitter_javascript,  # JSX uses the same JavaScript module
         "typescript": tree_sitter_typescript,
         "tsx": tree_sitter_typescript,  # TSX uses the same TypeScript module
         "java": tree_sitter_java,
@@ -235,6 +236,18 @@ NODE_TYPES: Dict[str, List[str]] = {
         "import_from_statement",
     ],
     "javascript": [
+        "function_declaration",
+        "function_expression",
+        "arrow_function",
+        "class_declaration",
+        "method_definition",
+        "import_statement",
+        "variable_declaration",
+        "lexical_declaration",
+        "expression_statement",
+        "export_statement",
+    ],
+    "jsx": [
         "function_declaration",
         "function_expression",
         "arrow_function",
