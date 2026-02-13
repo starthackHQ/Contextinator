@@ -6,6 +6,7 @@ from .utils.rich_help import print_main_help, RichHelpFormatter
 import os
 from .chunking import chunk_repository
 from .config import get_storage_path
+from . import __version__
 
 
 def chunk_func(args):
@@ -872,6 +873,12 @@ def main():
     # Add custom help argument
     parser.add_argument(
         "-h", "--help", action="store_true", help="Show this help message"
+    )
+
+    # Add version argument
+    parser.add_argument(
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}",
+        help="Show version number and exit"
     )
 
     sub = parser.add_subparsers(title="commands", dest="command")
