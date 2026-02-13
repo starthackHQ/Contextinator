@@ -1,7 +1,8 @@
 """Cat file with TRUE async."""
 
 import asyncio
-from typing import Optional
+import hashlib
+from typing import Dict, List, Optional
 from ..utils.logger import logger
 from ..config import USE_CHROMA_SERVER
 
@@ -47,39 +48,63 @@ async def cat_file(
     if not results["ids"]:
         raise ValueError(f"File not found: {file_path}")
 
-    chunks = sorted(
-        [
-            {
-                "content": doc,
-                "start_line": meta.get("start_line", 0),
-                "end_line": meta.get("end_line", 0),
-                "split_index": meta.get("split_index", 0),
-                "parent_id": meta.get("parent_id"),
-            }
-            for doc, meta in zip(results["documents"], results["metadatas"])
-        ],
-        key=lambda x: (x["start_line"], x["split_index"]),
-    )
+    logger.debug(f"Found {len(results['ids'])} chunks for file: {file_path}")
 
-    # Deduplicate overlapping chunks and filter out nested children
-    seen_ranges = set()
-    unique_chunks = []
-    for chunk in chunks:
-        range_key = (chunk["start_line"], chunk["end_line"])
-        # Skip if same range already seen OR if this chunk is nested inside another
-        if range_key in seen_ranges:
-            continue
-        # Check if this chunk is contained within any already added chunk
-        is_nested = any(
-            uc["start_line"] <= chunk["start_line"] and uc["end_line"] >= chunk["end_line"]
-            and (uc["start_line"], uc["end_line"]) != range_key
-            for uc in unique_chunks
-        )
-        if not is_nested:
-            seen_ranges.add(range_key)
-            unique_chunks.append(chunk)
+    # Parse and enrich chunk metadata
+    chunks = []
+    for i, (doc, meta) in enumerate(zip(results["documents"], results["metadatas"])):
+        chunk = {
+            "content": doc,
+            "start_line": meta.get("start_line", 0),
+            "end_line": meta.get("end_line", 0), 
+            "split_index": meta.get("split_index", 0),
+            "parent_id": meta.get("parent_id"),
+            "is_split": meta.get("is_split", False),
+            "original_id": meta.get("original_id"),
+            "node_type": meta.get("node_type", "unknown"),
+            "chunk_id": results["ids"][i],
+        }
+        chunks.append(chunk)
+        
+    # Sort chunks by start_line first, then by split_index, then by end_line
+    chunks.sort(key=lambda x: (x["start_line"], x["split_index"], x["end_line"]))
+    
+    logger.debug(f"Chunk details: {[(c['start_line'], c['end_line'], c['is_split'], c['split_index'], len(c['content'])) for c in chunks]}")
 
-    return "\n".join(c["content"] for c in unique_chunks)
+    # Reconstruct file
+    return _reconstruct_file(chunks)
+
+
+def _reconstruct_file(chunks: List[Dict]) -> str:
+    """Deduplicate and concatenate chunks, removing nested duplicates."""
+    if not chunks:
+        return ""
+    
+    # Sort by start_line, then by length (longer first)
+    chunks.sort(key=lambda x: (int(x.get('start_line', 0)), -int(x.get('end_line', 0))))
+    
+    # Remove chunks that are completely contained in other chunks
+    unique = []
+    for c in chunks:
+        c_start = int(c.get('start_line', 0))
+        c_end = int(c.get('end_line', 0))
+        
+        # Check if this chunk is contained in any already-kept chunk
+        is_contained = False
+        for kept in unique:
+            k_start = int(kept.get('start_line', 0))
+            k_end = int(kept.get('end_line', 0))
+            
+            # If c is completely inside kept, skip it
+            if k_start <= c_start and c_end <= k_end and (k_start != c_start or k_end != c_end):
+                is_contained = True
+                break
+        
+        if not is_contained:
+            unique.append(c)
+    
+    # Concatenate with double newline between chunks
+    return '\n\n'.join(c.get('content', '').strip() for c in unique if c.get('content', '').strip())
 
 
 __all__ = ["cat_file"]
