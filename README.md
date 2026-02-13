@@ -4,6 +4,7 @@
 Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
 </p>
 
+
 ### Key Features
 
 - **AST-Powered Chunking** - Extract functions, classes, and methods from 23+ programming languages
