@@ -46,8 +46,13 @@ fn resolve_line_range(
 ) -> Result<(usize, usize), FsReadError> {
     let start_idx = match start {
         None => 0,
-        Some(n) if n >= 0 => (n as usize).min(total_lines),
+        Some(n) if n >= 0 => {
+            // Convert 1-based line number to 0-based index
+            let idx = if n == 0 { 0 } else { (n - 1) as usize };
+            idx.min(total_lines)
+        }
         Some(n) => {
+            // Negative indexing from end
             let abs = n.unsigned_abs() as usize;
             total_lines.saturating_sub(abs)
         }
@@ -55,8 +60,12 @@ fn resolve_line_range(
 
     let end_idx = match end {
         None => total_lines,
-        Some(n) if n >= 0 => (n as usize).min(total_lines),
+        Some(n) if n >= 0 => {
+            // Convert 1-based line number to 0-based index (inclusive end)
+            (n as usize).min(total_lines)
+        }
         Some(n) => {
+            // Negative indexing from end
             let abs = n.unsigned_abs() as usize;
             if abs > total_lines {
                 0
