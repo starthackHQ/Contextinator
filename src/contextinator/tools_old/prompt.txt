@@ -1,0 +1,448 @@
+Overview
+Complete architectural redesign of Contextinator to provide direct filesystem access tools for AI agents, replicating Amazon Q CLI's approach. The current
+ingestion/embedding pipeline becomes a secondary "RAG" module, while v2's real-time filesystem tools become the primary interface.
+
+Motivation
+Current v1 Limitations
+• Speed Constraints: Full repository ingestion, chunking, and embedding is time-intensive
+• Storage Overhead: Requires cloning repositories and maintaining vector databases
+• Stale Context: Pre-indexed data becomes outdated as code changes
+• Setup Friction: Users must run multi-step pipeline before querying code
+
+v2 Vision
+Zero-setup filesystem tools that AI agents can invoke directly on local codebases. No ingestion, no embeddings, no databases - just fast file operations.
+Current v1 becomes an optional "RAG" module for advanced use cases.
+
+Proposed Architecture
+Core Principles
+No Repository Cloning: Operate on existing local codebases only
+No Preprocessing: Zero ingestion, chunking, or embedding required
+Pure Filesystem: Direct file read/search operations
+Read-Only: No file modifications
+Performance-First: Built in Rust for sub-millisecond response times
+Tool Suite (Matching Amazon Q CLI Tools)
+1. File Reading (fs_read with Line mode)
+// Read file contents with optional line ranges
+// Matches: fs_read with mode="Line", start_line, end_line parameters
+fs_read(
+    path: String,
+    mode: "Line",
+    start_line: Option<i32>,  // Negative index for lines from end
+    end_line: Option<i32>     // Negative index for lines from end
+) -> String```
+
+
+#### 2. Directory Listing (fs_read with Directory mode)
+```rust
+// List directory contents recursively
+// Matches: fs_read with mode="Directory", depth parameter
+fs_read(
+    path: String,
+    mode: "Directory",
+    depth: u32  // 0 for non-recursive
+) -> Vec<FileEntry>
+3. Pattern Search (fs_read with Search mode)
+// Search for text patterns across files
+// Matches: fs_read with mode="Search", pattern, context_lines parameters
+fs_read(
+    path: String,
+    mode: "Search",
+    pattern: String,
+    context_lines: u32  // Default: 2
+) -> Vec<SearchResult>```
+
+
+#### 4. Batch Operations
+```rust
+// Support multiple operations in one call
+// Matches: fs_read with operations array
+fs_read(
+    operations: Vec<Operation>
+) -> Vec<Result>```
+
+
+Note: Tool signatures and parameters must exactly match Amazon Q CLI's fs_read tool specification for compatibility.
+
+## Implementation Plan
+
+### Phase 1: Rust Core Library
+• [ ] Create contextinator-core Rust crate
+• [ ] Implement fs_read Line mode (file reading with line ranges, negative indexing)
+• [ ] Implement fs_read Directory mode (recursive directory traversal)
+• [ ] Implement fs_read Search mode (pattern matching with context lines)
+• [ ] Implement batch operations support
+• [ ] Support both text and JSON output formats
+• [ ] Performance benchmarking
+
+### Phase 2: Python Bindings
+• [ ] Create PyO3 bindings for Rust core
+• [ ] Python API wrapper matching tool signatures
+• [ ] Async support for concurrent operations
+• [ ] Error handling and type safety
+• [ ] JSON and text output formatters
+
+### Phase 3: CLI Integration
+• [ ] New primary command: contextinator (defaults to tool mode)
+• [ ] Tool invocation: contextinator read --mode Line --path <file>
+• [ ] Batch operations support
+• [ ] JSON and text output via --format flag
+
+### Phase 4: v1 → RAG Module Migration
+• [ ] Move current codebase to contextinator.rag module
+• [ ] Rename commands: contextinator rag chunk, contextinator rag embed, etc.
+• [ ] Keep all existing functionality intact
+• [ ] Update imports: from contextinator.rag import ChunkService
+• [ ] Separate documentation for RAG module
+
+### Phase 5: Documentation & Examples
+• [ ] Update README to showcase v2 as primary mode
+• [ ] Add "Advanced: RAG Module" section for v1 features
+• [ ] Tool usage examples matching Amazon Q CLI patterns
+• [ ] Migration guide for existing users
+
+## Technical Specifications
+
+### Rust Dependencies
+```toml
+[dependencies]
+walkdir = "2.4"          # Directory traversal
+regex = "1.10"           # Pattern matching
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"       # JSON output
+tokio = { version = "1.35", features = ["full"] }
+pyo3 = { version = "0.20", features = ["extension-module"] }
+Performance Targets
+• File read: < 1ms for files under 100KB
+• Directory listing: < 10ms for directories with < 1000 files
+• Pattern search: < 100ms for repositories under 1M LOC
+• Memory usage: < 10MB baseline
+
+API Example (Python)
+from contextinator import fs_read
+
+# Read file with line range
+content = fs_read(
+    path="src/main.py",
+    mode="Line",
+    start_line=10,
+    end_line=50
+)
+
+# Read from end (negative indexing)
+content = fs_read(
+    path="src/main.py",
+    mode="Line",
+    start_line=-10,  # Last 10 lines
+    end_line=-1
+)
+
+# List directory
+files = fs_read(
+    path="src/",
+    mode="Directory",
+    depth=2
+)
+
+# Search pattern
+matches = fs_read(
+    path="src/",
+    mode="Search",
+    pattern="def authenticate",
+    context_lines=2
+)
+
+# Batch operations
+results = fs_read(
+    operations=[
+        {"mode": "Line", "path": "file1.py"},
+        {"mode": "Search", "path": "src/", "pattern": "TODO"}
+    ]
+)
+CLI Example
+# Read file
+contextinator read --mode Line --path src/main.py --start-line 10 --end-line 50
+
+# Read last 10 lines
+contextinator read --mode Line --path src/main.py --start-line -10 --end-line -1
+
+# List directory
+contextinator read --mode Directory --path src/ --depth 2
+
+# Search pattern
+contextinator read --mode Search --path src/ --pattern "def authenticate" --context-lines 2
+
+# JSON output
+contextinator read --mode Line --path src/main.py --format json
+
+# Batch operations
+contextinator read --batch operations.json
+RAG Module Example (v1 preserved)
+# Advanced users can still use RAG features
+from contextinator.rag import ChunkService, EmbeddingService
+
+# Chunk and embed for semantic search
+chunks = ChunkService.chunk_repository("/path/to/repo")
+embeddings = EmbeddingService.embed_chunks(chunks)
+# RAG commands (v1 functionality)
+contextinator rag chunk --path /path/to/repo
+contextinator rag embed --path /path/to/repo
+contextinator rag search "authentication logic" --collection MyRepo
+Migration Strategy
+Project Structure
+├── core/              # New: Rust core library
+│   ├── src/
+│   │   ├── fs_read.rs
+│   │   ├── search.rs
+│   │   └── lib.rs
+│   └── Cargo.toml
+├── src/contextinator/
+│   ├── __init__.py    # New: Exports fs_read as primary API
+│   ├── tools.py       # New: Tool implementations
+│   ├── cli.py         # Updated: New primary commands
+│   └── rag/           # Moved: All v1 code here
+│       ├── chunking/
+│       ├── embedding/
+│       ├── ingestion/
+│       ├── vectorstore/
+│       └── cli.py     # v1 CLI commands```
+
+
+### Backward Compatibility
+• All v1 functionality preserved in contextinator.rag module
+• Existing scripts work with updated imports
+• CLI commands namespaced: contextinator rag <command>
+• Separate documentation maintained
+
+### Default Behavior
+• contextinator → Shows tool usage (v2)
+• contextinator read → Primary tool interface (v2)
+• contextinator rag → Advanced RAG features (v1)
+
+## Benefits
+
+### For Users
+• **Instant Start**: No setup, no API keys, no Docker
+• **Always Fresh**: Direct filesystem access, always current
+• **Zero Dependencies**: No databases for basic usage
+• **Minimal Resources**: < 10MB memory, no storage overhead
+• **Optional Advanced Features**: RAG module available when needed
+
+### For AI Agents
+• **Simple Tools**: Familiar fs_read interface
+• **Fast Response**: Sub-100ms for most operations
+• **Reliable**: Pure filesystem, no network calls
+• **Composable**: Tools can be chained naturally
+
+### For Developers
+• **Simpler Architecture**: Core is just filesystem operations
+• **Better Performance**: Rust-native speed
+• **Easier Testing**: No database dependencies for core features
+• **Modular Design**: RAG features optional, not required
+
+## Success Metrics
+
+• Tool response time < 50ms for 95th percentile
+• Memory usage < 10MB for core tools
+• Zero setup time for basic usage
+• 100% backward compatibility for v1 users via RAG module
+• Tool signatures match Amazon Q CLI exactly
+
+## Related Work
+
+• **Amazon Q CLI**: Direct filesystem tools for AI (reference implementation)
+• **ripgrep**: Fast pattern matching inspiration
+• **fd**: Fast directory traversal inspiration
+
+## Scalability: Multi-Repository Server Mode
+
+### Use Case
+Run a single Contextinator server handling tool calls for 100+ repositories concurrently, with minimal resource overhead.
+
+### Architecture
+bash
+# Start server with workspace directory
+contextinator serve \
+  --workspaces /data/repos \
+  --port 8080 \
+  --max-concurrent 200 \
+  --max-open-files 1000
+
+
+### Tool Call Protocol
+json
+POST http://localhost:8080/tool
+{
+  "workspace": "repo-001",
+  "tool": "fs_read",
+  "params": {
+    "mode": "Line",
+    "path": "src/main.py",
+    "start_line": 10,
+    "end_line": 50
+  }
+}
+
+
+### Resource Optimization
+• **File Descriptor Pooling**: Reuse open file handles (LRU cache)
+• **Memory-Mapped I/O**: Read large files without loading into memory
+• **Streaming Responses**: Yield results incrementally, don't buffer
+• **Request Deduplication**: Share in-flight requests across agents
+• **Workspace Validation**: Cache allowed paths, reject invalid early
+
+### Performance Targets (100 Repos)
+• Memory: < 200MB total (< 2MB per repo)
+• Latency: < 50ms p95 (no degradation vs single repo)
+• Throughput: 1000+ requests/second shared across all repos
+• CPU: < 30% at peak load
+
+### Implementation Details
+rust
+// Workspace-scoped tool execution
+async fn execute_tool(workspace: &str, tool: Tool) -> Result<Response> {
+    let root = WORKSPACES.get(workspace)?;
+    let safe_path = root.join(tool.path).canonicalize()?;
+
+    // Ensure path is within workspace (security)
+    if !safe_path.starts_with(root) {
+        return Err(Error::PathTraversal);
+    }
+
+    // Execute tool with optimizations
+    match tool.name {
+        "fs_read" => fs_read_optimized(safe_path, tool.params).await,
+        _ => Err(Error::UnknownTool)
+    }
+}
+
+
+### Benefits
+• **Single Process**: One server handles all repos, minimal overhead
+• **Stateless**: No per-repo state, just filesystem operations
+• **Concurrent**: Rust async handles 100+ simultaneous tool calls
+• **Isolated**: Workspace boundaries prevent cross-repo access
+• **Scalable**: Add more repos without linear resource growth
+
+
+contextinator serves a different purpose for us; and therefore, we need it to actually serves tons of repos at once.
+
+Multi-Repository Server Architecture
+Design: Single Server, Multiple Workspaces
+┌─────────────────────────────────────────┐
+│ Contextinator Server (Port 8080) │
+│ Memory: ~50MB base + ~1MB per repo │
+└─────────────────────────────────────────┘
+│
+┌───────────┼───────────┐
+│ │ │
+┌───▼───┐ ┌───▼───┐ ┌───▼───┐
+│Repo A │ │Repo B │ │Repo C │ ... 100 repos
+│Agent 1│ │Agent 2│ │Agent 3│
+└───────┘ └───────┘ └───────┘
+
+Key Concepts
+Single Server Process: One contextinator serve instance handles all 100 repos
+Workspace Isolation: Each tool call specifies workspace_id or root_path
+Zero State: Server is stateless - just routes tool calls to correct filesystem paths
+Concurrent Execution: Rust async handles 100+ concurrent tool calls easily
+Lazy Loading: No upfront indexing - tools execute on-demand
+Implementation
+Server Mode
+bash
+
+Start server once for all repos
+contextinator serve
+--workspaces /data/repos
+--port 8080
+--max-concurrent 200
+
+Workspace Structure
+/data/repos/
+├── repo-001/ # Agent 1's workspace
+├── repo-002/ # Agent 2's workspace
+├── repo-003/ # Agent 3's workspace
+...
+└── repo-100/ # Agent 100's workspace
+
+Tool Call with Workspace
+python
+
+Agent 1 calls tool for repo-001
+response = requests.post("http://localhost:8080/tool", json={
+"workspace": "repo-001", # Isolates to this repo
+"tool": "fs_read",
+"params": {
+"mode": "Line",
+"path": "src/main.py",
+"start_line": 10,
+"end_line": 50
+}
+})
+
+Agent 2 calls tool for repo-002 (concurrent)
+response = requests.post("http://localhost:8080/tool", json={
+"workspace": "repo-002",
+"tool": "fs_read",
+"params": {
+"mode": "Search",
+"pattern": "authenticate"
+}
+})
+
+Resource Optimization Strategies
+1. File Descriptor Pooling
+rust
+// Reuse file handles, don't open/close repeatedly
+struct FileCache {
+cache: LruCache<PathBuf, Arc<Mutex>>,
+max_size: usize // e.g., 1000 open files
+}
+
+2. Memory-Mapped Files (for large files)
+rust
+// Don't load entire file into memory
+use memmap2::Mmap;
+
+fn read_lines(path: &Path, start: usize, end: usize) -> Result {
+let mmap = unsafe { Mmap::map(&File::open(path)?)? };
+// Read only requested lines, not entire file
+}
+
+3. Streaming Responses
+rust
+// Don't buffer entire search results
+async fn grep_stream(pattern: &str) -> impl Stream<Item = Match> {
+// Yield matches as found, don't collect all first
+}
+
+4. Workspace Path Validation (security + performance)
+rust
+// Validate workspace once, cache result
+struct WorkspaceRegistry {
+allowed_paths: HashMap<String, PathBuf>,
+}
+
+// Reject invalid workspace immediately
+fn validate_workspace(id: &str) -> Result {
+REGISTRY.get(id).ok_or(Error::InvalidWorkspace)
+}
+
+5. Request Deduplication
+rust
+// If 2 agents request same file simultaneously, read once
+struct RequestCache {
+in_flight: HashMap<(String, PathBuf), Arc<Mutex>>
+}
+
+Performance Characteristics
+Metric	Single Repo	100 Repos Concurrent
+Memory	~10MB	~150MB (1.5MB per repo)
+Latency	<50ms	<50ms (no degradation)
+Throughput	1000 req/s	1000 req/s (shared)
+CPU	<5%	<30% at peak
+This approach gives you:
+• ~2MB per repo (vs 100MB+ if each had separate vector DB)
+• No startup time (vs minutes for ingestion per repo)
+• Concurrent execution (100 agents can call tools simultaneously)
+• Simple deployment (one server process, not 100)
+
