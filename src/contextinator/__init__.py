@@ -9,4 +9,7 @@ __version__ = "2.0.0"
 
 from .tools import fs_read
 
-__all__ = ["fs_read", "__version__"]
+# RAG module available as contextinator.rag
+from . import rag
+
+__all__ = ["fs_read", "rag", "__version__"]

@@ -68,13 +68,13 @@ def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         prog="contextinator",
-        description="Filesystem tools for AI agents"
+        description="Filesystem tools for AI agents with optional RAG capabilities"
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
-    # Read command
-    read_parser = subparsers.add_parser("read", help="Read filesystem")
+    # Read command (v2 primary)
+    read_parser = subparsers.add_parser("read", help="Read filesystem (v2 tools)")
     read_parser.add_argument("--path", required=True, help="File or directory path")
     read_parser.add_argument(
         "--mode",
@@ -89,6 +89,22 @@ def main():
     read_parser.add_argument("--context-lines", type=int, default=2, help="Context lines (Search mode)")
     read_parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
     read_parser.set_defaults(func=read_command)
+    
+    # RAG commands (v1 functionality)
+    rag_parser = subparsers.add_parser("rag", help="RAG module commands (v1)")
+    rag_subparsers = rag_parser.add_subparsers(dest="rag_command", help="RAG command")
+    
+    # rag chunk
+    chunk_parser = rag_subparsers.add_parser("chunk", help="Chunk repository")
+    chunk_parser.add_argument("--path", required=True, help="Repository path")
+    chunk_parser.add_argument("--save", action="store_true", help="Save chunks to disk")
+    chunk_parser.set_defaults(func=lambda args: print("RAG chunk command - use: from contextinator.rag import chunk_repository"))
+    
+    # rag search
+    search_parser = rag_subparsers.add_parser("search", help="Semantic search")
+    search_parser.add_argument("query", help="Search query")
+    search_parser.add_argument("-c", "--collection", required=True, help="Collection name")
+    search_parser.set_defaults(func=lambda args: print("RAG search command - use: from contextinator.rag import semantic_search"))
     
     # Version command
     version_parser = subparsers.add_parser("version", help="Show version")
