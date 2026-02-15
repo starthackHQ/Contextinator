@@ -9,7 +9,11 @@ __version__ = "2.0.1"
 
 from .tools import fs_read
 
-# RAG module available as contextinator.rag
-from . import rag
+__all__ = ["fs_read", "__version__"]
 
-__all__ = ["fs_read", "rag", "__version__"]
+def __getattr__(name):
+    """Lazy import rag module to avoid chromadb dependency unless needed."""
+    if name == "rag":
+        from . import rag
+        return rag
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
