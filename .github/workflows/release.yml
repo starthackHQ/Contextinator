@@ -38,13 +38,13 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install build twine setuptools-scm
+          pip install maturin twine
 
       - name: Build package (validation)
-        run: python -m build
+        run: maturin build --release
 
       - name: Verify package (validation)
-        run: twine check dist/*
+        run: twine check target/wheels/*
 
       - name: Create release notes template (human editable)
         run: |
@@ -128,13 +128,13 @@ jobs:
       - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install build twine setuptools-scm
+          pip install maturin twine
 
       - name: Build package
         run: |
-          python -m build
+          maturin build --release
           mkdir -p release
-          cp dist/* release/
+          cp target/wheels/* release/
 
       - name: Create checksums
         run: |
@@ -174,13 +174,13 @@ jobs:
           echo "**Full Changelog**: https://github.com/starthackHQ/Contextinator/compare/${BASE_TAG}...${{ steps.tag.outputs.TAG_NAME }}" >> release/CHANGELOG.md
 
       - name: Verify package
-        run: twine check dist/*
+        run: twine check target/wheels/*
 
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        run: twine upload target/wheels/*
 
       - name: Upload release assets (do not overwrite notes)
         uses: softprops/action-gh-release@v2
