@@ -1,96 +1,363 @@
-This file is broken into 2 sections
-- [Installation](#installation)
-- [Usage](#usage)
+# Contextinator v2.0 - Complete Usage Guide
 
-# Installation
-Normal installation can be done via pip; see README.md for basic instructions.
-For development and advanced setup, follow these steps:
+This guide is divided into two main sections:
 
-**Step 1:** Clone and setup
+- [**v2 Core Features (Rust-Powered)**](#v2-core-features-rust-powered) - Fast filesystem tools for AI agents (zero dependencies)
+- [**RAG Features (Optional)**](#rag-features-optional) - Semantic code search and embeddings (requires `pip install contextinator[rag]`)
+
+---
+
+# v2 Core Features (Rust-Powered)
+
+The core v2 functionality provides blazing-fast filesystem operations built in Rust. **No additional dependencies required.**
+
+## Installation
+
 ```bash
+# Core installation (Rust-powered tools only)
+pip install contextinator
+
+# Verify installation
+contextinator --help
+contextinator version
+```
+
+## CLI Usage - v2 Commands
+
+All v2 commands use the `read` subcommand with different modes:
+
+```bash
+contextinator read --path <path> --mode <mode> [options]
+```
+
+### 1. Line Mode - Read Files with Line Ranges
+
+Read specific lines from a file, with support for negative indexing.
+
+```bash
+# Read lines 10-50
+contextinator read --path myfile.py --mode Line --start-line 10 --end-line 50
+
+# Read last 10 lines (negative indexing)
+contextinator read --path myfile.py --mode Line --start-line -10 --end-line -1
+
+# Read first 20 lines
+contextinator read --path myfile.py --mode Line --start-line 1 --end-line 20
+
+# Read entire file (omit line numbers)
+contextinator read --path myfile.py --mode Line
+
+# JSON output
+contextinator read --path myfile.py --mode Line --start-line 1 --end-line 50 --format json
+```
+
+**Options:**
+
+- `--path` (required): File path to read
+- `--mode Line` (required): Line reading mode
+- `--start-line`: Starting line number (supports negative indexing)
+- `--end-line`: Ending line number (supports negative indexing)
+- `--format`: Output format (`text` or `json`, default: `text`)
+
+**Output Format (JSON):**
+
+```json
+{
+  "type": "line",
+  "content": "file contents here...",
+  "total_lines": 100,
+  "lines_returned": 41
+}
+```
+
+---
+
+### 2. Directory Mode - List Files and Folders
+
+List directory contents with optional recursive traversal.
+
+```bash
+# Non-recursive listing (depth 0)
+contextinator read --path src/ --mode Directory --depth 0
+
+# Recursive listing (depth 2)
+contextinator read --path src/ --mode Directory --depth 2
+
+# Fully recursive
+contextinator read --path . --mode Directory --depth 999
+
+# JSON output for AI agents
+contextinator read --path src/ --mode Directory --depth 1 --format json
+```
+
+**Options:**
+
+- `--path` (required): Directory path to list
+- `--mode Directory` (required): Directory listing mode
+- `--depth`: Recursion depth (0 = non-recursive, default: 0)
+- `--format`: Output format (`text` or `json`, default: `text`)
+
+**Output Format (JSON):**
+
+```json
+{
+  "type": "directory",
+  "entries": [
+    {
+      "path": "src/main.py",
+      "is_dir": false,
+      "size": 2048,
+      "modified": 1234567890
+    },
+    {
+      "path": "src/utils/",
+      "is_dir": true,
+      "size": 0,
+      "modified": 1234567890
+    }
+  ],
+  "total_count": 15
+}
+```
+
+---
+
+### 3. Search Mode - Pattern Matching with Context
+
+Search for text patterns in files with configurable context lines.
+
+```bash
+# Find TODOs with context
+contextinator read --path . --mode Search --pattern "TODO" --context-lines 2
+
+# Find function definitions
+contextinator read --path src/ --mode Search --pattern "def " --context-lines 5
+
+# Find FIXMEs and export to JSON
+contextinator read --path . --mode Search --pattern "FIXME" --format json
+
+# Search in specific directory
+contextinator read --path src/components/ --mode Search --pattern "useState" --context-lines 3
+```
+
+**Options:**
+
+- `--path` (required): Directory or file path to search
+- `--mode Search` (required): Search mode
+- `--pattern` (required): Text pattern to search for
+- `--context-lines`: Number of context lines before/after match (default: 2)
+- `--format`: Output format (`text` or `json`, default: `text`)
+
+**Output Format (JSON):**
+
+```json
+{
+  "type": "search",
+  "matches": [
+    {
+      "file_path": "src/auth.py",
+      "line_number": 42,
+      "line_content": "    # TODO: implement rate limiting",
+      "context_before": [
+        "def authenticate_user(username, password):",
+        "    \"\"\"Authenticate a user.\"\"\""
+      ],
+      "context_after": ["    user = get_user(username)", "    if not user:"]
+    }
+  ],
+  "total_matches": 12
+}
+```
+
+---
+
+## Python API - v2 Functions
+
+Import and use the Rust-powered `fs_read` function directly in your code:
+
+```python
+from contextinator import fs_read
+
+# 1. Read file lines
+result = fs_read(
+    path="myfile.py",
+    mode="Line",
+    start_line=10,
+    end_line=50
+)
+print(result["content"])
+print(f"Lines: {result['lines_returned']}/{result['total_lines']}")
+
+# 2. Read last 10 lines
+result = fs_read(
+    path="myfile.py",
+    mode="Line",
+    start_line=-10,
+    end_line=-1
+)
+
+# 3. List directory (non-recursive)
+result = fs_read(
+    path="src/",
+    mode="Directory",
+    depth=0
+)
+for entry in result["entries"]:
+    print(f"{'📁' if entry['is_dir'] else '📄'} {entry['path']}")
+
+# 4. List directory (recursive, depth 2)
+result = fs_read(
+    path="src/",
+    mode="Directory",
+    depth=2
+)
+
+# 5. Search for patterns
+result = fs_read(
+    path=".",
+    mode="Search",
+    pattern="TODO",
+    context_lines=2
+)
+for match in result["matches"]:
+    print(f"{match['file_path']}:{match['line_number']}")
+    print(f"  {match['line_content']}")
+```
+
+### Function Signature
+
+```python
+def fs_read(
+    path: str,
+    mode: str,  # "Line", "Directory", or "Search"
+    start_line: Optional[int] = None,  # Line mode only
+    end_line: Optional[int] = None,     # Line mode only
+    depth: Optional[int] = None,        # Directory mode only (default: 0)
+    pattern: Optional[str] = None,      # Search mode only
+    context_lines: Optional[int] = None # Search mode only (default: 2)
+) -> dict
+```
+
+---
+
+## Use Cases for v2 Core
+
+### AI Agent Integration
+
+```python
+# Agent reads specific code sections
+result = fs_read("src/auth.py", mode="Line", start_line=1, end_line=100)
+agent_context = result["content"]
+
+# Agent explores codebase structure
+result = fs_read("src/", mode="Directory", depth=2)
+file_tree = result["entries"]
+
+# Agent finds TODOs for task planning
+result = fs_read(".", mode="Search", pattern="TODO", context_lines=3)
+tasks = result["matches"]
+```
+
+### Batch File Operations
+
+```python
+files_to_read = ["src/main.py", "src/auth.py", "src/api.py"]
+
+for file_path in files_to_read:
+    result = fs_read(file_path, mode="Line")
+    process_file_content(result["content"])
+```
+
+---
+
+# RAG Features (Optional)
+
+# RAG Features (Optional)
+
+For semantic code search, AST-powered chunking, and vector embeddings, install the RAG extras:
+
+```bash
+pip install contextinator[rag]
+```
+
+## RAG Installation & Setup
+
+**Prerequisites:**
+
+- Docker (for ChromaDB)
+- OpenAI API key (for embeddings)
+
+**Install with RAG extras:**
+
+```bash
+pip install contextinator[rag]
+```
+
+**For development:**
+
+```bash
+# Clone and setup
 git clone https://github.com/starthackHQ/Contextinator.git
 cd Contextinator
-```
 
-**Step 2:** Create virtual environment
-```bash
+# Create virtual environment
 python -m venv .venv
-```
 
-**Step 3:** Activate environment
-```bash
+# Activate environment
 # Windows
 .venv\Scripts\activate
-
 # macOS/Linux
 source .venv/bin/activate
+
+# Install with RAG dependencies
+pip install -e ".[rag]"
 ```
 
-**Step 4:** Install dependencies
-```bash
-pip install -r requirements.txt
-```
+**Configure environment variables:**
 
-**Step 5:** Configure environment variables
-Copy the example environment file and add your OpenAI API key:
+Create a `.env` file:
 
-```bash
-# Copy the example file
-cp .env.example .env
-
-# Edit .env and add your OpenAI API key
-# OPENAI_API_KEY=sk-your-actual-key-here
-```
-
-**Important**: The `.env` file should contain:
 ```bash
 OPENAI_API_KEY=sk-your-openai-key-here
 USE_CHROMA_SERVER=true
 CHROMA_SERVER_URL=http://localhost:8000
 ```
 
-**Step 6:** Start ChromaDB
+**Start ChromaDB server:**
+
 ```bash
 docker-compose up -d
 ```
 
-# Usage
-Contextinator can be used in **two ways**: via the **CLI** or **programmatically** as a Python library.
+---
 
-## CLI Usage
-After installation, you can use the `contextinator` command directly:
+## CLI Usage - RAG Commands
 
-```bash
-# Recommended: Use the installed command
-contextinator <command> [options]
-
-# Alternative: Use module execution
-python -m contextinator <command> [options]
-```
-
-**Development mode** (before installation):
+All RAG commands use the `--rag` flag:
 
 ```bash
-python -m src.contextinator <command> [options]
+contextinator --rag <command> [options]
 ```
 
 ### 1. Chunking
 
+Extract semantic chunks from code using AST parsing:
+
 ```bash
-contextinator chunk --save --path <repo-path> --output <output-dir>
-contextinator chunk --save --repo-url <github-url>
-contextinator chunk --save-ast  # Save AST trees for debugging
-contextinator chunk --chunks-dir <custom-dir>  # Custom chunks directory
+contextinator --rag chunk --save --path <repo-path> --output <output-dir>
+contextinator --rag chunk --save --repo-url <github-url>
+contextinator --rag chunk --save-ast  # Save AST trees for debugging
+contextinator --rag chunk --chunks-dir <custom-dir>  # Custom chunks directory
 ```
 
 ### 2. Embedding
 
-right now, we're only supporting OpenAI embeddings, so make sure you've got the `.env.example` setup'd correctly.
+Generate embeddings for code chunks (requires OpenAI API key):
 
 ```bash
-contextinator embed --save --path <repo-path> --output <output-dir>
-contextinator embed --save --repo-url <github-url>
-contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
+contextinator --rag embed --save --path <repo-path> --output <output-dir>
+contextinator --rag embed --save --repo-url <github-url>
+contextinator --rag embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 ```
 
 ### 3. Storing in Vector Store
@@ -98,15 +365,15 @@ contextinator embed --chunks-dir <custom-dir> --embeddings-dir <custom-dir>
 **Note:** Make sure ChromaDB server is running: `docker-compose up -d`
 
 ```bash
-contextinator store-embeddings --path <repo-path> --output <output-dir>
-contextinator store-embeddings --collection-name <custom-name>
-contextinator store-embeddings --repo-name <repo-name> --collection-name <custom-name>
-contextinator store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
+contextinator --rag store-embeddings --path <repo-path> --output <output-dir>
+contextinator --rag store-embeddings --collection-name <custom-name>
+contextinator --rag store-embeddings --repo-name <repo-name> --collection-name <custom-name>
+contextinator --rag store-embeddings --embeddings-dir <custom-dir> --chromadb-dir <custom-dir>
 ```
 
 ### 4. Search Commands
 
-Contextinator provides multiple search methods for different use cases:
+Contextinator RAG provides multiple search methods for different use cases:
 
 #### **4.1 Semantic Search** (Natural Language)
 
@@ -114,33 +381,25 @@ Find code using natural language queries. Uses AI embeddings for semantic simila
 
 ```bash
 # Basic semantic search
-contextinator search "authentication logic" --collection MyRepo
+contextinator --rag search "authentication logic" --collection MyRepo
 
 # With filters
-contextinator search "error handling" -c MyRepo --language python -n 10
+contextinator --rag search "error handling" -c MyRepo --language python -n 10
 
 # Include parent chunks (classes/modules) in results
-contextinator search "database queries" -c MyRepo --include-parents
+contextinator --rag search "database queries" -c MyRepo --include-parents
 
 # Filter by file path
-contextinator search "API endpoints" -c MyRepo --file "src/api/"
+contextinator --rag search "API endpoints" -c MyRepo --file "src/api/"
 
 # Filter by node type
-contextinator search "validation logic" -c MyRepo --type function_definition
+contextinator --rag search "validation logic" -c MyRepo --type function_definition
 
 # Export to JSON
-contextinator search "authentication" -c MyRepo --json results.json
+contextinator --rag search "authentication" -c MyRepo --json results.json
 
 # Export to TOON format (40-60% token savings for LLMs)
-contextinator search "authentication" -c MyRepo --toon results.json
-
-**Options:**
-- `-c, --collection` (required): Collection name
-- `-n, --n-results`: Number of results (default: 5)
-- `-l, --language`: Filter by programming language (e.g., python, javascript)
-- `-f, --file`: Filter by file path (partial match)
-- `-t, --type`: Filter by node type (e.g., function_definition, class_definition)
-- `--include-parents`: Include parent chunks (classes/modules) in results
+contextinator --rag search "authentication" -c MyRepo --toon results.json results
 - `--json`: Export results to JSON file
 - `--toon`: Export results to TOON file (compact format for LLMs)
 ```
@@ -153,24 +412,16 @@ Find specific functions or classes by name.
 
 ```bash
 # Find function by name
-python -m src.contextinator.cli symbol authenticate_user --collection MyRepo
+contextinator --rag symbol authenticate_user --collection MyRepo
 
 # Find class by name
-python -m src.contextinator.cli symbol UserManager -c MyRepo --type class_definition
+contextinator --rag symbol UserManager -c MyRepo --type class_definition
 
 # Search in specific file
-python -m src.contextinator.cli symbol get_user -c MyRepo --file "api/"
+contextinator --rag symbol get_user -c MyRepo --file "api/"
 
 # Export results
-python -m src.contextinator.cli symbol main -c MyRepo --json main_functions.json
-
-**Options:**
-- `-c, --collection` (required): Collection name
-- `-t, --type`: Filter by node type
-- `-f, --file`: Filter by file path
-- `--limit`: Maximum results (default: 50)
-- `--json`: Export to JSON
-- `--toon`: Export to TOON format
+contextinator --rag symbol main -c MyRepo --json main_functions.json
 ```
 
 ---
@@ -210,31 +461,20 @@ Combine semantic search, pattern matching, and filters for precise results.
 
 ```bash
 # Semantic search with language filter
-python -m src.contextinator.cli search-advanced -c MyRepo \
+contextinator --rag search-advanced -c MyRepo \
  --semantic "authentication" --language python
 
 # Pattern search with file filter
-python -m src.contextinator.cli search-advanced -c MyRepo \
+contextinator --rag search-advanced -c MyRepo \
  --pattern "TODO" --file "src/"
 
 # Hybrid: semantic + pattern + type filter
-python -m src.contextinator.cli search-advanced -c MyRepo \
+contextinator --rag search-advanced -c MyRepo \
  --semantic "error handling" --pattern "try" --type function_definition
 
 # Multiple filters with export
-python -m src.contextinator.cli search-advanced -c MyRepo \
+contextinator --rag search-advanced -c MyRepo \
  --semantic "API routes" --language python --file "api/" --toon api_routes.json
-
-**Options:**
-- `-c, --collection` (required): Collection name
-- `-s, --semantic`: Semantic query (natural language)
-- `-p, --pattern`: Text pattern to search for
-- `-l, --language`: Filter by programming language
-- `-f, --file`: Filter by file path
-- `-t, --type`: Filter by node type
-- `--limit`: Maximum results (default: 50)
-- `--json`: Export to JSON
-- `--toon`: Export to TOON format
 ```
 
 ---
@@ -256,19 +496,13 @@ python -m src.contextinator.cli read-file "src/main.py" -c MyRepo --json main.js
 **Options:**
 - `-c, --collection` (required): Collection name
 - `--no-join`: Show chunks separately instead of joining them
-- `--json`: Export to JSON
-- `--toon`: Export to TOON format
-```
+contextinator --rag read-file "src/auth.py" --collection MyRepo
 
----
+# Show chunks separately (don't join)
+contextinator --rag read-file "src/api/routes.py" -c MyRepo --no-join
 
-### 5. Export Formats
-
-All search commands support two export formats:
-
-#### **JSON Format** (Standard)
-
-```bash
+# Export to JSON
+contextinator --rag read-file "src/main.py" -c MyRepo --json main.json
 python -m src.contextinator.cli search "authentication" -c MyRepo --json results.json
 
 Output structure:
@@ -300,13 +534,14 @@ json
 Compact format designed for LLM prompts. Saves 40-60% tokens compared to JSON.
 
 ```bash
-python -m src.contextinator.cli search "authentication" -c MyRepo --toon results.json
+contextinator --rag search "authentication" -c MyRepo --toon results.json
+```
 
 Perfect for:
+
 - Feeding search results to LLMs
 - Building RAG (Retrieval-Augmented Generation) systems
 - Minimizing token usage in AI workflows
-```
 
 ---
 
@@ -314,32 +549,32 @@ Perfect for:
 
 ```bash
 # Show database statistics
-contextinator db-info
+contextinator --rag db-info
 
 # List all collections
-contextinator db-list
+contextinator --rag db-list
 
 # Show collection details with sample documents
-contextinator db-show MyRepo --sample 3
+contextinator --rag db-show MyRepo --sample 3
 
 # Delete a collection
-contextinator db-clear MyRepo
+contextinator --rag db-clear MyRepo
 
 # Use custom ChromaDB location
-contextinator db-info --chromadb-dir <custom-dir>
+contextinator --rag db-info --chromadb-dir <custom-dir>
 
 # Use specific repo database
-contextinator db-info --repo-name MyRepo
+contextinator --rag db-info --repo-name MyRepo
 ```
 
 ---
 
-## 📦 Programmatic Usage (As a Library)
+## 📦 RAG Programmatic Usage (As a Library)
 
-You can also import and use Contextinator directly in your Python code:
+You can also import and use Contextinator RAG features directly in your Python code:
 
 ```python
-from contextinator import (
+from contextinator.rag import (
     chunk_repository,
     embed_chunks,
     store_repository_embeddings,

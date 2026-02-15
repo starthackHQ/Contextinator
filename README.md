@@ -1,29 +1,38 @@
 <img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
 <p align="center">
-Turn any codebase into semantically-aware, searchable knowledge for AI-powered workflows.
+⚡ Rust-powered filesystem tools for AI agents | Optional: Semantic code search with RAG
 </p>
 
+### Key Features - v2.0
 
-### Key Features
+#### Core (Rust-Powered - Zero Dependencies)
+
+- **🚀 Blazing Fast** - Rust-powered filesystem operations for AI agents
+- **📖 Smart File Reading** - Read files with line ranges (including negative indexing)
+- **📁 Directory Listing** - Recursive and non-recursive directory traversal
+- **🔍 Pattern Search** - Fast pattern matching with context lines
+- **🔄 Batch Operations** - Process multiple operations in parallel
+- **🌐 JSON Output** - Machine-readable output for agent integration
+- **💡 Zero Dependencies** - Core functionality requires no external dependencies
+
+#### Optional RAG Features (Install with `pip install contextinator[rag]`)
 
 - **AST-Powered Chunking** - Extract functions, classes, and methods from 23+ programming languages
 - **Parent-Child Relationships** - Maintain hierarchical chunk-context for complete understanding
 - **Semantic Search** - Find relevant code using natural language queries
 - **Multiple Search Modes** - Semantic, symbol-based, pattern matching, and hybrid search
-- **Smart Deduplication** - Hash-based detection of duplicate code
 - **TOON Format Export** - Token-efficient output format for LLM prompts (40-60% token savings)
-- **Full Pipeline Automation** - One command to chunk, embed, and store
 - **Docker-Ready** - ChromaDB server included
 
 ### Use Cases
 
-| **Agentic AI Systems**                              | **RAG Applications**                                     | **Code Intelligence**                      |
-| --------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------ |
-| Dynamic code retrieval for autonomous coding agents | High-precision code retrieval for question answering     | Cross-repository code search and discovery |
-| Context provision for code generation               | Context injection for code explanation and documentation | Duplicate and similar code detection       |
-| Multi-step reasoning over large codebases           | Semantic code search across repositories                 | Legacy codebase analysis and understanding |
-| Tool integration for agent frameworks               | Parent-child relationship tracking for complete context  | MCP-compliant async architecture           |
+| **AI Agent Filesystem Tools (v2 Core)** | **RAG Applications (Optional)**                          | **Code Intelligence**                      |
+| --------------------------------------- | -------------------------------------------------------- | ------------------------------------------ |
+| Fast file reading for AI agents         | High-precision code retrieval with embeddings            | Cross-repository code search and discovery |
+| Directory traversal and exploration     | Context injection for code explanation and documentation | Duplicate and similar code detection       |
+| Pattern matching in codebases           | Semantic code search across repositories                 | Legacy codebase analysis and understanding |
+| Batch filesystem operations             | Parent-child relationship tracking for complete context  | MCP-compliant async architecture           |
 
 ---
 
@@ -31,17 +40,25 @@ Turn any codebase into semantically-aware, searchable knowledge for AI-powered w
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- Docker (for ChromaDB)
-- OpenAI API key (for embeddings)
+- Python 3.10 or higher
+- Optional: Docker (for RAG features with ChromaDB)
+- Optional: OpenAI API key (for RAG embeddings)
 
 ### Installation
+
+**Core (Rust-powered tools only):**
 
 ```bash
 pip install contextinator
 ```
 
-Verify the installation _(requiers chromadb & openai api key setup)_:
+**With RAG features:**
+
+```bash
+pip install contextinator[rag]
+```
+
+Verify the installation:
 
 ```bash
 contextinator --help
@@ -49,31 +66,96 @@ contextinator --help
 
 For detailed setup and configuration, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
 
-### Getting Started
+---
 
-1. Index a repository:
+## Quick Start - v2.0 (Rust-Powered)
+
+### 1. Read Files with Line Ranges
 
 ```bash
-contextinator chunk-embed-store-embeddings \
-  --repo-url https://github.com/user/repo \
-  --save \
-  --collection-name MyRepo
+# Read specific line range
+contextinator read --path myfile.py --mode Line --start-line 10 --end-line 50
+
+# Read last 10 lines (negative indexing)
+contextinator read --path myfile.py --mode Line --start-line -10 --end-line -1
+
+# Read entire file
+contextinator read --path myfile.py --mode Line
 ```
 
-2. Search your codebase:
+### 2. List Directory Contents
+
+```bash
+# Non-recursive listing
+contextinator read --path src/ --mode Directory --depth 0
+
+# Recursive listing (depth 2)
+contextinator read --path src/ --mode Directory --depth 2
+
+# JSON output for agents
+contextinator read --path src/ --mode Directory --format json
+```
+
+### 3. Search for Patterns
+
+```bash
+# Find TODOs with context
+contextinator read --path . --mode Search --pattern "TODO" --context-lines 2
+
+# Find function definitions
+contextinator read --path src/ --mode Search --pattern "def " --context-lines 5
+
+# JSON output
+contextinator read --path . --mode Search --pattern "FIXME" --format json
+```
+
+### 4. Python API
+
+```python
+from contextinator import fs_read
+
+# Read file lines
+result = fs_read("file.py", mode="Line", start_line=10, end_line=50)
+
+# List directory
+result = fs_read("src/", mode="Directory", depth=2)
+
+# Search patterns
+result = fs_read(".", mode="Search", pattern="TODO", context_lines=2)
+```
+
+---
+
+## Optional: RAG Features
+
+For semantic code search and advanced code intelligence, install RAG extras:
+
+```bash
+pip install contextinator[rag]
+```
+
+### Index a Repository:
+
+```bash
+contextinator --rag chunk --path ./myrepo --save
+contextinator --rag embed --path ./myrepo --save
+contextinator --rag store-embeddings --path ./myrepo --collection-name MyRepo
+```
+
+### Search with Semantic Understanding:
 
 ```bash
 # Natural language semantic search
-contextinator search "authentication logic" -c MyRepo
+contextinator --rag search "authentication logic" --collection MyRepo
 
 # Find specific functions
-contextinator symbol authenticate_user -c MyRepo
+contextinator --rag symbol authenticate_user --collection MyRepo
 
 # Export results in TOON format for LLM consumption
-contextinator search "error handling" -c MyRepo --toon results.json
+contextinator --rag search "error handling" --collection MyRepo --toon results.json
 ```
 
-For comprehensive CLI and Python API documentation, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
+For comprehensive CLI and RAG documentation, see [`USAGE.md`](https://github.com/starthackHQ/Contextinator/blob/main/USAGE.md)
 
 ## Acknowledgements
 
@@ -81,9 +163,11 @@ Built with and inspired by amazing open-source projects:
 
 ### Core Technologies
 
-- **[tree-sitter](https://github.com/tree-sitter/tree-sitter)** - Incremental parsing system for AST generation
-- **[ChromaDB](https://github.com/chroma-core/chroma)** - AI-native embedding database
-- **[OpenAI](https://openai.com)** - Embedding generation API
+- **[Rust](https://www.rust-lang.org/)** - Systems programming language for blazing-fast performance
+- **[PyO3](https://github.com/PyO3/pyo3)** - Rust bindings for Python
+- **[tree-sitter](https://github.com/tree-sitter/tree-sitter)** - Incremental parsing system for AST generation (RAG features)
+- **[ChromaDB](https://github.com/chroma-core/chroma)** - AI-native embedding database (RAG features)
+- **[OpenAI](https://openai.com)** - Embedding generation API (RAG features)
 
 ### Inspired By
 

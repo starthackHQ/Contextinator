@@ -1,8 +1,8 @@
 """
-Contextinator v2.0 CLI
+Contextinator v2.0 CLI - Rust-Powered Filesystem Tools for AI Agents
 
-Primary commands: fs_read tools
-Secondary commands: rag module (v1 functionality)
+Primary interface: Rust-based fs_read tools (read command)
+Optional RAG features: Available via --rag flag (requires 'pip install contextinator[rag]')
 """
 
 import argparse
@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def read_command(args):
-    """Execute fs_read tool."""
+    """Execute fs_read tool (Rust-based)."""
     from contextinator import fs_read
     
     try:
@@ -64,57 +64,92 @@ def _print_result(result, mode):
         print(f"\n[{result['total_matches']} matches]", file=sys.stderr)
 
 
+def rag_command(args):
+    """Execute RAG commands (requires RAG dependencies)."""
+    try:
+        from contextinator.rag_cli import main as rag_main
+        # Reconstruct args for rag_cli
+        sys.argv = [sys.argv[0]] + args.rag_args
+        rag_main()
+    except ImportError:
+        print(
+            "Error: RAG features require additional dependencies.\n"
+            "Install with: pip install contextinator[rag]",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+
 def main():
-    """Main CLI entry point."""
+    """Main CLI entry point - Rust-based tools at the forefront."""
     parser = argparse.ArgumentParser(
         prog="contextinator",
-        description="Filesystem tools for AI agents with optional RAG capabilities"
+        description="Rust-powered filesystem tools for AI agents | Optional: RAG capabilities with --rag flag",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Rust-based filesystem operations (v2 - default)
+  contextinator read --path file.py --mode Line --start-line 1 --end-line 50
+  contextinator read --path src/ --mode Directory --depth 2
+  contextinator read --path . --mode Search --pattern "TODO"
+  
+  # RAG features (v1 - optional, requires 'rag' extras)
+  contextinator --rag chunk --path ./myrepo --save
+  contextinator --rag search "authentication logic" --collection MyRepo
+  
+For detailed documentation: https://github.com/starthackHQ/Contextinator
+        """
     )
     
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    # Global flag for RAG mode
+    parser.add_argument(
+        "--rag",
+        action="store_true",
+        help="Use RAG features (requires 'pip install contextinator[rag]')"
+    )
     
-    # Read command (v2 primary)
-    read_parser = subparsers.add_parser("read", help="Read filesystem (v2 tools)")
+    # Parse known args to check for --rag flag
+    args, remaining = parser.parse_known_args()
+    
+    if args.rag:
+        # Pass control to RAG CLI
+        rag_args_obj = argparse.Namespace(rag_args=remaining)
+        rag_command(rag_args_obj)
+        return
+    
+    # Main v2 commands (Rust-based)
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Read command (v2 primary - Rust-based)
+    read_parser = subparsers.add_parser(
+        "read",
+        help="Read files/directories or search patterns (Rust-based, fast)",
+        description="Rust-powered filesystem operations for AI agents"
+    )
     read_parser.add_argument("--path", required=True, help="File or directory path")
     read_parser.add_argument(
         "--mode",
         required=True,
         choices=["Line", "Directory", "Search"],
-        help="Operation mode"
+        help="Operation mode: Line (read file), Directory (list files), Search (pattern matching)"
     )
-    read_parser.add_argument("--start-line", type=int, help="Start line (Line mode)")
-    read_parser.add_argument("--end-line", type=int, help="End line (Line mode)")
-    read_parser.add_argument("--depth", type=int, default=0, help="Depth (Directory mode)")
-    read_parser.add_argument("--pattern", help="Search pattern (Search mode)")
-    read_parser.add_argument("--context-lines", type=int, default=2, help="Context lines (Search mode)")
+    read_parser.add_argument("--start-line", type=int, help="Start line number (Line mode)")
+    read_parser.add_argument("--end-line", type=int, help="End line number (Line mode)")
+    read_parser.add_argument("--depth", type=int, default=0, help="Directory traversal depth, 0=non-recursive (Directory mode)")
+    read_parser.add_argument("--pattern", help="Search pattern/regex (Search mode)")
+    read_parser.add_argument("--context-lines", type=int, default=2, help="Context lines around matches (Search mode)")
     read_parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
     read_parser.set_defaults(func=read_command)
     
-    # RAG commands (v1 functionality)
-    rag_parser = subparsers.add_parser("rag", help="RAG module commands (v1)")
-    rag_subparsers = rag_parser.add_subparsers(dest="rag_command", help="RAG command")
-    
-    # rag chunk
-    chunk_parser = rag_subparsers.add_parser("chunk", help="Chunk repository")
-    chunk_parser.add_argument("--path", required=True, help="Repository path")
-    chunk_parser.add_argument("--save", action="store_true", help="Save chunks to disk")
-    chunk_parser.set_defaults(func=lambda args: print("RAG chunk command - use: from contextinator.rag import chunk_repository"))
-    
-    # rag search
-    search_parser = rag_subparsers.add_parser("search", help="Semantic search")
-    search_parser.add_argument("query", help="Search query")
-    search_parser.add_argument("-c", "--collection", required=True, help="Collection name")
-    search_parser.set_defaults(func=lambda args: print("RAG search command - use: from contextinator.rag import semantic_search"))
-    
     # Version command
-    version_parser = subparsers.add_parser("version", help="Show version")
-    version_parser.set_defaults(func=lambda args: print("contextinator v2.0.2"))
+    version_parser = subparsers.add_parser("version", help="Show version information")
+    version_parser.set_defaults(func=lambda args: print("Contextinator v2.0.2 (Rust-powered)"))
     
     args = parser.parse_args()
     
     if not args.command:
         parser.print_help()
-        sys.exit(1)
+        sys.exit(0)
     
     args.func(args)
 

@@ -56,6 +56,7 @@ contextinator read --path file.py --mode Line --format json
 ## Return Types
 
 ### Line Mode
+
 ```python
 {
     "type": "line",
@@ -66,6 +67,7 @@ contextinator read --path file.py --mode Line --format json
 ```
 
 ### Directory Mode
+
 ```python
 {
     "type": "directory",
@@ -82,6 +84,7 @@ contextinator read --path file.py --mode Line --format json
 ```
 
 ### Search Mode
+
 ```python
 {
     "type": "search",
@@ -122,6 +125,7 @@ contextinator/
 ## Common Patterns
 
 ### Read specific function
+
 ```python
 # Find function line number first
 search_result = fs_read("src/", mode="Search", pattern="def authenticate")
@@ -137,6 +141,7 @@ func_result = fs_read(
 ```
 
 ### Find all TODOs
+
 ```python
 result = fs_read(".", mode="Search", pattern="TODO|FIXME")
 for match in result["matches"]:
@@ -144,6 +149,7 @@ for match in result["matches"]:
 ```
 
 ### Analyze directory structure
+
 ```python
 result = fs_read(".", mode="Directory", depth=3)
 files = [e for e in result["entries"] if not e["is_dir"]]
@@ -161,12 +167,14 @@ print(f"Total files: {len(files)}, Total size: {total_size} bytes")
 ## Troubleshooting
 
 ### Rust not found
+
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 ```
 
 ### Build fails
+
 ```bash
 # Clean and rebuild
 cd core && cargo clean && cd ..
@@ -175,6 +183,7 @@ rm -rf target/
 ```
 
 ### Import error
+
 ```bash
 # Make sure you built with maturin
 maturin develop --release
@@ -186,6 +195,47 @@ pip install -e .
 ## Next Steps
 
 1. ✅ Build and test v2.0 core
-2. 🔄 Add server mode (multi-repo support)
-3. 🔄 Migrate v1 RAG to `contextinator.rag`
+2. ✅ Migrate v1 RAG to `contextinator.rag` (optional feature)
+3. 🔄 Add server mode (multi-repo support)
 4. 🔄 Add optimizations (caching, streaming)
+
+---
+
+## Optional: RAG Features
+
+For semantic code search and embeddings, install RAG extras:
+
+```bash
+pip install contextinator[rag]
+```
+
+### RAG CLI Usage
+
+```bash
+# All RAG commands use --rag flag
+contextinator --rag chunk --path ./repo --save
+contextinator --rag embed --path ./repo --save
+contextinator --rag store-embeddings --collection-name MyRepo
+contextinator --rag search "authentication logic" --collection MyRepo
+```
+
+### RAG Python API
+
+```python
+from contextinator.rag import (
+    chunk_repository,
+    embed_chunks,
+    semantic_search
+)
+
+# Chunk repository
+chunks = chunk_repository("./repo", "MyRepo", save=True)
+
+# Generate embeddings
+embeddings = embed_chunks("./output", "MyRepo", save=True)
+
+# Semantic search
+results = semantic_search("MyRepo", "authentication logic", n_results=5)
+```
+
+For complete RAG documentation, see [USAGE.md](USAGE.md#rag-features-optional).
