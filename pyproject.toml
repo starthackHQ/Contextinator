@@ -5,14 +5,14 @@ build-backend = "maturin"
 [project]
 name = "contextinator"
 version = "2.0.2"
-description = "Filesystem tools for AI agents with optional RAG capabilities"
+description = "Rust-powered filesystem tools for AI agents with optional RAG capabilities"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "STARTHACK Team", email = "founders@starthack.io"}
 ]
-keywords = ["ai", "filesystem", "tools", "rag", "code-analysis"]
+keywords = ["ai", "filesystem", "tools", "rag", "code-analysis", "rust", "agents"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -21,8 +21,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Rust",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+# Core has no dependencies - Rust extension provides all functionality
 dependencies = []
 
 [project.optional-dependencies]
@@ -63,3 +66,13 @@ Issues = "https://github.com/starthackHQ/Contextinator/issues"
 python-source = "src"
 module-name = "contextinator.contextinator_core"
 features = ["pyo3/extension-module"]
+
+# Build compatibility settings
+[tool.maturin.target.x86_64-pc-windows-msvc]
+# Windows-specific settings if needed
+
+[tool.maturin.target.x86_64-apple-darwin]
+# macOS Intel-specific settings if needed
+
+[tool.maturin.target.aarch64-apple-darwin]
+# macOS ARM (M1/M2)-specific settings if needed
