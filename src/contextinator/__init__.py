@@ -1,41 +1,15 @@
 """
-Contextinator: Intelligent Codebase Understanding for AI Agents.
+Contextinator v2.0 - Filesystem Tools for AI Agents
 
-Transform any codebase into semantically-aware, searchable knowledge
-for AI-powered workflows using AST parsing and vector embeddings.
+Primary interface: fs_read tool with Line/Directory/Search modes
+Secondary interface: RAG module (existing v1 functionality)
 """
 
-try:
-    #  the _version.py file is auto-generated when you build the package.
-    from ._version import version as __version__
-except ImportError:
-    # when in dev
-    __version__ = "0.0.0+unknown"
+__version__ = "2.0.0"
 
+from .tools import fs_read
 
-# Core functionality exports
-from .chunking import chunk_repository
-from .embedding import embed_chunks
-from .vectorstore import store_repository_embeddings, ChromaVectorStore
-from .tools import (
-    semantic_search,
-    symbol_search,
-    cat_file,
-    grep_search,
-    find_function_calls,
-)
-from .ingestion import AsyncIngestionService
+# RAG module available as contextinator.rag
+from . import rag
 
-__all__ = [
-    "__version__",
-    "chunk_repository",
-    "embed_chunks",
-    "store_repository_embeddings",
-    "semantic_search",
-    "symbol_search",
-    "cat_file",
-    "grep_search",
-    "find_function_calls",
-    "ChromaVectorStore",
-    "AsyncIngestionService",
-]
+__all__ = ["fs_read", "rag", "__version__"]

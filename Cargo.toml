@@ -1,0 +1,20 @@
+[workspace]
+members = ["core"]
+
+[package]
+name = "contextinator"
+version = "2.0.0"
+edition = "2021"
+
+[lib]
+name = "contextinator_core"
+path = "core/src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+walkdir = "2.4"
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+memmap2 = "0.9"
