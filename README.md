@@ -1,10 +1,10 @@
 <img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/banner.webp" alt="Contextinator" width="100%" />
 <br />
 <p align="center">
-⚡ Rust-powered filesystem tools for AI agents | Optional: Semantic code search with RAG
+Turn any codebase into searchable knowledge for AI-powered workflows.
 </p>
 
-### Key Features - v2.0
+### Key Features
 
 #### Core (Rust-Powered - Zero Dependencies)
 
@@ -171,6 +171,7 @@ Built with and inspired by amazing open-source projects:
 
 ### Inspired By
 
+- **[AWS Q Developer](https://aws.amazon.com/q/developer/)** - AI coding assistant with local filesystem operations (inspired our fs_read approach)
 - **[Serena](https://github.com/oraios/serena)** - Code intelligence and semantic search
 - **[Continue](https://github.com/continuedev/continue)** - AI-powered code assistant
 - **[Tabby](https://github.com/TabbyML/tabby)** - Self-hosted AI coding assistant
@@ -184,7 +185,7 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com
 
 <h1 align="left">TL;DR <img src="https://raw.githubusercontent.com/starthackHQ/Contextinator/main/docs/0banner.png" alt="Contextinator" width="30" /></h1>
 
-Contextinator is a code intelligence tool that uses Abstract Syntax Tree (AST) parsing to extract semantic code chunks, generates embeddings, and stores them in a vector database. This enables AI systems to understand, navigate, and reason about codebases with precision.
+Contextinator is a **Rust-powered filesystem toolkit** designed for AI agents to efficiently read files, explore directories, and search codebases with blazing-fast performance. It provides local filesystem operations inspired by AWS Q Developer's approach, prioritizing speed and simplicity over embedding-based solutions. Additionally, it offers optional RAG capabilities using Abstract Syntax Tree (AST) parsing to extract semantic code chunks, generate embeddings, and enable advanced code intelligence for deeper codebase understanding.
 
 ## Star History
 
