@@ -108,7 +108,7 @@ def main():
     
     # Version command
     version_parser = subparsers.add_parser("version", help="Show version")
-    version_parser.set_defaults(func=lambda args: print("contextinator v2.0.0"))
+    version_parser.set_defaults(func=lambda args: print("contextinator v1.2.6"))
     
     args = parser.parse_args()
     
