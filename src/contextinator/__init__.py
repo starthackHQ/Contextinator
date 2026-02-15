@@ -5,7 +5,7 @@ Primary interface: fs_read tool with Line/Directory/Search modes
 Secondary interface: RAG module (existing v1 functionality)
 """
 
-__version__ = "1.2.6"
+__version__ = "1.2.9"
 
 from .tools import fs_read
 
