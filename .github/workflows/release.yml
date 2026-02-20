@@ -101,36 +101,29 @@ jobs:
           body_path: release_notes.md
           generate_release_notes: false
 
-  # Build wheels for multiple platforms
+  # Build wheels for ALL platforms and Python versions
   build-wheels:
     name: Build wheels on ${{ matrix.os }}
     if: github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'v')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install maturin
-        run: pip install maturin
-
-      - name: Build wheel
-        run: maturin build --release --out dist
+          command: build
+          args: --release --out dist --interpreter 3.10 3.11 3.12 3.13
+          manylinux: auto
+          sccache: 'true'
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
+          name: wheels-${{ matrix.os }}
           path: dist/*.whl
 
   # Build source distribution
@@ -141,13 +134,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Build sdist
-        run: |
-          pip install maturin
-          maturin sdist --out dist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
 
       - name: Upload sdist
         uses: actions/upload-artifact@v4
